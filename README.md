@@ -35,48 +35,7 @@ The important thing to focus on for a Bitcoin airdrop is not the blockchain like
 When the fork is launched, an airdrop will be conducted to all users of the Bitcoin network to wallets identical in the BTCU network in the ratio of 1:1 to the BTC balance on the branch block. 
 
 
-
-### Post-quantum cryptography
-Even though current, publicly known, experimental quantum computers lack processing power to break any real cryptographic algorithm, we are designing new algorithms to prepare for a time when quantum computing becomes a threat.
-
-It will be based on currently post-quantum cryptography research is mostly focused on six different approaches:
-
-
-+ Lattice-based cryptography
-+ Multivariate cryptography
-+ Hash-based cryptography
-+ Code-based cryptography
-+ Supersingular elliptic curve isogeny cryptography
-+ Symmetric key quantum resistance
-
-
-
-### Atomic swap
-One of the best features of cross swap is the removal of intermediary tokens. Eg. if you have LTC and want to buy BTCU in a normal exchange, you will have to sell your LTC for BTC and then buy your BTCU. Via atomic swaps, you can get this trade done in one go. Is no more necessary to use other services for exchange.
-
-Atomic Swaps has the potential of completely revolutionizing the money transfer system in the crypto world. To put it in simple terms, atomic swaps will enable people to directly trade with one another wallet-to-wallet. As we have stated earlier, can either be conducted on-chain or off-chain.
-On-Chain swaps take place on either currency’s blockchain. In order to do this though, both currencies must:
-
-
-+ Support HTLC
-+ Have the same hashing algorithm
-
-### Advantages of Atomic Swaps
-+ Interoperability between the different assets is a huge problem right now in cryptocurrencies. Atomic swaps are going to bring users of all these different coins together to help them interact with each other.
-
-+ Atomic swap makes the crypto ecosystem more “currency agnostic”. Because people with different crypto holdings will now be able to interact with each other, it is pretty likely that people will be more open to diversifying their holdings instead of just depending on a few coins.
-
-+ Atomic Swaps will open the doors to trustless and fee-less decentralized exchanges.
-+ Central exchanges are centralized and hence open to a host of attacks. Atomic swaps remove the need for having a 3rd party and makes the trade as direct as possible.
-+ External attacks aside, centralized exchanges are also suspect to internal maintenance issues and corruption. Wallet maintenance” or disabled withdrawals are especially two big problems. Atomic swaps are going to give you complete control over your money.
-+ Direct wallet-to-wallet trading epitomizes decentralization in its purest form. Exchanges are constantly targeted for regulation purposes which makes the whole trading process increasingly centralized.
-+ Since atomic swap directly connects two wallets to each other, it removes all the steps and confirmations required by centralized exchanges.
-
-
-
-
 ### Network validation principle 
-
 
 + Masternode network
 The BTCU network is two-tiered. The network is composed of the first, staking tier, in which all BTCU holders can participate in through staking their coins; and the more exclusive masternode tier.
@@ -118,5 +77,45 @@ So BTCU based on the next blockchain technologies:
 
 This amount of blockchain integration gives all users the opportunity to use all the advantages of the world's lead coins and blockchain technologies.
 
+Futures
+==============================================
+### Post-quantum cryptography
+Even though current, publicly known, experimental quantum computers lack processing power to break any real cryptographic algorithm, we are designing new algorithms to prepare for a time when quantum computing becomes a threat.
 
-### More information at [btcu.io](http://www.btcu.io/)
+It will be based on currently post-quantum cryptography research is mostly focused on six different approaches:
+
+
++ Lattice-based cryptography
++ Multivariate cryptography
++ Hash-based cryptography
++ Code-based cryptography
++ Supersingular elliptic curve isogeny cryptography
++ Symmetric key quantum resistance
+
+
+
+### Atomic swap
+One of the best features of cross swap is the removal of intermediary tokens. Eg. if you have LTC and want to buy BTCU in a normal exchange, you will have to sell your LTC for BTC and then buy your BTCU. Via atomic swaps, you can get this trade done in one go. Is no more necessary to use other services for exchange.
+
+Atomic Swaps has the potential of completely revolutionizing the money transfer system in the crypto world. To put it in simple terms, atomic swaps will enable people to directly trade with one another wallet-to-wallet. As we have stated earlier, can either be conducted on-chain or off-chain.
+On-Chain swaps take place on either currency’s blockchain. In order to do this though, both currencies must:
+
+
++ Support HTLC
++ Have the same hashing algorithm
+
+### Advantages of Atomic Swaps
++ Interoperability between the different assets is a huge problem right now in cryptocurrencies. Atomic swaps are going to bring users of all these different coins together to help them interact with each other.
+
++ Atomic swap makes the crypto ecosystem more “currency agnostic”. Because people with different crypto holdings will now be able to interact with each other, it is pretty likely that people will be more open to diversifying their holdings instead of just depending on a few coins.
+
++ Atomic Swaps will open the doors to trustless and fee-less decentralized exchanges.
++ Central exchanges are centralized and hence open to a host of attacks. Atomic swaps remove the need for having a 3rd party and makes the trade as direct as possible.
++ External attacks aside, centralized exchanges are also suspect to internal maintenance issues and corruption. Wallet maintenance” or disabled withdrawals are especially two big problems. Atomic swaps are going to give you complete control over your money.
++ Direct wallet-to-wallet trading epitomizes decentralization in its purest form. Exchanges are constantly targeted for regulation purposes which makes the whole trading process increasingly centralized.
++ Since atomic swap directly connects two wallets to each other, it removes all the steps and confirmations required by centralized exchanges.
+
+
+
+ More information at [btcu.io](http://www.btcu.io/)
+ =========================================
