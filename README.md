@@ -116,5 +116,5 @@ On-Chain swaps take place on either currency’s blockchain. In order to do this
 
 
 
- ###More information at [btcu.io](http://www.btcu.io/)
+ ### More information at [btcu.io](http://www.btcu.io/)
  
