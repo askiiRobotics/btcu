@@ -14,7 +14,6 @@ The main goal is to make a hybrid of LPoS mining algorithm and PoA to make a rea
 
 ### Smart Contracts
 Virtual Machine BTCU -  Ethereum Virtual Machine (EVM)  which supports Solidity programming language, facilitating mainstream adoption of smart contract development.
-The main thing is a smart contract - next step of consensus algorithm to control validation process.
 
 Smart contracts are the future of the blockchain world. Creating your own smart contract is the main feature of the blockchain world - so access for every user who wants to make a smart contract is one of the largest steps of BTCU.
 
