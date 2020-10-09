@@ -97,6 +97,12 @@ bool CheckProofOfStake(const CBlock& block, uint256& hashProofOfStake, std::uniq
     const CTransaction tx = block.vtx[1];
     // Kernel (input 0) must match the stake hash target per coin age (nBits)
     const CTxIn& txin = tx.vin[0];
+
+    uint256 hashBlock;
+    CTransaction txPrev;
+    if (GetTransaction(txin.prevout.hash, txPrev, hashBlock, true) && hashBlock == Params().HashGenesisBlock())
+        return true;
+
     CBlockIndex* pindexPrev = mapBlockIndex[block.hashPrevBlock];
     CBlockIndex* pindexfrom = stake->GetIndexFrom();
     if (!pindexfrom)
@@ -135,14 +141,14 @@ bool initStakeInput(const CBlock& block, std::unique_ptr<CStakeInput>& stake, in
         if (spend.getSpendType() != libzerocoin::SpendType::STAKE)
             return error("%s : spend is using the wrong SpendType (%d)", __func__, (int)spend.getSpendType());
 
-        stake = std::unique_ptr<CStakeInput>(new CLegacyZPivStake(spend));
+        stake = std::unique_ptr<CStakeInput>(new CLegacyZBTCUStake(spend));
 
         // zPoS contextual checks
         /* Only for IBD (between Zerocoin_Block_V2_Start and Zerocoin_Block_Last_Checkpoint) */
         if (nPreviousBlockHeight < Params().Zerocoin_Block_V2_Start() ||
                 nPreviousBlockHeight > Params().Zerocoin_Block_Last_Checkpoint())
             return error("%s : zBTCU stake block: height %d outside range", __func__, (nPreviousBlockHeight+1));
-        CLegacyZPivStake* zBTCU = dynamic_cast<CLegacyZPivStake*>(stake.get());
+        CLegacyZBTCUStake* zBTCU = dynamic_cast<CLegacyZBTCUStake*>(stake.get());
         if (!zBTCU) return error("%s : dynamic_cast of stake ptr failed", __func__);
         // The checkpoint needs to be from 200 blocks ago
         const int cpHeight = nPreviousBlockHeight - Params().Zerocoin_RequiredStakeDepth();
@@ -167,7 +173,7 @@ bool initStakeInput(const CBlock& block, std::unique_ptr<CStakeInput>& stake, in
             return error("%s : VerifyScript failed on coinstake %s %s", __func__, tx.GetHash().ToString(), strErr);
         }
 
-        CPivStake* btcuInput = new CPivStake();
+        CBTCUStake* btcuInput = new CBTCUStake();
         btcuInput->SetInput(txPrev, txin.prevout.n);
         stake = std::unique_ptr<CStakeInput>(btcuInput);
     }
@@ -201,11 +207,11 @@ bool Stake(const CBlockIndex* pindexPrev, CStakeInput* stakeInput, unsigned int 
     const int nHeight = pindexPrev->nHeight + 1;
     // get stake input pindex
     CBlockIndex* pindexFrom = stakeInput->GetIndexFrom();
-    if (!pindexFrom || pindexFrom->nHeight < 1) return error("%s : no pindexfrom", __func__);
+    if (!pindexFrom) return error("%s : no pindexfrom", __func__);
 
     // check required min depth for stake
     const int nHeightBlockFrom = pindexFrom->nHeight;
-    if (nHeight < nHeightBlockFrom + Params().COINSTAKE_MIN_DEPTH())
+    if (nHeightBlockFrom > 0 && nHeight < nHeightBlockFrom + Params().COINSTAKE_MIN_DEPTH())
         return error("%s : min depth violation, nHeight=%d, nHeightBlockFrom=%d", __func__, nHeight, nHeightBlockFrom);
 
     const bool fRegTest = Params().IsRegTestNet();

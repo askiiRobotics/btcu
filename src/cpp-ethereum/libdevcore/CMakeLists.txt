@@ -12,11 +12,12 @@ target_link_libraries(devcore PUBLIC cpp-ethereum-buildinfo Boost::filesystem Bo
 
 if (MSVC)
     find_package(LevelDB)
-    target_include_directories(devcore SYSTEM PUBLIC ${LEVELDB_INCLUDE_DIRS})
+    target_include_directories(devcore SYSTEM PUBLIC ${LEVELDB_INCLUDE_DIRS} ../ethash/include)
     target_link_libraries(devcore PRIVATE ${LEVELDB_LIBRARIES})
 else()
     hunter_add_package(leveldb)
     find_package(leveldb CONFIG REQUIRED)
+    target_include_directories(devcore SYSTEM PUBLIC ../ethash/include)
     target_link_libraries(devcore PRIVATE leveldb::leveldb)
 endif()
 

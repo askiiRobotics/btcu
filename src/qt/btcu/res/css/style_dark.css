@@ -141,6 +141,49 @@ QPushButton[cssClass="img-nav-logo"] {
 !#############
  ################################*/
 
+ /*HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+ !############# Leasing Nav
+  ################################*/
+
+ *[cssClass="btn-nav-leasing"] {
+     qproperty-icon: url("://ic-nav-leasing") off,
+     url("://ic-nav-leasing-active") on;
+     qproperty-iconSize: 24px 40px;
+     background-color:transparent;
+     font-size:14px;
+     color: #938da5;
+ }
+
+ *[cssClass="btn-nav-leasing"]:checked {
+     background-color: #0f0b16;
+     font-size:14px;
+     color: #B088FF;
+ }
+
+ *[cssClass="btn-nav-leasing"]:checked:hover {
+     background-color: #0f0b16;
+     color: #B088FF;
+ }
+
+ *[cssClass="btn-nav-leasing"]:hover {
+     qproperty-icon: url("://ic-nav-leasing-hover");
+     qproperty-iconSize: 24px 40px;
+     background-color: #1A000000;
+     color: #938da5;
+ }
+
+ *[cssClass="btn-nav-leasing-active"] {
+     qproperty-icon:url("://ic-nav-leasing-active")  ;
+     qproperty-iconSize: 24px 40px;
+     background-color: #0f0b16;
+     font-size:14px;
+     color: #B088FF;
+ }
+
+ /*HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+ !#############
+  ################################*/
+
 /*******************
 ******cold staking top bar*********
  ********************/
@@ -192,6 +235,58 @@ QPushButton[cssClass="btn-check-cold-staking"]:checked {
 /*******************
 ******end cold staking*********
  ********************/
+
+ /*******************
+ ******leasing top bar*********
+  ********************/
+
+ QPushButton[cssClass="btn-check-leasing"] {
+     qproperty-icon: url("://ic-check-leasing");
+     qproperty-iconSize: 24px 24px;
+     color:#ffffff;
+     background-color:#505c4b7d;
+     border-bottom:2px solid #5C4B7D;
+     border-radius:2px;
+ }
+
+
+ QPushButton[cssClass="btn-check-leasing-inactive"] {
+     qproperty-icon: url("://ic-check-leasing-off");
+     qproperty-iconSize: 24px 24px;
+     color:#B3FFFFFF;
+     background-color:#405c4b7d;
+     border-bottom:2px solid #5C4B7D;
+     border-radius:2px;
+ }
+
+ QPushButton[cssClass="btn-check-leasing-checked"] {
+     qproperty-icon: url("://ic-check-leasing-enabled");
+     qproperty-iconSize: 24px 24px;
+     background-color:#505c4b7d;
+     color:#ffffff;
+     border-bottom:2px solid #b088ff;
+ }
+
+ QPushButton[cssClass="btn-check-leasing-unchecked"] {
+     qproperty-icon: url("://ic-check-leasing-enabled");
+     qproperty-iconSize: 24px 24px;
+     color:#B3FFFFFF;
+     background-color:#405c4b7d;
+     border-bottom:2px solid #5C4B7D;
+     border-radius:2px;
+ }
+
+ QPushButton[cssClass="btn-check-leasing"]:checked {
+     qproperty-icon: url("://ic-check-leasing-enabled");
+     qproperty-iconSize: 24px 24px;
+     background-color:#505c4b7d;
+     color:#ffffff;
+     border-bottom:2px solid #b088ff;
+ }
+
+ /*******************
+ ******end leasing*********
+  ********************/
 
 *[cssClass="btn-nav-settings"] {
     qproperty-icon: url("://ic-nav-settings") off,

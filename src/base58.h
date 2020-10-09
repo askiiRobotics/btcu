@@ -66,18 +66,17 @@ std::string EncodeBase58Check(const std::vector<unsigned char>& vchIn);
  */
 inline bool DecodeBase58Check(const char* psz, std::vector<unsigned char>& vchRet);
 
-/**
- * Decode a base58-encoded string (str) that includes a checksum into a byte
- * vector (vchRet), return true if decoding is successful
- */
-inline bool DecodeBase58Check(const std::string& str, std::vector<unsigned char>& vchRet);
+class CBTCUAddress;
+class CBTCUSecret;
 
 /**
  * Base class for all base58-encoded data
  */
 class CBase58Data
 {
-protected:
+    friend class CBTCUAddress;
+    friend class CBTCUSecret;
+
     //! the version byte(s)
     std::vector<unsigned char> vchVersion;
 
@@ -85,102 +84,15 @@ protected:
     typedef std::vector<unsigned char, zero_after_free_allocator<unsigned char> > vector_uchar;
     vector_uchar vchData;
 
-    CBase58Data();
-    void SetData(const std::vector<unsigned char>& vchVersionIn, const void* pdata, size_t nSize);
-    void SetData(const std::vector<unsigned char>& vchVersionIn, const unsigned char* pbegin, const unsigned char* pend);
-
 public:
-    bool SetString(const char* psz, unsigned int nVersionBytes = 1);
-    bool SetString(const std::string& str);
+    CBase58Data() = default;
+    ~CBase58Data() = default;
+    void SetData(const std::vector<unsigned char>& vchVersionIn, const void* pdata, size_t nSize);
+    void Clear();
+
+    bool SetString(const std::string& str, unsigned int nVersionBytes = 1);
     std::string ToString() const;
     int CompareTo(const CBase58Data& b58) const;
-
-    bool operator==(const CBase58Data& b58) const { return CompareTo(b58) == 0; }
-    bool operator<=(const CBase58Data& b58) const { return CompareTo(b58) <= 0; }
-    bool operator>=(const CBase58Data& b58) const { return CompareTo(b58) >= 0; }
-    bool operator<(const CBase58Data& b58) const { return CompareTo(b58) < 0; }
-    bool operator>(const CBase58Data& b58) const { return CompareTo(b58) > 0; }
 };
-
-/** base58-encoded BTCU addresses.
- * Public-key-hash-addresses have version 0 (or 111 testnet).
- * The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
- * Script-hash-addresses have version 5 (or 196 testnet).
- * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
- */
-class CBitcoinAddress : public CBase58Data
-{
-public:
-    bool Set(const CKeyID& id, const CChainParams::Base58Type addrType = CChainParams::PUBKEY_ADDRESS);
-    bool Set(const CScriptID& id);
-    bool Set(const CTxDestination& dest, const CChainParams::Base58Type addrType = CChainParams::PUBKEY_ADDRESS);
-    bool IsValid() const;
-    bool IsValid(const CChainParams& params) const;
-
-    CBitcoinAddress() {}
-    CBitcoinAddress(const CTxDestination& dest, const CChainParams::Base58Type addrType = CChainParams::PUBKEY_ADDRESS) { Set(dest, addrType); }
-    CBitcoinAddress(const std::string& strAddress) { SetString(strAddress); }
-    CBitcoinAddress(const char* pszAddress) { SetString(pszAddress); }
-
-    CTxDestination Get() const;
-    bool GetKeyID(CKeyID& keyID) const;
-    bool IsScript() const;
-    bool IsStakingAddress() const;
-
-
-    // Helpers
-    static const CBitcoinAddress newCSInstance(const CTxDestination& dest) {
-        return CBitcoinAddress(dest, CChainParams::STAKING_ADDRESS);
-    }
-
-    static const CBitcoinAddress newInstance(const CTxDestination& dest) {
-        return CBitcoinAddress(dest, CChainParams::PUBKEY_ADDRESS);
-    }
-};
-
-/**
- * A base58-encoded secret key
- */
-class CBitcoinSecret : public CBase58Data
-{
-public:
-    void SetKey(const CKey& vchSecret);
-    CKey GetKey();
-    bool IsValid() const;
-    bool SetString(const char* pszSecret);
-    bool SetString(const std::string& strSecret);
-
-    CBitcoinSecret(const CKey& vchSecret) { SetKey(vchSecret); }
-    CBitcoinSecret() {}
-};
-
-template <typename K, int Size, CChainParams::Base58Type Type>
-class CBitcoinExtKeyBase : public CBase58Data
-{
-public:
-    void SetKey(const K& key)
-    {
-        unsigned char vch[Size];
-        key.Encode(vch);
-        SetData(Params().Base58Prefix(Type), vch, vch + Size);
-    }
-
-    K GetKey()
-    {
-        K ret;
-        ret.Decode(&vchData[0], &vchData[Size]);
-        return ret;
-    }
-
-    CBitcoinExtKeyBase(const K& key)
-    {
-        SetKey(key);
-    }
-
-    CBitcoinExtKeyBase() {}
-};
-
-typedef CBitcoinExtKeyBase<CExtKey, 74, CChainParams::EXT_SECRET_KEY> CBitcoinExtKey;
-typedef CBitcoinExtKeyBase<CExtPubKey, 74, CChainParams::EXT_PUBLIC_KEY> CBitcoinExtPubKey;
 
 #endif // BITCOIN_BASE58_H

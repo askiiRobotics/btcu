@@ -7,7 +7,6 @@
 
 #include "transactionrecord.h"
 
-#include "base58.h"
 #include "obfuscation.h"
 #include "swifttx.h"
 #include "timedata.h"
@@ -68,7 +67,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                 // BTCU stake reward
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
                 sub.type = TransactionRecord::StakeMint;
-                sub.address = CBitcoinAddress(address).ToString();
+                sub.address = CBTCUAddress(address).ToString();
                 sub.credit = nNet;
             }
         } else {
@@ -79,7 +78,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                 isminetype mine = wallet->IsMine(wtx.vout[nIndexMN]);
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
                 sub.type = TransactionRecord::MNReward;
-                sub.address = CBitcoinAddress(destMN).ToString();
+                sub.address = CBTCUAddress(destMN).ToString();
                 sub.credit = wtx.vout[nIndexMN].nValue;
             }
         }
@@ -112,7 +111,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
             std::string strAddress = "";
             CTxDestination address;
             if (ExtractDestination(txout.scriptPubKey, address))
-                strAddress = CBitcoinAddress(address).ToString();
+                strAddress = CBTCUAddress(address).ToString();
 
             // a zerocoinspend that was sent to an address held by this wallet
             isminetype mine = wallet->IsMine(txout);
@@ -162,6 +161,28 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
         loadUnlockColdStake(wallet, wtx, sub);
         parts.append(sub);
         return parts;
+    } else if (wtx.HasP2LOutputs()) {
+        // Leasing tx.
+        TransactionRecord sub(hash, nTime, wtx.GetTotalSize());
+        sub.credit = nCredit;
+        sub.debit = -nDebit;
+        loadP2L(wallet, wtx, sub);
+        parts.append(sub);
+        return parts;
+    } else if (wtx.HasP2LInputs()) {
+        // Leaasing unlocked
+        TransactionRecord sub(hash, nTime, wtx.GetTotalSize());
+        loadLeasingSpend(wallet, wtx, sub);
+        parts.append(sub);
+        return parts;
+    } else if (wtx.IsLeasingReward()) {
+        // Leasing reward tx.
+        TransactionRecord sub(hash, nTime, wtx.GetTotalSize());
+        sub.credit = nCredit;
+        sub.debit = -nDebit;
+        loadLeasingReward(wallet, wtx, sub);
+        parts.append(sub);
+        return parts;
     } else if (nNet > 0 || wtx.IsCoinBase()) {
         //
         // Credit
@@ -177,7 +198,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                 if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address)) {
                     // Received by BTCU Address
                     sub.type = TransactionRecord::RecvWithAddress;
-                    sub.address = CBitcoinAddress(address).ToString();
+                    sub.address = CBTCUAddress(address).ToString();
                 } else {
                     // Received by IP connection (deprecated features), or a multisignature or other non-simple transaction
                     sub.type = TransactionRecord::RecvFromOther;
@@ -237,7 +258,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                 CTxDestination address;
                 if (ExtractDestination(wtx.vout[0].scriptPubKey, address)) {
                     // Sent to BTCU Address
-                    sub.address = CBitcoinAddress(address).ToString();
+                    sub.address = CBTCUAddress(address).ToString();
                 } else {
                     // Sent to IP, or other non-address transaction like OP_EVAL
                     sub.address = mapValue["to"];
@@ -255,7 +276,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                 // Label for payment to self
                 CTxDestination address;
                 if (ExtractDestination(wtx.vout[0].scriptPubKey, address)) {
-                    sub.address = CBitcoinAddress(address).ToString();
+                    sub.address = CBTCUAddress(address).ToString();
                 }
             }
 
@@ -291,7 +312,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                         continue;
                     // Sent to BTCU Address
                     sub.type = TransactionRecord::SendToAddress;
-                    sub.address = CBitcoinAddress(address).ToString();
+                    sub.address = CBTCUAddress(address).ToString();
                 } else if (txout.IsZerocoinMint()){
                     sub.type = TransactionRecord::ZerocoinMint;
                     sub.address = mapValue["zerocoinmint"];
@@ -358,7 +379,7 @@ void TransactionRecord::loadUnlockColdStake(const CWallet* wallet, const CWallet
     }
 
     // Extract and set the owner address
-    ExtractAddress(*p2csScript, false, record.address);
+    ExtractAddress(*p2csScript, false, false, record.address);
 }
 
 void TransactionRecord::loadHotOrColdStakeOrContract(
@@ -407,19 +428,96 @@ void TransactionRecord::loadHotOrColdStakeOrContract(
     }
 
     // Extract and set the owner address
-    ExtractAddress(p2csUtxo.scriptPubKey, false, record.address);
+    ExtractAddress(p2csUtxo.scriptPubKey, false, false, record.address);
 }
 
-bool TransactionRecord::ExtractAddress(const CScript& scriptPubKey, bool fColdStake, std::string& addressStr) {
+void TransactionRecord::loadP2L(
+    const CWallet* wallet,
+    const CWalletTx& wtx,
+    TransactionRecord& record)
+{
+    record.involvesWatchAddress = false;
+
+    for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++) {
+        const CTxOut &txout = wtx.vout[nOut];
+        if (txout.scriptPubKey.IsPayToLeasing()) {
+            const auto isMine = wallet->IsMine(txout);
+            if (isMine == ISMINE_SPENDABLE_LEASING) {
+                record.type = TransactionRecord::P2LLeasingSentOwner;
+            } else if (isMine == ISMINE_LEASED) {
+                record.type = TransactionRecord::P2LLeasingSent;
+            } else if (isMine == ISMINE_LEASING){
+                record.type = TransactionRecord::P2LLeasing;
+            } else {
+                continue;
+            }
+
+            ExtractAddress(txout.scriptPubKey, false, false, record.address);
+            return;
+        }
+    }
+}
+
+void TransactionRecord::loadLeasingSpend(
+    const CWallet* wallet,
+    const CWalletTx& wtx,
+    TransactionRecord& record)
+{
+    record.involvesWatchAddress = false;
+
+    // Get the p2cs
+    for (const auto &input : wtx.vin) {
+        const CWalletTx* tx = wallet->GetWalletTx(input.prevout.hash);
+        if (tx && tx->vout[input.prevout.n].scriptPubKey.IsPayToLeasing()) {
+            auto& p2lScript = tx->vout[input.prevout.n].scriptPubKey;
+            auto isSpendable = wallet->IsMine(input) & ISMINE_SPENDABLE_ALL;
+
+            if (isSpendable) {
+                // owner unlocked the cold stake
+                record.type = TransactionRecord::P2LUnlockOwner;
+                record.debit = -(wtx.GetLeasedDebit());
+                record.credit = wtx.GetCredit(ISMINE_ALL);
+            } else {
+                // hot node watching the unlock
+                record.type = TransactionRecord::P2LUnlockLeaser;
+                record.debit = -(wtx.GetLeasedCredit());
+                record.credit = -(wtx.GetColdStakingCredit());
+            }
+
+            ExtractAddress(p2lScript, false, false, record.address);
+            return;
+        }
+    }
+}
+
+void TransactionRecord::loadLeasingReward(
+    const CWallet* wallet,
+    const CWalletTx& wtx,
+    TransactionRecord& record)
+{
+    record.involvesWatchAddress = false;
+
+    // Get the leasing reward
+    for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++) {
+        const CTxOut &txout = wtx.vout[nOut];
+        if (txout.scriptPubKey.IsLeasingReward() && wallet->IsMine(txout) == ISMINE_SPENDABLE) {
+            record.type = TransactionRecord::LeasingReward;
+            ExtractAddress(txout.scriptPubKey, false, false, record.address);
+            return;
+        }
+    }
+}
+
+bool TransactionRecord::ExtractAddress(const CScript& scriptPubKey, bool fColdStake, bool fLease, std::string& addressStr) {
     CTxDestination address;
-    if (!ExtractDestination(scriptPubKey, address, fColdStake)) {
+    if (!ExtractDestination(scriptPubKey, address, fColdStake, fLease)) {
         // this shouldn't happen..
         addressStr = "No available address";
         return false;
     } else {
-        addressStr = CBitcoinAddress(
+        addressStr = CBTCUAddress(
                 address,
-                (fColdStake ? CChainParams::STAKING_ADDRESS : CChainParams::PUBKEY_ADDRESS)
+                (fColdStake ? CChainParams::STAKING_ADDRESS : (fLease ? CChainParams::LEASING_ADDRESS : CChainParams::PUBKEY_ADDRESS))
         ).ToString();
         return true;
     }
@@ -545,6 +643,13 @@ bool TransactionRecord::isAnyColdStakingType() const
             || type == TransactionRecord::P2CSDelegationSentOwner
             || type == TransactionRecord::StakeDelegated || type == TransactionRecord::StakeHot
             || type == TransactionRecord::P2CSUnlockOwner || type == TransactionRecord::P2CSUnlockStaker);
+}
+
+bool TransactionRecord::isAnyLeasingType() const
+{
+    return (type == TransactionRecord::P2LLeasing || type == TransactionRecord::P2LLeasingSent || type == TransactionRecord::P2LLeasingSentOwner
+            || type == TransactionRecord::LeasingReward
+            || type == TransactionRecord::P2LUnlockOwner || type == TransactionRecord::P2LUnlockLeaser);
 }
 
 bool TransactionRecord::isNull() const

@@ -87,8 +87,10 @@ void CActiveMasternode::ManageStatus()
         // Choose coins to use
         CPubKey pubKeyCollateralAddress;
         CKey keyCollateralAddress;
+        CPubKey pubKeyLeasing;
+        CKey keyLeasing;
 
-        if (GetMasterNodeVin(vin, pubKeyCollateralAddress, keyCollateralAddress)) {
+        if (GetMasterNodeVin(vin, pubKeyCollateralAddress, keyCollateralAddress, pubKeyLeasing, keyLeasing)) {
             if (GetInputAge(vin) < MASTERNODE_MIN_CONFIRMATIONS) {
                 status = ACTIVE_MASTERNODE_INPUT_TOO_NEW;
                 notCapableReason = strprintf("%s - %d confirmations", GetStatus(), GetInputAge(vin));
@@ -109,7 +111,11 @@ void CActiveMasternode::ManageStatus()
             }
 
             CMasternodeBroadcast mnb;
-            if (!CreateBroadcast(vin, service, keyCollateralAddress, pubKeyCollateralAddress, keyMasternode, pubKeyMasternode, errorMessage, mnb)) {
+            if (!CreateBroadcast(
+                vin, service, keyCollateralAddress, pubKeyCollateralAddress,
+                keyLeasing, pubKeyLeasing,
+                keyMasternode, pubKeyMasternode, errorMessage, mnb))
+            {
                 notCapableReason = "Error on Register: " + errorMessage;
                 LogPrintf("CActiveMasternode::ManageStatus() - %s\n", notCapableReason);
                 return;
@@ -248,6 +254,8 @@ bool CActiveMasternode::CreateBroadcast(std::string strService, std::string strK
     CTxIn vin;
     CPubKey pubKeyCollateralAddress;
     CKey keyCollateralAddress;
+    CPubKey pubKeyLeasing;
+    CKey keyLeasing;
     CPubKey pubKeyMasternode;
     CKey keyMasternode;
 
@@ -264,7 +272,11 @@ bool CActiveMasternode::CreateBroadcast(std::string strService, std::string strK
         return false;
     }
 
-    if (!GetMasterNodeVin(vin, pubKeyCollateralAddress, keyCollateralAddress, strTxHash, strOutputIndex)) {
+    if (!GetMasterNodeVin(
+        vin, pubKeyCollateralAddress, keyCollateralAddress,
+        pubKeyLeasing, keyLeasing,
+        strTxHash, strOutputIndex)
+    ) {
         errorMessage = strprintf("Could not allocate vin %s:%s for masternode %s", strTxHash, strOutputIndex, strService);
         LogPrintf("CActiveMasternode::CreateBroadcast() - %s\n", errorMessage);
         return false;
@@ -278,10 +290,19 @@ bool CActiveMasternode::CreateBroadcast(std::string strService, std::string strK
 
     addrman.Add(CAddress(service), CNetAddr("127.0.0.1"), 2 * 60 * 60);
 
-    return CreateBroadcast(vin, CService(strService), keyCollateralAddress, pubKeyCollateralAddress, keyMasternode, pubKeyMasternode, errorMessage, mnb);
+    return CreateBroadcast(
+        vin, CService(strService), keyCollateralAddress, pubKeyCollateralAddress,
+        keyLeasing, pubKeyLeasing,
+        keyMasternode, pubKeyMasternode,
+        errorMessage, mnb);
 }
 
-bool CActiveMasternode::CreateBroadcast(CTxIn vin, CService service, CKey keyCollateralAddress, CPubKey pubKeyCollateralAddress, CKey keyMasternode, CPubKey pubKeyMasternode, std::string& errorMessage, CMasternodeBroadcast &mnb)
+bool CActiveMasternode::CreateBroadcast(
+    CTxIn vin, CService service,
+    CKey keyCollateralAddress, CPubKey pubKeyCollateralAddress,
+    CKey keyLeasing, CPubKey pubKeyLeasing,
+    CKey keyMasternode, CPubKey pubKeyMasternode,
+    std::string& errorMessage, CMasternodeBroadcast &mnb)
 {
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
@@ -300,7 +321,7 @@ bool CActiveMasternode::CreateBroadcast(CTxIn vin, CService service, CKey keyCol
         return false;
     }
 
-    mnb = CMasternodeBroadcast(service, vin, pubKeyCollateralAddress, pubKeyMasternode, PROTOCOL_VERSION);
+    mnb = CMasternodeBroadcast(service, vin, pubKeyCollateralAddress, pubKeyLeasing, pubKeyMasternode, PROTOCOL_VERSION);
     mnb.lastPing = mnp;
     if (!mnb.Sign(keyCollateralAddress, pubKeyCollateralAddress, fNewSigs)) {
         errorMessage = strprintf("Failed to sign broadcast, vin: %s", vin.ToString());
@@ -350,12 +371,15 @@ bool CActiveMasternode::CreateBroadcast(CTxIn vin, CService service, CKey keyCol
     return true;
 }
 
-bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey)
+bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, CPubKey& pubKeyLeasing, CKey& keyLeasing)
 {
-    return GetMasterNodeVin(vin, pubkey, secretKey, "", "");
+    return GetMasterNodeVin(vin, pubkey, secretKey, pubKeyLeasing, keyLeasing, "", "");
 }
 
-bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, std::string strOutputIndex)
+bool CActiveMasternode::GetMasterNodeVin(
+    CTxIn& vin, CPubKey& pubkey, CKey& secretKey,
+    CPubKey& pubKeyLeasing, CKey& keyLeasing,
+    std::string strTxHash, std::string strOutputIndex)
 {
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
@@ -401,6 +425,9 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
         }
     }
 
+    CAmount amount = 0;
+    pwalletMain->GetMaxP2LCoins(pubKeyLeasing, keyLeasing, amount);
+
     // At this point we have a selected output, retrieve the associated info
     return GetVinFromOutput(*selectedOutput, vin, pubkey, secretKey);
 }
@@ -419,7 +446,7 @@ bool CActiveMasternode::GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubke
 
     CTxDestination address1;
     ExtractDestination(pubScript, address1);
-    CBitcoinAddress address2(address1);
+    CBTCUAddress address2(address1);
 
     CKeyID keyID;
     if (!address2.GetKeyID(keyID)) {

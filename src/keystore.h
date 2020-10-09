@@ -40,6 +40,7 @@ public:
     virtual bool AddCScript(const CScript& redeemScript) = 0;
     virtual bool HaveCScript(const CScriptID& hash) const = 0;
     virtual bool GetCScript(const CScriptID& hash, CScript& redeemScriptOut) const = 0;
+    virtual bool GetCScripts(std::set<CScriptID>& scripts) const = 0;
 
     //! Support for Watch-only addresses
     virtual bool AddWatchOnly(const CScript& dest) = 0;
@@ -77,6 +78,7 @@ public:
     virtual bool AddCScript(const CScript& redeemScript);
     virtual bool HaveCScript(const CScriptID& hash) const;
     virtual bool GetCScript(const CScriptID& hash, CScript& redeemScriptOut) const;
+    virtual bool GetCScripts(std::set<CScriptID>& scripts) const;
 
     virtual bool AddWatchOnly(const CScript& dest);
     virtual bool RemoveWatchOnly(const CScript& dest);

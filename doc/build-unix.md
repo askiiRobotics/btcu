@@ -15,12 +15,23 @@ the usage of the absolute path.
 To Build
 ---------------------
 
+Autotools:
 ```bash
 ./autogen.sh
 ./configure
 make
 make install # optional
 ```
+or
+
+Cmake:
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
 
 This will build btcu-qt as well, if the dependencies are met.
 
@@ -70,15 +81,25 @@ Build requirements:
 
     sudo apt-get install build-essential libtool bsdmainutils autotools-dev autoconf pkg-config automake python3
     
-For Ethereum smart contracts:
-
-rocksdb
+Cmake installing:
     
-    sudo apt-get install librocksdb-dev
+(minimum required version 3.10)
 
-jsoncppp
+    sudo apt-get install cmake
 
-    sudo apt-get install libjsoncpp-dev
+or
+
+    sudo apt remove --purge --auto-remove cmake
+    wget https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4-Linux-x86_64.tar.gz
+    tar -xzvf cmake-3.18.4-Linux-x86_64.tar.gz
+    cd cmake-3.18.4-Linux-x86_64/
+    ./bootstrap
+    make -j$(nproc)
+    sudo make install
+    
+For Ethereum VM smart contracts:
+
+    sudo apt-get install librocksdb-dev libjsoncpp-dev
 
 Now, you can either build from self-compiled [depends](/depends/README.md) or install the required dependencies:
 
@@ -125,7 +146,33 @@ Optional (see --with-miniupnpc and --enable-upnp-default):
 
 ZMQ dependencies (provides ZMQ API):
 
-    sudo apt-get install libzmq3-dev
+    wget https://github.com/zeromq/libzmq/releases/download/v4.2.2/zeromq-4.2.2.tar.gz
+
+    # Unpack tarball package
+    tar xvzf zeromq-4.2.2.tar.gz
+
+    # Install dependency
+    sudo apt-get update && \
+    sudo apt-get install -y libtool pkg-config build-essential autoconf automake uuid-dev
+
+    # Create make file
+    cd zeromq-4.2.2
+    ./configure
+
+    # Build and install(root permission only)
+    sudo make install
+
+    # Install zeromq driver on linux
+    sudo ldconfig
+
+    # Check installed
+    ldconfig -p | grep zmq
+
+    # Expected
+    ############################################################
+    # libzmq.so.5 (libc6,x86-64) => /usr/local/lib/libzmq.so.5
+    # libzmq.so (libc6,x86-64) => /usr/local/lib/libzmq.so
+    ############################################################
 
 GUI dependencies:
 
@@ -135,7 +182,13 @@ To build without GUI pass `--without-gui`.
 
 To build with Qt 5 you need the following:
 
-    sudo apt-get install libqt5gui5 libqt5core5a libqt5dbus5 libqt5svg5-dev libqt5charts5-dev qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler libqrencode-dev
+    sudo apt-get install libqt5gui5 libqt5core5a libqt5dbus5 libqt5svg5-dev libqt5charts5-dev qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler libqrencode-dev libpng-dev
+
+    git clone https://github.com/fukuchi/libqrencode.git
+    cd libqrencode
+    cmake .
+    make
+    sudo make install
 
 **Note:** Ubuntu versions prior to Bionic (18.04), and Debian version prior to Buster, do not have the `libqt5charts5-dev` package. If you are compiling on one of these older versions, you will need to omit `libqt5charts5-dev` from the above command.
 
@@ -157,7 +210,7 @@ Optional:
 
 To build with Qt 5 you need the following:
 
-    sudo dnf install qt5-qttools-devel qt5-qtbase-devel qt5-qtsvg-devel qt5-qtcharts-devel protobuf-devel qrencode-devel
+    sudo dnf install qt5-qttools-devel qt5-qtbase-devel qt5-qtsvg-devel qt5-qtcharts-devel protobuf-devel qrencode-devel libpng-dev
 
 Notes
 -----

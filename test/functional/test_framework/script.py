@@ -232,6 +232,13 @@ OP_NOP8 = CScriptOp(0xb7)
 OP_NOP9 = CScriptOp(0xb8)
 OP_NOP10 = CScriptOp(0xb9)
 
+# cold stake
+OP_CHECKCOLDSTAKEVERIFY = CScriptOp(0xd1)
+
+# leasing
+OP_CHECKLEASEVERIFY = CScriptOp(0xd7)
+OP_LEASINGREWARD = CScriptOp(0xd8)
+
 # template matching params
 OP_SMALLINTEGER = CScriptOp(0xfa)
 OP_PUBKEYS = CScriptOp(0xfb)
@@ -352,6 +359,9 @@ OPCODE_NAMES.update({
     OP_NOP8 : 'OP_NOP8',
     OP_NOP9 : 'OP_NOP9',
     OP_NOP10 : 'OP_NOP10',
+    OP_CHECKCOLDSTAKEVERIFY : 'OP_CHECKCOLDSTAKEVERIFY',
+    OP_CHECKLEASEVERIFY : 'OP_CHECKLEASEVERIFY',
+    OP_LEASINGREWARD : 'OP_LEASINGREWARD',
     OP_SMALLINTEGER : 'OP_SMALLINTEGER',
     OP_PUBKEYS : 'OP_PUBKEYS',
     OP_PUBKEYHASH : 'OP_PUBKEYHASH',
@@ -461,7 +471,7 @@ class CScript(bytes):
             opcode = bord(self[i])
             i += 1
 
-            if opcode > OP_PUSHDATA4:
+            if opcode > OP_PUSHDATA4 or CScriptOp(opcode) == OP_0:
                 yield (opcode, None, sop_idx)
             else:
                 datasize = None

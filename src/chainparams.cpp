@@ -12,12 +12,14 @@
 #include "random.h"
 #include "util.h"
 #include "utilstrencodings.h"
-
+#include "util/convert.h"
+#include "cpp-ethereum/libdevcore/SHA3.h"
+#include "cpp-ethereum/libdevcore/RLP.h"
 #include <assert.h>
 
 #include <boost/assign/list_of.hpp>
 #include <limits>
-
+#include <regex>
 
 struct SeedSpec6 {
     uint8_t addr[16];
@@ -25,6 +27,7 @@ struct SeedSpec6 {
 };
 
 #include "chainparamsseeds.h"
+#include "libethashseal/GenesisInfo.h"
 
 /**
  * Main network
@@ -104,6 +107,10 @@ libzerocoin::ZerocoinParams* CChainParams::Zerocoin_Params(bool useModulusV1) co
 bool CChainParams::HasStakeMinAgeOrDepth(const int contextHeight, const uint32_t contextTime,
         const int utxoFromBlockHeight, const uint32_t utxoFromBlockTime) const
 {
+    // BTCU from Genesis state
+    if (utxoFromBlockHeight == 0)
+        return true;
+
     // before stake modifier V2, the age required was 60 * 60 (1 hour).
     if (!IsStakeModifierV2(contextHeight))
         return (utxoFromBlockTime + nStakeMinAge <= contextTime);
@@ -171,6 +178,7 @@ public:
         nFutureTimeDriftPoS = 180;
         nMasternodeCountDrift = 20;
         nMinColdStakingAmount = 1 * COIN;
+        nMinLeasingAmount = 1 * COIN;
 
         /** Height or Time Based Activations **/
         nLastPOWBlock = 0;
@@ -204,6 +212,11 @@ public:
         nBlockLastAccumulatorCheckpoint = 0;
         nBlockV7StartHeight = nBlockTimeProtocolV2;
 
+        // Leasing
+        nLeasingRewardMaturity = 30; // 30 blocks
+        nLeasingRewardPeriod = 7 * 24 * 60; // 1 weak
+        nMaxLeasingRewards = 100;
+
         // Fake Serial Attack
         nFakeSerialBlockheightEnd = 0;
         nSupplyBeforeFakeSerial = 0;//4131563 * COIN;   // zerocoin supply at block nFakeSerialBlockheightEnd
@@ -225,28 +238,54 @@ public:
         txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].nValue = 250 * COIN;
         txNew.vout[0].scriptPubKey = CScript() << ParseHex("04c10e83b2703ccf322f7dbd62dd5855ac7c10bd055814ce121ba32607d573b8810c02c0582aed05b4deb9c4b77b26d92428c61256cd42774babea0a073b2ed0c9") << OP_CHECKSIG;
+
+        std::vector<std::string> validatorsPubkeys = {
+        "02bd4cfb6a038d3d45062801c5403c72e66cc4850d2b829be1ea1b639d9aebddb8",
+        "02220c4f9e4c6816c52da0dcf499cd5571b77f8a23510488654fe826de20114902",
+        "0314dbe798ac0b868410e10e5bf16cfd3f2e0da54c92f8047c87c257b6fa9d6cbc",
+        "0310c1a136132f75758dc9679f0f46f2b007a084a54bdd61a4c37346e93de55d98",
+        "023c2fd749dece1c44d39b0f9f5e7e815ff7f81c63ca3a439938117c310260747e",
+        "03dc70130dbfbdb3fc89439764ff63729f1da180a52b16d4398c21d73925d0ef56",
+        "0323eee7f2e7f1f855cf3840ae12eae1ed4fdb0cf4d8eabb902d9e04aca8535252",
+        "03ab16633a1fc0db07c1a590f35911ee4f4b5febda3409a1d74ad3dfb89f7fbd6e",
+        "0267a75772764f497fabb403d69d641e0a22b5220f73a026113df4a9b44f062d0f",
+        "0323fee216ca8230b2dd341f9847457ff1e6af3561070510f73d7eb95e2ec7876c"
+        };
+
+
+        for(int i = 0; i < validatorsPubkeys.size(); i++)
+        {
+            CTxIn validatorVin(uint256(0), i);
+            CPubKey validatorPubKey(ParseHex(validatorsPubkeys[i].data()));
+        
+            CValidatorRegister validatorReg(validatorVin, validatorPubKey);
+            validatorReg.nTime = 0;
+            txNew.validatorRegister.push_back(validatorReg);
+        }
+        
         genesis.vtx.push_back(txNew);
         genesis.hashPrevBlock = 0;
         genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
-        genesis.nVersion = 4;//1;
+        genesis.nVersion = 8;
         genesis.nTime = 1583491266;
         genesis.nBits = 0x1e0ffff0;
-        genesis.nNonce = 867142;
+        genesis.nNonce = 3330931;
+        genesis.hashChainstate = uint256("0x12ecf5df211cbae201ceafcfc46392b39539409b0e6a89a3f7498af0e6ebd320");
+        genesis.hashStateRoot = uint256(h256Touint(dev::h256("e965ffd002cd6ad0e2dc402b8044de833e06b23127ea8c3d80aec91410771495"))); // qtum
+        genesis.hashUTXORoot = uint256(h256Touint(dev::sha3(dev::rlp("")))); // qtum
 
         hashGenesisBlock = genesis.GetHash();
 
-        assert(hashGenesisBlock == uint256("0x00000858cd026075bd1a02e08aff3c8370f5c081501ae960d8437f5a2c6ff327"));
-        assert(genesis.hashMerkleRoot == uint256("0xc7d3489f0861762c7a2f1b5a675e21f959277638246924c92af236764384b387"));
-
+        assert(hashGenesisBlock == uint256("0x00000a61c88be85bdcc17653c50124b70747940b2f00f0a272ecb2223caf1877"));
+        assert(genesis.hashMerkleRoot == uint256("0x49ddd2514c86f1c4b54581e6a8de85167bdefa565da5f0e274f15dcd6be12239"));
+        
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
-        base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x88, 0xB2, 0x1E};
-        base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
-        base58Prefixes[STAKING_ADDRESS] = std::vector<unsigned char>(1, /*63*/66);//starting with 'T'
+        base58Prefixes[STAKING_ADDRESS] = std::vector<unsigned char>(1,66);
+        base58Prefixes[LEASING_ADDRESS] = std::vector<unsigned char>(1, 67);
 
-        // BIP44 coin type is from https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-        base58Prefixes[EXT_COIN_TYPE] = boost::assign::list_of(0x80)(0x00)(0x00)(0x77).convert_to_container<std::vector<unsigned char> >();
+        bech32_hrp = "bc";
 
         convertSeed6(vFixedSeeds, pnSeed6_main, ARRAYLEN(pnSeed6_main));
 
@@ -261,7 +300,7 @@ public:
 
         nPoolMaxTransactions = 3;
         nBudgetCycleBlocks = 43200; //!< Amount of blocks in a months period of time (using 1 minutes per) = (60*24*30)
-        strSporkPubKey = "040F129DE6546FE405995329A887329BED4321325B1A73B0A257423C05C1FCFE9E40EF0678AEF59036A22C42E61DFD29DF7EFB09F56CC73CADF64E05741880E3E7";
+        strSporkPubKey = "02489bf4580a1968d27937a89675150db9e82534e30166fe89da3dcee00b08dac2 ";
         strSporkPubKeyOld = "0499A7AF4806FC6DE640D23BC5936C29B77ADF2174B4F45492727F897AE63CF8D27B2F05040606E0D14B547916379FA10716E344E745F880EDC037307186AA25B7";
         strObfuscationPoolDummyAddress = "D87q2gC9j6nNrnzCsg4aY6bHMLsT9nUhEw";
         nStartMasternodePayments = 1403728576; //Wed, 25 Jun 2014 20:36:16 GMT
@@ -284,6 +323,9 @@ public:
 
         nBudget_Fee_Confirmations = 6; // Number of confirmations for the finalization fee
         nProposalEstablishmentTime = 60 * 60 * 24; // Proposals must be at least a day old to make it into a budget
+
+        //////////qtum
+        nMPoSRewardRecipients = 10;
     }
 
     const Checkpoints::CCheckpointData& Checkpoints() const
@@ -315,11 +357,11 @@ public:
         nRejectBlockOutdatedMajority = 5472; // 95%
         nToCheckBlockUpgradeMajority = 5760; // 4 days
         nMinerThreads = 0;
-        nLastPOWBlock = 200;
+        nLastPOWBlock = 0;
         nBtcuBadBlockTime = 1489001494; // Skip nBit validation of Block 259201 per PR #915
         nBtcuBadBlocknBits = 0x1e0a20bd; // Skip nBit validation of Block 201 per PR #915
-        nMaturity = 15;
-        nStakeMinDepth = 100;
+        nMaturity = 0;//15;
+        nStakeMinDepth = 0;//100;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 51197; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nZerocoinStartHeight = 201576;
@@ -333,7 +375,7 @@ public:
         nBlockZerocoinV2 = 444020; //!> The block that zerocoin v2 becomes active
         nEnforceNewSporkKey = 1566860400; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1569538800; //!> Reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
-        nBlockStakeModifierlV2 = 1214000;
+        nBlockStakeModifierlV2 = nLastPOWBlock + 1; //1214000;
         nBIP65ActivationHeight = 851019;
         // Activation height for TimeProtocolV2, Blocks V7 and newMessageSignatures
         nBlockTimeProtocolV2 = 1347000;
@@ -348,31 +390,54 @@ public:
         nBlockLastAccumulatorCheckpoint = nPublicZCSpends - 10;
         nBlockV7StartHeight = nBlockTimeProtocolV2;
 
+        // Leasing
+        nLeasingRewardMaturity = 3; // 3 blocks
+        nLeasingRewardPeriod = 10; // 10 minutes
+        nMaxLeasingRewards = 10;
+
         // Fake Serial Attack
         nFakeSerialBlockheightEnd = -1;
         nSupplyBeforeFakeSerial = 0;
 
         //! Modify the testnet genesis block so the timestamp is valid for a later start.
         genesis.nTime = 1583491266;
-        genesis.nNonce = 867142;
+        genesis.nNonce = 3293335;
+
+        //! Modify genesis testnet validators pubkeys
+        CMutableTransaction txNew = genesis.vtx[0];
+        txNew.validatorRegister.clear();
+
+        std::vector<std::string> validatorsPubkeys = {
+        "020077312c8d4f517cf7ad93f2ad2e79c89c3b49a96a43d792d5b64156decb2f73",
+        "03fad77a35592c335b077351570e26540e90935f39b54c98df9bdb135a43f24b57",
+        "037eae6f15d3494148b521fa19a66c55e959d176465ee0f5543f380d1f15bc6247"
+        };
+
+        for(int i = 0; i < validatorsPubkeys.size(); i++)
+        {
+           CTxIn validatorVin(uint256(0), i);
+           CPubKey validatorPubKey(ParseHex(validatorsPubkeys[i].data()));
+
+           CValidatorRegister validatorReg(validatorVin, validatorPubKey);
+           validatorReg.nTime = 0;
+           txNew.validatorRegister.push_back(validatorReg);
+        }
+        genesis.vtx[0] = txNew;
+        genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
 
         hashGenesisBlock = genesis.GetHash();
-
-        assert(hashGenesisBlock == uint256("0x00000858cd026075bd1a02e08aff3c8370f5c081501ae960d8437f5a2c6ff327"));
+        assert(hashGenesisBlock == uint256("0x000008ad321726fc2c3780ef0f4f25c5bcd569a106d6f27a49e1148dd7bdbbb1"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, /*139*/129); // Testnet btcu addresses start with 't' or 'u'
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, /*19*/94);  // Testnet btcu script addresses start with 'e' or 'f'
-        base58Prefixes[STAKING_ADDRESS] = std::vector<unsigned char>(1, /*73*/53);     // starting with 'N'
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 111); // (Bitcoin defaults)
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 196); // (Bitcoin defaults)
+        base58Prefixes[STAKING_ADDRESS] = std::vector<unsigned char>(1,53);  // starting with 'N'
+        base58Prefixes[LEASING_ADDRESS] = std::vector<unsigned char>(1,54);
         base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);     // Testnet private keys start with '9' or 'c' (Bitcoin defaults)
-        // Testnet btcu BIP32 pubkeys start with 'DRKV'
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x3a)(0x80)(0x61)(0xa0).convert_to_container<std::vector<unsigned char> >();
-        // Testnet btcu BIP32 prvkeys start with 'DRKP'
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x3a)(0x80)(0x58)(0x37).convert_to_container<std::vector<unsigned char> >();
-        // Testnet btcu BIP44 coin type is '1' (All coin's testnet default)
-        base58Prefixes[EXT_COIN_TYPE] = boost::assign::list_of(0x80)(0x00)(0x00)(0x01).convert_to_container<std::vector<unsigned char> >();
+
+        bech32_hrp = "tb";
 
         convertSeed6(vFixedSeeds, pnSeed6_test, ARRAYLEN(pnSeed6_test));
 
@@ -385,7 +450,7 @@ public:
 
         nPoolMaxTransactions = 2;
         nBudgetCycleBlocks = 144; //!< Ten cycles per day on testnet
-        strSporkPubKey = "04E88BB455E2A04E65FCC41D88CD367E9CCE1F5A409BE94D8C2B4B35D223DED9C8E2F4E061349BA3A38839282508066B6DC4DB72DD432AC4067991E6BF20176127";
+        strSporkPubKey = "026fe3671df2061f611fe7c3048bb33a1ade7a06f56f409a957605d115209a0f25";
         strSporkPubKeyOld = "04A8B319388C0F8588D238B9941DC26B26D3F9465266B368A051C5C100F79306A557780101FE2192FE170D7E6DEFDCBEE4C8D533396389C0DAFFDBC842B002243C";
         strObfuscationPoolDummyAddress = "y57cqfGRkekRyDRNeJiLtYVEbvhXrNbmox";
         nStartMasternodePayments = 1420837558; //Fri, 09 Jan 2015 21:05:58 GMT
@@ -422,7 +487,7 @@ public:
         nToCheckBlockUpgradeMajority = 1000;
         nMinerThreads = 1;
         bnProofOfWorkLimit = ~uint256(0) >> 1;
-        nLastPOWBlock = 250;
+        nLastPOWBlock = 0;
         nMaturity = 100;
         nStakeMinAge = 0;
         nStakeMinDepth = 0;
@@ -453,15 +518,34 @@ public:
 
         // Fake Serial Attack
         nFakeSerialBlockheightEnd = -1;
-
+        
         //! Modify the regtest genesis block so the timestamp is valid for a later start.
         genesis.nTime = 1583491266;
-        genesis.nNonce = 867142;
+        genesis.nNonce = 2507949;
+
+        //! Modify genesis regtest validators pubkeys
+        CMutableTransaction txNew = genesis.vtx[0];
+        txNew.validatorRegister.clear();
+
+        std::vector<std::string> validatorsPubkeys = {
+        "0268cd814b0b32555741fdb586110e48f9ce100e5805296907d89a179358be6d47"
+        };
+
+        for(int i = 0; i < validatorsPubkeys.size(); i++)
+        {
+           CTxIn validatorVin(uint256(0), i);
+           CPubKey validatorPubKey(ParseHex(validatorsPubkeys[i].data()));
+
+           CValidatorRegister validatorReg(validatorVin, validatorPubKey);
+           validatorReg.nTime = 0;
+           txNew.validatorRegister.push_back(validatorReg);
+        }
+        genesis.vtx[0] = txNew;
+        genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
 
         hashGenesisBlock = genesis.GetHash();
-
-        assert(hashGenesisBlock == uint256("0x00000858cd026075bd1a02e08aff3c8370f5c081501ae960d8437f5a2c6ff327"));
-
+        assert(hashGenesisBlock == uint256("0x00000e1654727693d67050f2ef94fdf32f00126fedf76af89b5a89739c21a34b"));
+        
         vFixedSeeds.clear(); //! Testnet mode doesn't have any fixed seeds.
         vSeeds.clear();      //! Testnet mode doesn't have any DNS seeds.
 
@@ -479,6 +563,8 @@ public:
         Address: yCvUVd72w7xpimf981m114FSFbmAmne7j9
         */
         strSporkPubKey = "043969b1b0e6f327de37f297a015d37e2235eaaeeb3933deecd8162c075cee0207b13537618bde640879606001a8136091c62ec272dd0133424a178704e6e75bb7";
+
+        bech32_hrp = "bcrt";
     }
     const Checkpoints::CCheckpointData& Checkpoints() const
     {
@@ -524,4 +610,35 @@ bool SelectParamsFromCommandLine()
 
     SelectParams(network);
     return true;
+}
+
+std::string CChainParams::EVMGenesisInfo(dev::eth::Network network) const
+{
+    // replace_constants
+    std::string genesisInfo = dev::eth::genesisInfo(network);
+    ReplaceInt(446320, "QIP7_STARTING_BLOCK", genesisInfo);
+    ReplaceInt(446320, "QIP6_STARTING_BLOCK", genesisInfo);
+    return genesisInfo;
+}
+
+std::string toHexString(int64_t intValue) {
+    //Store big endian representation in a vector
+    uint64_t num = (uint64_t)intValue;
+    std::vector<unsigned char> bigEndian;
+    for(int i=sizeof(num) -1; i>=0; i--){
+        bigEndian.push_back( (num>>(8*i)) & 0xff );
+    }
+
+    //Convert the vector into hex string
+    return "0x" + HexStr(bigEndian.begin(), bigEndian.end());
+}
+
+void ReplaceInt(const int64_t& number, const std::string& key, std::string& str)
+{
+    // Convert the number into hex string
+    std::string num_hex = toHexString(number);
+
+    // Search for key in str and replace it with the hex string
+    std::string str_replaced = std::regex_replace(str, std::regex(key), num_hex);
+    str = str_replaced;
 }

@@ -6,7 +6,7 @@
 
 #include "core_io.h"
 
-#include "base58.h"
+#include "btcu_address.h"
 #include "primitives/transaction.h"
 #include "script/script.h"
 #include "script/standard.h"
@@ -83,11 +83,14 @@ void ScriptPubKeyToUniv(const CScript& scriptPubKey,
 
     UniValue a(UniValue::VARR);
     if (type == TX_COLDSTAKE && addresses.size() == 2) {
-        a.push_back(CBitcoinAddress(addresses[0], CChainParams::STAKING_ADDRESS).ToString());
-        a.push_back(CBitcoinAddress(addresses[1], CChainParams::PUBKEY_ADDRESS).ToString());
+        a.push_back(CBTCUAddress(addresses[0], CChainParams::STAKING_ADDRESS).ToString());
+        a.push_back(CBTCUAddress(addresses[1], CChainParams::PUBKEY_ADDRESS).ToString());
+    } else if (type == TX_LEASE && addresses.size() == 2) {
+        a.push_back(CBTCUAddress(addresses[0], CChainParams::LEASING_ADDRESS).ToString());
+        a.push_back(CBTCUAddress(addresses[1], CChainParams::PUBKEY_ADDRESS).ToString());
     } else {
         for (const CTxDestination& addr : addresses)
-            a.push_back(CBitcoinAddress(addr).ToString());
+            a.push_back(CBTCUAddress(addr).ToString());
     }
     out.pushKV("addresses", a);
 }

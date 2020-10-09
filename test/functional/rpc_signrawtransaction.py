@@ -20,6 +20,7 @@ class SignRawTransactionsTest(BtcuTestFramework):
 
         1) The transaction has a complete set of signatures
         2) No script verification error occurred"""
+
         privKeys = ['cUeKHd5orzT3mz8P9pxyREHfsWtVfgsfDjiZZBcjUBAaGk1BTj7N']
 
         inputs = [
@@ -28,7 +29,8 @@ class SignRawTransactionsTest(BtcuTestFramework):
              'scriptPubKey': '76a91460baa0f494b38ce3c940dea67f3804dc52d1fb9488ac'}
         ]
 
-        outputs = {'xwMWGTnBNUmGxMm8vfAdbL45bWXyVTYctd': 0.1}
+
+        outputs = {'mw9ECQ6Burd1D8E8xYAFNaJarTNVVJMPjg': 0.1}
 
         rawTx = self.nodes[0].createrawtransaction(inputs, outputs)
         rawTxSigned = self.nodes[0].signrawtransaction(rawTx, inputs, privKeys)
@@ -69,7 +71,7 @@ class SignRawTransactionsTest(BtcuTestFramework):
              'scriptPubKey': 'badbadbadbad'}
         ]
 
-        outputs = {'xwMWGTnBNUmGxMm8vfAdbL45bWXyVTYctd': 0.1}
+        outputs = {'mw9ECQ6Burd1D8E8xYAFNaJarTNVVJMPjg': 0.1}
 
         rawTx = self.nodes[0].createrawtransaction(inputs, outputs)
         rawTxSigned = self.nodes[0].signrawtransaction(rawTx, scripts, privKeys)

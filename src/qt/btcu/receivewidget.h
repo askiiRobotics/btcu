@@ -63,7 +63,7 @@ private:
 
     void updateQr(QString address);
     void updateLabel();
-    void showAddressGenerationDialog(bool isPaymentRequest);
+    void showAddressGenerationDialog();
 
     bool isShowingDialog = false;
 

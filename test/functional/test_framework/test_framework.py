@@ -427,7 +427,7 @@ class BtcuTestFramework():
             node_0_datadir = os.path.join(get_datadir_path(cachedir, 0), "regtest")
             for i in range(from_num, MAX_NODES):
                 node_i_datadir = os.path.join(get_datadir_path(cachedir, i), "regtest")
-                for subdir in ["blocks", "chainstate", "sporks", "zerocoin"]:
+                for subdir in ["blocks", "chainstate", "sporks", "zerocoin", "validators", "leasing"]:
                     copy_and_overwrite(os.path.join(node_0_datadir, subdir),
                                     os.path.join(node_i_datadir, subdir))
                 initialize_datadir(cachedir, i)  # Overwrite port/rpcport in btcu.conf
@@ -447,7 +447,7 @@ class BtcuTestFramework():
 
             for i in range(MAX_NODES):
                 for entry in os.listdir(cache_path(i)):
-                    if entry not in ['wallet.dat', 'chainstate', 'blocks', 'sporks', 'zerocoin', 'backups']:
+                    if entry not in ['wallet.dat', 'chainstate', 'blocks', 'sporks', 'zerocoin', 'backups', 'validators', 'leasing', 'stateQtum']:
                         os.remove(cache_path(i, entry))
 
         def clean_cache_dir():
@@ -534,7 +534,6 @@ class BtcuTestFramework():
             stop_and_clean_cache_dir(powcachedir)
             self.log.info("---> pow cache created")
             self.disable_mocktime()
-
 
         assert self.num_nodes <= MAX_NODES
 

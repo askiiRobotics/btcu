@@ -197,8 +197,17 @@ void TxDetailDialog::onOutputsClicked() {
                     QString labelRes;
                     CTxDestination dest;
                     bool isCsAddress = out.scriptPubKey.IsPayToColdStaking();
-                    if (ExtractDestination(out.scriptPubKey, dest, isCsAddress)) {
-                        std::string address = ((isCsAddress) ? CBitcoinAddress::newCSInstance(dest) : CBitcoinAddress::newInstance(dest)).ToString();
+                    bool isLAddress = out.scriptPubKey.IsPayToLeasing();
+                    if (ExtractDestination(out.scriptPubKey, dest, isCsAddress, isLAddress)) {
+                        std::string address = [&]() -> CBTCUAddress {
+                            if (isCsAddress) {
+                                return CBTCUAddress::newCSInstance(dest);
+                            } else if (isLAddress) {
+                                return CBTCUAddress::newLInstance(dest);
+                            } else {
+                                return CBTCUAddress::newInstance(dest);
+                            }
+                        }().ToString();
                         labelRes = QString::fromStdString(address);
                         labelRes = labelRes.left(16) + "..." + labelRes.right(16);
                     } else {

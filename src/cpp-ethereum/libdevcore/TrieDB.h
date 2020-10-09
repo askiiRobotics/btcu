@@ -681,7 +681,7 @@ template <class DB> void GenericTrieDB<DB>::iterator::next()
         if (m_trail.back().child == 255)
         {
             // Entering. Look for first...
-            if (rlp.isEmpty())
+            if (rlp.isNull() || rlp.isEmpty())
             {
                 m_trail.pop_back();
                 continue;

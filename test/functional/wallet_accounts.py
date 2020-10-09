@@ -50,7 +50,7 @@ class WalletAccountsTest(BtcuTestFramework):
         # There's some fee that will come back to us when the miner reward
         # matures.
         node.settxfee(0)
-        common_address = "y9B3dwrBGGs3yVkyEHm68Yn36Wp2Rt7Vtd"
+        common_address = "mrAJm5LZEEwrhxCcE1XuZaM2sYAicvJH6W"
         txid = node.sendmany("", {common_address: 100}, 1)
         tx_details = node.gettransaction(txid)
         fee = -tx_details['details'][0]['fee']

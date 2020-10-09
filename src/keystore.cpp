@@ -62,6 +62,16 @@ bool CBasicKeyStore::GetCScript(const CScriptID& hash, CScript& redeemScriptOut)
     return false;
 }
 
+bool CBasicKeyStore::GetCScripts(std::set<CScriptID>& scripts) const
+{
+    LOCK(cs_KeyStore);
+    scripts.clear();
+    for (auto& v: mapScripts) {
+        scripts.insert(v.first);
+    }
+    return !scripts.empty();
+}
+
 bool CBasicKeyStore::AddWatchOnly(const CScript& dest)
 {
     LOCK(cs_KeyStore);

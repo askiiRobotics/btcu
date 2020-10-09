@@ -34,32 +34,73 @@ bool GetKeyIDFromUTXO(const CTxOut& txout, CKeyID& keyID)
 }
 
 boost::optional<std::pair<CTxIn, CKey>> GetVinKey(const std::string &strAlias);
+boost::optional<std::pair<CTxIn, CKey>> GetGenesisVinKey();
 
 bool ValidatorSignBlock(CBlock& block)
 {
+    CTxIn vin;
+    CKey key;
+
+    // First check if current node has a genesis validator's key
+    auto genesisVinKeyOpt = GetGenesisVinKey();
+    if(genesisVinKeyOpt.is_initialized())
+    {
+        vin = genesisVinKeyOpt.value().first;
+        key = genesisVinKeyOpt.value().second;
+        LogPrintf(("ValidatorSignBlock() : signing " + block.GetHash().ToString() + " as a Genesis Validator\n").c_str());
+    }
+    else
+    {
+        auto vinKeyOpt = GetVinKey(MN_ALIAS_NAME);
+        if(vinKeyOpt.is_initialized() &&                                // check if current node is registered as a masternode
+           GetValidatorInfo(vinKeyOpt.value().first).is_initialized())  // check if current masternode is among validators for a current epoch
+        {
+            vin = vinKeyOpt.value().first;
+            key = vinKeyOpt.value().second;
+            LogPrintf(("ValidatorSignBlock() : signing " + block.GetHash().ToString() + " as a Regular Validator\n").c_str());
+        }
+    }
+    
     auto status = false;
     
-    auto vinKeyOpt = GetVinKey(MN_ALIAS_NAME);
-    if(vinKeyOpt.is_initialized() &&
-       GetValidatorInfo(vinKeyOpt.value().first).is_initialized()) // validator is in the validators list
+    if(key.IsValid())
     {
-        block.validatorVin = vinKeyOpt.value().first;
-        auto key = vinKeyOpt.value().second;
+        block.validatorVin = vin;
         status = key.Sign(block.GetHashForValidator(), block.vchValidatorSig);
     }
+    
     return status;
 }
 
 bool CheckValidatorSignature(const CBlock& block)
 {
+    CPubKey pubKey;
+    
+    // First check if block is signed with genesis validator's key
+    auto genesisPubKeyOpt = GetGenesisValidatorPubKey(block.validatorVin);
+    if(genesisPubKeyOpt.is_initialized())
+    {
+        pubKey = genesisPubKeyOpt.value();
+        LogPrintf(("CheckValidatorSignature() : checking " + block.GetHash().ToString() + " as a Genesis Validator\n").c_str());
+    }
+    else
+    {
+        auto pubKeyOpt = GetValidatorPubKey(block.validatorVin);
+        if(pubKeyOpt.is_initialized())
+        {
+            pubKey = pubKeyOpt.value();
+            LogPrintf(("CheckValidatorSignature() : checking " + block.GetHash().ToString() + " as a Regular Validator\n").c_str());
+        }
+    }
+    
     auto status = false;
     
-    auto pubKeyOpt = GetValidatorPubKey(block.validatorVin);
-    if(pubKeyOpt.is_initialized())
+    if(pubKey.IsValid())
     {
-        auto pubKey = pubKeyOpt.value();
         status = pubKey.Verify(block.GetHashForValidator(), block.vchValidatorSig);
+        LogPrintf(("CheckValidatorSignature() : signature of " + block.GetHash().ToString() + (status ? ": Valid\n" : ": Invalid\n")).c_str());
     }
+    
     return status;
 }
 

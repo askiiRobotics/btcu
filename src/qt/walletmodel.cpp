@@ -67,6 +67,10 @@ bool WalletModel::isColdStakingNetworkelyEnabled() const {
     return sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
 }
 
+bool WalletModel::isLeasingNetworkelyEnabled() const {
+    return sporkManager.IsSporkActive(SPORK_1017_LEASING_ENFORCEMENT);
+}
+
 bool WalletModel::isStakingStatusActive() const {
     return wallet->pStakerStatus->IsActive();
 }
@@ -76,7 +80,7 @@ CAmount WalletModel::getBalance(const CCoinControl* coinControl) const
     if (coinControl) {
         CAmount nBalance = 0;
         std::vector<COutput> vCoins;
-        wallet->AvailableCoins(&vCoins, true, coinControl);
+        wallet->AvailableCoins(&vCoins, true, coinControl, false, ALL_COINS, false, 1, false, true, false, true, true);
         for (const COutput& out : vCoins)
             if (out.fSpendable)
                 nBalance += out.tx->vout[out.i].nValue;
@@ -90,6 +94,11 @@ CAmount WalletModel::getBalance(const CCoinControl* coinControl) const
 CAmount WalletModel::getMinColdStakingAmount() const
 {
     return Params().GetMinColdStakingAmount();
+}
+
+CAmount WalletModel::getMinLeasingAmount() const
+{
+    return Params().GetMinLeasingAmount();
 }
 
 CAmount WalletModel::getUnconfirmedBalance() const
@@ -154,6 +163,12 @@ CAmount WalletModel::getColdStakedBalance() const
 }
 
 bool WalletModel::isColdStaking() const
+{
+    // TODO: Complete me..
+    return false;
+}
+
+bool WalletModel::isLeasing() const
 {
     // TODO: Complete me..
     return false;
@@ -326,22 +341,19 @@ bool WalletModel::getMint(const uint256& hashSerial, CZerocoinMint& mint){
 
 bool WalletModel::validateAddress(const QString& address)
 {
-    CBitcoinAddress addressParsed(address.toStdString());
+    CBTCUAddress addressParsed(address.toStdString());
     return addressParsed.IsValid();
 }
 
 bool WalletModel::validateStakingAddress(const QString& address) {
-    if (validateAddress(address)) {
-        // check for staking only addresses
-        QChar firstLetter = address.at(0).toLower();
-        if (isTestNetwork() && firstLetter == 'w')
-            return true;
 
-        // mainnet check
-        if (firstLetter == 's')
-            return true;
-    }
-    return false;
+    CBTCUAddress addressParsed(address.toStdString());
+    return addressParsed.IsStakingAddress();
+}
+
+bool WalletModel::validateLeasingAddress(const QString& address) {
+    CBTCUAddress addressParsed(address.toStdString());
+    return addressParsed.IsLeasingAddress();
 }
 
 bool WalletModel::updateAddressBookLabels(const CTxDestination& dest, const std::string& strName, const std::string& strPurpose)
@@ -404,16 +416,16 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             ++nAddresses;
 
             CScript scriptPubKey;
-            CBitcoinAddress out = CBitcoinAddress(rcp.address.toStdString());
+            CBTCUAddress out = CBTCUAddress(rcp.address.toStdString());
 
             if (rcp.isP2CS) {
-                CBitcoinAddress ownerAdd;
+                CBTCUAddress ownerAdd;
                 if (rcp.ownerAddress.isEmpty()) {
                     // Create new internal owner address
                     if (!getNewAddress(ownerAdd).result)
                         return CannotCreateInternalAddress;
                 } else {
-                    ownerAdd = CBitcoinAddress(rcp.ownerAddress.toStdString());
+                    ownerAdd = CBTCUAddress(rcp.ownerAddress.toStdString());
                 }
 
                 CKeyID stakerId;
@@ -423,6 +435,23 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                 }
 
                 scriptPubKey = GetScriptForStakeDelegation(stakerId, ownerId);
+            } else if (rcp.isP2L) {
+                CBTCUAddress ownerAdd;
+                if (rcp.ownerAddress.isEmpty()) {
+                    // Create new internal owner address
+                    if (!getNewAddress(ownerAdd).result)
+                        return CannotCreateInternalAddress;
+                } else {
+                    ownerAdd = CBTCUAddress(rcp.ownerAddress.toStdString());
+                }
+
+                CKeyID leaserId;
+                CKeyID ownerId;
+                if(!out.GetKeyID(leaserId) || !ownerAdd.GetKeyID(ownerId)) {
+                    return InvalidAddress;
+                }
+
+                scriptPubKey = GetScriptForLeasing(leaserId, ownerId);
             } else {
                 // Regular P2PK or P2PKH
                 scriptPubKey = GetScriptForDestination(out.Get());
@@ -503,10 +532,11 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
     }
 
     bool fColdStakingActive = sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
+    bool fLeasingActive = sporkManager.IsSporkActive(SPORK_1017_LEASING_ENFORCEMENT);
 
     // Double check tx before do anything
     CValidationState state;
-    if(!CheckTransaction(*transaction.getTransaction(), true, true, state, true, fColdStakingActive)){
+    if(!CheckTransaction(*transaction.getTransaction(), true, true, state, true, fColdStakingActive, fLeasingActive)){
         return TransactionCommitFailed;
     }
 
@@ -543,7 +573,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
     Q_FOREACH (const SendCoinsRecipient& rcp, transaction.getRecipients()) {
         // Don't touch the address book when we have a payment request
         if (!rcp.paymentRequest.IsInitialized()) {
-            CBitcoinAddress address = CBitcoinAddress(rcp.address.toStdString());
+            CBTCUAddress address = CBTCUAddress(rcp.address.toStdString());
             std::string purpose = address.IsStakingAddress() ? AddressBook::AddressBookPurpose::COLD_STAKING_SEND : AddressBook::AddressBookPurpose::SEND;
             std::string strLabel = rcp.label.toStdString();
             updateAddressBookLabels(address.Get(), strLabel, purpose);
@@ -571,13 +601,13 @@ bool WalletModel::createZbtcuSpend(
         CWalletTx &wtxNew,
         std::vector<CZerocoinMint> &vMintsSelected,
         CZerocoinSpendReceipt &receipt,
-        std::list<std::pair<CBitcoinAddress*, CAmount>> outputs,
+        std::list<std::pair<CBTCUAddress*, CAmount>> outputs,
         std::string changeAddress
         ){
 
-    CBitcoinAddress *changeAdd = (!changeAddress.empty()) ? new CBitcoinAddress(changeAddress) : nullptr;
+    CBTCUAddress *changeAdd = (!changeAddress.empty()) ? new CBTCUAddress(changeAddress) : nullptr;
     CAmount value = 0;
-    for(std::pair<CBitcoinAddress*, CAmount> pair : outputs){
+    for(std::pair<CBTCUAddress*, CAmount> pair : outputs){
         value += pair.second;
     }
 
@@ -609,13 +639,13 @@ bool WalletModel::createZbtcuSpend(
 bool WalletModel::sendZbtcu(
         std::vector<CZerocoinMint> &vMintsSelected,
         CZerocoinSpendReceipt &receipt,
-        std::list<std::pair<CBitcoinAddress*, CAmount>> outputs,
+        std::list<std::pair<CBTCUAddress*, CAmount>> outputs,
         std::string changeAddress
         ){
 
-    CBitcoinAddress *changeAdd = (!changeAddress.empty()) ? new CBitcoinAddress(changeAddress) : nullptr;
+    CBTCUAddress *changeAdd = (!changeAddress.empty()) ? new CBTCUAddress(changeAddress) : nullptr;
     CAmount value = 0;
-    for(std::pair<CBitcoinAddress*, CAmount> pair : outputs){
+    for(std::pair<CBTCUAddress*, CAmount> pair : outputs){
         value += pair.second;
     }
 
@@ -642,7 +672,7 @@ bool WalletModel::convertBackZbtcu(
             wtxNew,
             receipt,
             vMintsSelected,
-            std::list<std::pair<CBitcoinAddress*, CAmount>>(),
+            std::list<std::pair<CBTCUAddress*, CAmount>>(),
             nullptr
     );
 }
@@ -927,19 +957,23 @@ int64_t WalletModel::getKeyCreationTime(const CPubKey& key){
     return pwalletMain->GetKeyCreationTime(key);
 }
 
-int64_t WalletModel::getKeyCreationTime(const CBitcoinAddress& address){
+int64_t WalletModel::getKeyCreationTime(const CBTCUAddress& address){
     if(this->isMine(address)) {
         return pwalletMain->GetKeyCreationTime(address);
     }
     return 0;
 }
 
-PairResult WalletModel::getNewAddress(CBitcoinAddress& ret, std::string label) const{
+PairResult WalletModel::getNewAddress(CBTCUAddress& ret, std::string label) const{
     return wallet->getNewAddress(ret, label);
 }
 
-PairResult WalletModel::getNewStakingAddress(CBitcoinAddress& ret,std::string label) const{
+PairResult WalletModel::getNewStakingAddress(CBTCUAddress& ret,std::string label) const{
     return wallet->getNewStakingAddress(ret, label);
+}
+
+PairResult WalletModel::getNewLeasingAddress(CBTCUAddress& ret,std::string label) const{
+    return wallet->getNewLeasingAddress(ret, label);
 }
 
 bool WalletModel::whitelistAddressFromColdStaking(const QString &addressStr) {
@@ -951,7 +985,7 @@ bool WalletModel::blacklistAddressFromColdStaking(const QString &addressStr) {
 }
 
 bool WalletModel::updateAddressBookPurpose(const QString &addressStr, const std::string& purpose) {
-    CBitcoinAddress address(addressStr.toStdString());
+    CBTCUAddress address(addressStr.toStdString());
     if (address.IsStakingAddress())
         return error("Invalid BTCU address, cold staking address");
     CKeyID keyID;
@@ -960,7 +994,7 @@ bool WalletModel::updateAddressBookPurpose(const QString &addressStr, const std:
     return pwalletMain->SetAddressBook(keyID, getLabelForAddress(address), purpose);
 }
 
-bool WalletModel::getKeyId(const CBitcoinAddress& address, CKeyID& keyID) {
+bool WalletModel::getKeyId(const CBTCUAddress& address, CKeyID& keyID) {
     if (!address.IsValid())
         return error("Invalid BTCU address");
 
@@ -970,7 +1004,7 @@ bool WalletModel::getKeyId(const CBitcoinAddress& address, CKeyID& keyID) {
     return true;
 }
 
-std::string WalletModel::getLabelForAddress(const CBitcoinAddress& address) {
+std::string WalletModel::getLabelForAddress(const CBTCUAddress& address) {
     std::string label = "";
     {
         LOCK(wallet->cs_wallet);
@@ -1035,7 +1069,7 @@ void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) 
         CTxDestination address;
         if (!out.fSpendable || !ExtractDestination(cout.tx->vout[cout.i].scriptPubKey, address))
             continue;
-        mapCoins[QString::fromStdString(CBitcoinAddress(address).ToString())].push_back(out);
+        mapCoins[QString::fromStdString(CBTCUAddress(address).ToString())].push_back(out);
     }
 }
 
@@ -1081,7 +1115,7 @@ void WalletModel::loadReceiveRequests(std::vector<std::string>& vReceiveRequests
 
 bool WalletModel::saveReceiveRequest(const std::string& sAddress, const int64_t nId, const std::string& sRequest)
 {
-    CTxDestination dest = CBitcoinAddress(sAddress).Get();
+    CTxDestination dest = CBTCUAddress(sAddress).Get();
 
     std::stringstream ss;
     ss << nId;
@@ -1094,18 +1128,18 @@ bool WalletModel::saveReceiveRequest(const std::string& sAddress, const int64_t 
         return wallet->AddDestData(dest, key, sRequest);
 }
 
-bool WalletModel::isMine(CBitcoinAddress address)
+bool WalletModel::isMine(CBTCUAddress address)
 {
     return IsMine(*wallet, address.Get());
 }
 
 bool WalletModel::isMine(const QString& addressStr)
 {
-    CBitcoinAddress address(addressStr.toStdString());
+    CBTCUAddress address(addressStr.toStdString());
     return IsMine(*wallet, address.Get());
 }
 
-bool WalletModel::isUsed(CBitcoinAddress address)
+bool WalletModel::isUsed(CBTCUAddress address)
 {
     return wallet->IsUsed(address);
 }

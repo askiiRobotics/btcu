@@ -52,6 +52,9 @@ public:
     static const QString Delegators; /**< Specifies cold staking addresses which delegated tokens to this wallet */
     static const QString ColdStaking; /**< Specifies cold staking own addresses */
     static const QString ColdStakingSend; /**< Specifies send cold staking addresses (simil 'contacts')*/
+    static const QString Leasees; /**< Specifies addresses which leased tokens to this wallet */
+    static const QString Leasing; /**< Specifies leasing own addresses (simil 'contacts') */
+    static const QString LeasingSend; /**< Specifies send leasing addresses */
 
     /** @name Methods overridden from QAbstractTableModel
         @{*/
@@ -61,6 +64,7 @@ public:
     int sizeRecv() const;
     int sizeDell() const;
     int sizeColdSend() const;
+    int sizeLeasingSend() const;
     void notifyChange(const QModelIndex &index);
     QVariant data(const QModelIndex& index, int role) const;
     bool setData(const QModelIndex& index, const QVariant& value, int role);

@@ -214,6 +214,7 @@ bool static CheckPubKeyEncoding(const valtype &vchSig, unsigned int flags, Scrip
 }
 
 bool static CheckMinimalPush(const valtype& data, opcodetype opcode) {
+
     if (data.size() == 0) {
         // Could have used OP_0.
         return opcode == OP_0;
@@ -235,13 +236,12 @@ bool static CheckMinimalPush(const valtype& data, opcodetype opcode) {
     }
     return true;
 }
-
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {
     static const CScriptNum bnZero(0);
-    static const CScriptNum bnOne(1);
     static const CScriptNum bnFalse(0);
-    static const CScriptNum bnTrue(1);
+    static const CScriptNum bnTrue(1);    static const CScriptNum bnOne(1);
+
     static const valtype vchFalse(0);
     static const valtype vchZero(0);
     static const valtype vchTrue(1, 1);
@@ -969,6 +969,46 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                 }
                 break;
 
+                //////////////////////////////////////////////////////// qtum
+                case OP_SENDER:
+                {
+                   if(!(flags & SCRIPT_OUTPUT_SENDER))
+                      return set_error(serror, SCRIPT_ERR_BAD_OPCODE);
+                }
+                   break;
+                case OP_SPEND:
+                {
+                   return true; // temp
+                }
+                   break;
+                case OP_CREATE:
+                case OP_CALL:
+                {
+                   valtype scriptRest(pc - 1, pend);
+                   stack.push_back(scriptRest);
+                   return true; // temp
+                }
+                   break;
+                ////////////////////////////////////////////////////////
+
+                case OP_CHECKLEASEVERIFY:
+                {
+                    // there is no way to transfer coins by leaser
+                    return set_error(serror, SCRIPT_ERR_CHECKLEASEVERIFY);
+                }
+                break;
+
+                case OP_LEASINGREWARD:
+                {
+                    if (stack.size() < 2)
+                        return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
+
+                    // Do nothing, only popping of trx:n of the leasing transaction
+                    popstack(stack);
+                    popstack(stack);
+                }
+                break;
+
                 default:
                     return set_error(serror, SCRIPT_ERR_BAD_OPCODE);
             }
@@ -1083,6 +1123,10 @@ public:
              SerializeOutput(s, nOutput, nType, nVersion);
         // Serialize nLockTime
         ::Serialize(s, txTo.nLockTime, nType, nVersion);
+        if (txTo.nVersion >= CTransaction::BTCU_START_VERSION && txTo.nVersion <= CTransaction::CURRENT_VERSION) {
+            s << txTo.validatorRegister;
+            s << txTo.validatorVote;
+        }
     }
 };
 

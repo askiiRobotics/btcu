@@ -26,15 +26,17 @@ BOOST_AUTO_TEST_CASE(sanity)
     BOOST_CHECK(Checkpoints::CheckBlock(623933, p623933));
 
 
+    BOOST_TEST_MESSAGE("There are no checkpoints now");
     // Wrong hashes at checkpoints should fail:
-    BOOST_CHECK(!Checkpoints::CheckBlock(259201, p623933));
-    BOOST_CHECK(!Checkpoints::CheckBlock(623933, p259201));
+    // BOOST_CHECK(!Checkpoints::CheckBlock(259201, p623933));
+    // BOOST_CHECK(!Checkpoints::CheckBlock(623933, p259201));
 
     // ... but any hash not at a checkpoint should succeed:
     BOOST_CHECK(Checkpoints::CheckBlock(259201+1, p623933));
     BOOST_CHECK(Checkpoints::CheckBlock(623933+1, p259201));
 
-    BOOST_CHECK(Checkpoints::GetTotalBlocksEstimate() >= 623933);
+    BOOST_TEST_MESSAGE("There are no checkpoints now");
+    // BOOST_CHECK(Checkpoints::GetTotalBlocksEstimate() >= 623933);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

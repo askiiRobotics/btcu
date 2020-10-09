@@ -159,6 +159,17 @@ const char* GetOpName(opcodetype opcode)
     // cold staking
     case OP_CHECKCOLDSTAKEVERIFY   : return "OP_CHECKCOLDSTAKEVERIFY";
 
+          // byte code execution
+       case OP_CREATE                 : return "OP_CREATE";
+       case OP_CALL                   : return "OP_CALL";
+       case OP_SPEND                  : return "OP_SPEND";
+       case OP_SENDER                 : return "OP_SENDER";
+
+    // leasing
+    case OP_CHECKLEASEVERIFY       : return "OP_CHECKLEASEVERIFY";
+    case OP_LEASINGREWARD          : return "OP_LEASINGREWARD";
+
+
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
 
     // Note:
@@ -193,6 +204,38 @@ unsigned int CScript::GetSigOpCount(bool fAccurate) const
         lastOpcode = opcode;
     }
     return n;
+}
+
+bool CScript::ReplaceParam(opcodetype findOp, int posBefore, const std::vector<unsigned char> &vchParam, CScript &scriptRet) const
+{
+    if(posBefore < 0)
+        return false;
+
+    // Find parameter with opcode and replace the parameter before with other value
+    bool ret = false;
+    std::vector<const_iterator> opcodes;
+    int minSize = posBefore + 1;
+    opcodetype opcode;
+    opcodes.push_back(begin());
+    for (const_iterator pc = begin(); pc != end() && GetOp(pc, opcode);)
+    {
+        if (opcode == findOp)
+        {
+            int size = opcodes.size();
+            if(size > minSize)
+            {
+                int firstPart = size -1 -posBefore;
+                int secondPart = size -posBefore;
+                scriptRet = CScript(begin(), opcodes[firstPart]) << vchParam;
+                scriptRet += CScript(opcodes[secondPart], end());
+                ret = true;
+            }
+            break;
+        }
+        opcodes.push_back(pc);
+    }
+
+    return ret;
 }
 
 unsigned int CScript::GetSigOpCount(const CScript& scriptSig) const
@@ -264,6 +307,43 @@ bool CScript::IsPayToColdStaking() const
             this->at(50) == OP_CHECKSIG);
 }
 
+bool CScript::IsPayToLeasing() const
+{
+    // Extra-fast test for pay-to-leasing CScripts:
+    return (this->size() == 51 &&
+            this->at(2) == OP_ROT &&
+            this->at(4) == OP_CHECKLEASEVERIFY &&
+            this->at(5) == 0x14 &&
+            this->at(27) == 0x14 &&
+            this->at(49) == OP_EQUALVERIFY &&
+            this->at(50) == OP_CHECKSIG);
+}
+
+bool CScript::IsLeasingReward() const {
+    if(this->size() < sizeof(uint256) + 25) return false;
+
+    std::vector<unsigned char> vch;
+    opcodetype opcode;
+    const_iterator pc = begin();
+    int i = 0;
+    while (pc < end())
+    {
+        GetOp(pc, opcode, vch);
+
+        if(     i == 0 && vch.size() != sizeof(uint256)) return false;
+        else if(i == 2 && opcode != OP_LEASINGREWARD) return false;
+        else if(i == 3 && opcode != OP_DUP) return false;
+        else if(i == 4 && opcode != OP_HASH160) return false;
+        else if(i == 6 && opcode != OP_EQUALVERIFY) return false;
+        else if(i == 7 && opcode != OP_CHECKSIG) return false;
+        else if(i == 8) return false;
+
+        i++;
+    }
+
+    return true;
+}
+
 bool CScript::StartsWithOpcode(const opcodetype opcode) const
 {
     return (!this->empty() && this->at(0) == opcode);
@@ -301,6 +381,49 @@ bool CScript::IsPushOnly(const_iterator pc) const
     return true;
 }
 
+bool CScript::ExtractPubKey(CPubKey& pubKeyOut) const
+{
+   //TODO: Use Solver to extract this?
+   CScript::const_iterator pc = begin();
+   opcodetype opcode;
+   std::vector<unsigned char> vch;
+   if (!GetOp(pc, opcode, vch) || vch.size() < 33 || vch.size() > 65)
+      return false;
+   pubKeyOut = CPubKey(vch);
+   if (!pubKeyOut.IsFullyValid())
+      return false;
+   if (!GetOp(pc, opcode, vch) || opcode != OP_CHECKSIG || GetOp(pc, opcode, vch))
+      return false;
+   return true;
+}
+bool CScript::IsPayToWitnessScriptHash() const
+{
+   // Extra-fast test for pay-to-witness-script-hash CScripts:
+   return (this->size() == 34 &&
+           (*this)[0] == OP_0 &&
+           (*this)[1] == 0x20);
+}
+
+// A witness program is any valid CScript that consists of a 1-byte push opcode
+// followed by a data push between 2 and 40 bytes.
+bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program) const
+{
+   if (this->size() < 4 || this->size() > 42) {
+      return false;
+   }
+   if ((*this)[0] != OP_0 && ((*this)[0] < OP_1 || (*this)[0] > OP_16)) {
+      return false;
+   }
+   if ((size_t)((*this)[1] + 2) == this->size()) {
+      version = DecodeOP_N((opcodetype)(*this)[0]);
+      program = std::vector<unsigned char>(this->begin() + 2, this->end());
+      return true;
+   }
+   return false;
+}
+
+
+
 bool CScript::IsPushOnly() const
 {
     return this->IsPushOnly(begin());
@@ -334,3 +457,29 @@ std::string CScript::ToString() const
     }
     return str;
 }
+
+///////////////////////////////////////////////////////// // qtum
+bool CScript::IsPayToPubkey() const
+{
+   if (this->size() == 35 && (*this)[0] == 33 && (*this)[34] == OP_CHECKSIG
+       && ((*this)[1] == 0x02 || (*this)[1] == 0x03)) {
+      return true;
+   }
+   if (this->size() == 67 && (*this)[0] == 65 && (*this)[66] == OP_CHECKSIG
+       && (*this)[1] == 0x04) {
+      return true;
+   }
+   return false;
+}
+
+bool CScript::IsPayToPubkeyHash() const
+{
+   // Extra-fast test for pay-to-pubkeyhash CScripts:
+   return (this->size() == 25 &&
+           (*this)[0] == OP_DUP &&
+           (*this)[1] == OP_HASH160 &&
+           (*this)[2] == 0x14 &&
+           (*this)[23] == OP_EQUALVERIFY &&
+           (*this)[24] == OP_CHECKSIG);
+}
+/////////////////////////////////////////////////////////

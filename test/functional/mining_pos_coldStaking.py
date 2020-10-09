@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2019 The PIVX developers
-// Copyright (c) 2020 The BTCU developers
+# Copyright (c) 2020 The BTCU developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 # -*- coding: utf-8 -*-
@@ -145,11 +145,11 @@ class BTCU_ColdStakingTest(BtcuTestFramework):
         print("*** 5 ***")
         self.log.info("First check warning when using external addresses...")
         assert_raises_rpc_error(-5, "Only the owner of the key to owneraddress will be allowed to spend these coins",
-                                self.nodes[0].delegatestake, staker_address, INPUT_VALUE, "yCgCXC8N5VThhfiaVuKaNLkNnrWduzVnoT")
+                                self.nodes[0].delegatestake, staker_address, INPUT_VALUE, "n3ZYUKZCULd6XNK7X3SRxrHRJNwKePiCVd")
         self.log.info("Good. Warning triggered.")
 
         self.log.info("Now force the use of external address creating (but not sending) the delegation...")
-        res = self.nodes[0].rawdelegatestake(staker_address, INPUT_VALUE, "yCgCXC8N5VThhfiaVuKaNLkNnrWduzVnoT", True)
+        res = self.nodes[0].rawdelegatestake(staker_address, INPUT_VALUE, "n3ZYUKZCULd6XNK7X3SRxrHRJNwKePiCVd", True)
         assert(res is not None and res != "")
         self.log.info("Good. Warning NOT triggered.")
 

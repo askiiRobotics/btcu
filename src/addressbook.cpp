@@ -17,11 +17,21 @@ namespace AddressBook {
         const std::string DELEGATOR{"delegator"};
         const std::string COLD_STAKING{"coldstaking"};
         const std::string COLD_STAKING_SEND{"coldstaking_send"};
+        const std::string LEASABLE{"leasable"};
+        const std::string LEASEE{"leasee"};
+        const std::string LEASED{"leased"};
+        const std::string LEASING{"leasing"};
+        const std::string LEASING_SEND{"leasing_send"};
     }
 
     bool IsColdStakingPurpose(const std::string& purpose) {
         return purpose == AddressBookPurpose::COLD_STAKING
                || purpose == AddressBookPurpose::COLD_STAKING_SEND;
+    }
+
+    bool IsLeasingPurpose(const std::string& purpose) {
+        return purpose == AddressBookPurpose::LEASING
+               || purpose == AddressBookPurpose::LEASING_SEND;
     }
 
     bool CAddressBookData::isSendColdStakingPurpose() const {

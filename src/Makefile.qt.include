@@ -41,6 +41,7 @@ QT_FORMS_UI = \
   qt/btcu/forms/masternodeswidget.ui \
   qt/btcu/forms/myaddressrow.ui \
   qt/btcu/forms/csrow.ui \
+  qt/btcu/forms/lrow.ui \
   qt/btcu/forms/sendchangeaddressdialog.ui \
   qt/btcu/forms/sendconfirmdialog.ui \
   qt/btcu/forms/sendcustomfeedialog.ui \
@@ -57,6 +58,7 @@ QT_FORMS_UI = \
   qt/btcu/forms/denomgenerationdialog.ui \
   qt/btcu/forms/privacywidget.ui \
   qt/btcu/forms/coldstakingwidget.ui \
+  qt/btcu/forms/leasingwidget.ui \
   qt/btcu/settings/forms/settingsbackupwallet.ui \
   qt/btcu/settings/forms/settingsbittoolwidget.ui \
   qt/btcu/settings/forms/settingsconsolewidget.ui \
@@ -137,6 +139,7 @@ QT_MOC_CPP = \
   qt/btcu/moc_masternodeswidget.cpp \
   qt/btcu/moc_myaddressrow.cpp \
   qt/btcu/moc_csrow.cpp \
+  qt/btcu/moc_lrow.cpp \
   qt/btcu/moc_contactsdropdown.cpp \
   qt/btcu/moc_sendchangeaddressdialog.cpp \
   qt/btcu/moc_sendconfirmdialog.cpp \
@@ -154,6 +157,8 @@ QT_MOC_CPP = \
   qt/btcu/moc_denomgenerationdialog.cpp \
   qt/btcu/moc_privacywidget.cpp \
   qt/btcu/moc_coldstakingwidget.cpp \
+  qt/btcu/moc_leasingwidget.cpp \
+  qt/btcu/moc_leasingmodel.cpp \
   qt/btcu/settings/moc_settingsbackupwallet.cpp \
   qt/btcu/settings/moc_settingsbittoolwidget.cpp \
   qt/btcu/settings/moc_settingsconsolewidget.cpp \
@@ -268,6 +273,7 @@ BITCOIN_QT_H = \
   qt/btcu/masternodeswidget.h \
   qt/btcu/myaddressrow.h \
   qt/btcu/csrow.h \
+  qt/btcu/lrow.h \
   qt/btcu/contactsdropdown.h \
   qt/btcu/sendchangeaddressdialog.h \
   qt/btcu/sendconfirmdialog.h \
@@ -285,6 +291,7 @@ BITCOIN_QT_H = \
   qt/btcu/denomgenerationdialog.h \
   qt/btcu/privacywidget.h \
   qt/btcu/coldstakingwidget.h \
+  qt/btcu/leasingwidget.h \
   qt/btcu/settings/settingsbackupwallet.h \
   qt/btcu/settings/settingsbittoolwidget.h \
   qt/btcu/settings/settingsconsolewidget.h \
@@ -524,6 +531,9 @@ RES_ICONS = \
   qt/btcu/res/img/ic-check-cold-staking.svg \
   qt/btcu/res/img/ic-check-cold-staking-off.svg \
   qt/btcu/res/img/ic-check-cold-staking-enabled.svg \
+  qt/btcu/res/img/ic-check-leasing.svg \
+  qt/btcu/res/img/ic-check-leasing-off.svg \
+  qt/btcu/res/img/ic-check-leasing-enabled.svg \
   qt/btcu/res/img/dark/ic-transaction-cs-contract.svg \
   qt/btcu/res/img/dark/ic-transaction-cs-contract-inactive.svg \
   qt/btcu/res/img/img-qr.svg \
@@ -655,6 +665,7 @@ BITCOIN_QT_WALLET_CPP = \
   qt/btcu/masternodeswidget.cpp \
   qt/btcu/myaddressrow.cpp \
   qt/btcu/csrow.cpp \
+  qt/btcu/lrow.cpp \
   qt/btcu/sendchangeaddressdialog.cpp \
   qt/btcu/sendconfirmdialog.cpp \
   qt/btcu/sendcustomfeedialog.cpp \
@@ -671,6 +682,8 @@ BITCOIN_QT_WALLET_CPP = \
   qt/btcu/denomgenerationdialog.cpp \
   qt/btcu/privacywidget.cpp \
   qt/btcu/coldstakingwidget.cpp \
+  qt/btcu/leasingwidget.cpp \
+  qt/btcu/leasingmodel.cpp \
   qt/btcu/settings/settingsbackupwallet.cpp \
   qt/btcu/settings/settingsbittoolwidget.cpp \
   qt/btcu/settings/settingsconsolewidget.cpp \

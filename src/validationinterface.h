@@ -32,6 +32,9 @@ void UnregisterAllValidationInterfaces();
 void SyncWithWallets(const CTransaction& tx, const CBlock* pblock);
 
 class CValidationInterface {
+public:
+    virtual ~CValidationInterface() = default;
+
 protected:
 // XX42    virtual void EraseFromWallet(const uint256& hash){};
     virtual void UpdatedBlockTip(const CBlockIndex *pindex) {}

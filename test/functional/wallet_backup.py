@@ -180,9 +180,9 @@ class WalletBackupTest(BtcuTestFramework):
         assert_equal(self.nodes[1].getbalance(), 0)
         assert_equal(self.nodes[2].getbalance(), 0)
 
-        self.nodes[0].importwallet(tmpdir + "/node0/wallet.dump")
-        self.nodes[1].importwallet(tmpdir + "/node1/wallet.dump")
-        self.nodes[2].importwallet(tmpdir + "/node2/wallet.dump")
+        self.nodes[0].importwallet(tmpdir + "/node0/wallet.dump", False)
+        self.nodes[1].importwallet(tmpdir + "/node1/wallet.dump", False)
+        self.nodes[2].importwallet(tmpdir + "/node2/wallet.dump", False)
 
         sync_blocks(self.nodes)
 

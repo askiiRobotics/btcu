@@ -7,7 +7,7 @@
 
 #include "bitcoinaddressvalidator.h"
 
-#include "base58.h"
+#include "btcu_address.h"
 
 /* Base58 characters are:
      "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -84,7 +84,7 @@ QValidator::State BitcoinAddressCheckValidator::validate(QString& input, int& po
 {
     Q_UNUSED(pos);
     // Validate the passed BTCU address
-    CBitcoinAddress addr(input.toStdString());
+    CBTCUAddress addr(input.toStdString());
     if (addr.IsValid())
         return QValidator::Acceptable;
 

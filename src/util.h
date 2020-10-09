@@ -151,6 +151,7 @@ inline bool IsSwitchChar(char c)
     return c == '-';
 #endif
 }
+bool CheckHex(const std::string& str);
 
 /**
  * Return string argument or default value

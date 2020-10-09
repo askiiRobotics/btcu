@@ -57,6 +57,7 @@ public:
         Listen,              // bool
         StakeSplitThreshold, // int
         ShowColdStakingScreen, // bool
+        ShowLeasingScreen, // bool
         OptionIDRowCount,
     };
 
@@ -96,6 +97,16 @@ public:
         return showColdStakingScreen;
     }
 
+    bool isLeasingScreenEnabled() { return showLeasingScreen; }
+    bool invertLeasingScreenStatus() {
+        setData(
+            createIndex(ShowLeasingScreen, 0),
+            !isLeasingScreenEnabled(),
+            Qt::EditRole
+        );
+        return showLeasingScreen;
+    }
+
     // Reset
     void setMainDefaultOptions(QSettings& settings, bool reset = false);
     void setWalletDefaultOptions(QSettings& settings, bool reset = false);
@@ -112,6 +123,7 @@ private:
     QString strThirdPartyTxUrls;
     bool fCoinControlFeatures;
     bool showColdStakingScreen;
+    bool showLeasingScreen;
     bool fHideZeroBalances;
     bool fHideOrphans;
     /* settings that were overriden by command-line */
@@ -129,6 +141,7 @@ Q_SIGNALS:
     void anonymizeBtcuAmountChanged(int);
     void coinControlFeaturesChanged(bool);
     void showHideColdStakingScreen(bool);
+    void showHideLeasingScreen(bool);
     void hideZeroBalancesChanged(bool);
     void hideOrphansChanged(bool);
 };

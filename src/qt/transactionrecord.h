@@ -102,7 +102,13 @@ public:
         P2CSDelegationSent, // Non-spendable P2CS delegated utxo. (coin-owner transferred ownership to external wallet)
         P2CSDelegationSentOwner, // Spendable P2CS delegated utxo. (coin-owner)
         P2CSUnlockOwner, // Coin-owner spent the delegated utxo
-        P2CSUnlockStaker // Staker watching the owner spent the delegated utxo
+        P2CSUnlockStaker, // Staker watching the owner spent the delegated utxo,
+        P2LLeasing,
+        P2LLeasingSent,
+        P2LLeasingSentOwner,
+        LeasingReward,
+        P2LUnlockOwner,
+        P2LUnlockLeaser
     };
 
     /** Number of confirmation recommended for accepting a transaction */
@@ -127,9 +133,12 @@ public:
     static QList<TransactionRecord> decomposeTransaction(const CWallet* wallet, const CWalletTx& wtx);
 
     /// Helpers
-    static bool ExtractAddress(const CScript& scriptPubKey, bool fColdStake, std::string& addressStr);
+    static bool ExtractAddress(const CScript& scriptPubKey, bool fColdStake, bool fLease, std::string& addressStr);
     static void loadHotOrColdStakeOrContract(const CWallet* wallet, const CWalletTx& wtx,
                                             TransactionRecord& record, bool isContract = false);
+    static void loadP2L(const CWallet* wallet, const CWalletTx& wtx, TransactionRecord& record);
+    static void loadLeasingReward(const CWallet* wallet, const CWalletTx& wtx, TransactionRecord& record);
+    static void loadLeasingSpend(const CWallet* wallet, const CWalletTx& wtx, TransactionRecord& record);
     static void loadUnlockColdStake(const CWallet* wallet, const CWalletTx& wtx, TransactionRecord& record);
 
     /** @name Immutable transaction attributes
@@ -177,6 +186,10 @@ public:
     /** Return true if the tx is a any cold staking type tx.
      */
     bool isAnyColdStakingType() const;
+
+    /** Return true if the tx is a any leasing type tx.
+     */
+    bool isAnyLeasingType() const;
 
     /** Return true if the tx hash is null and/or if the size is 0
      */

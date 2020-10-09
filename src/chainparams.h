@@ -14,7 +14,6 @@
 #include "primitives/block.h"
 #include "protocol.h"
 #include "uint256.h"
-#include "cpp-ethereum/libethashseal/GenesisInfo.h"
 
 #include "libzerocoin/Params.h"
 #include <vector>
@@ -25,6 +24,10 @@ struct CDNSSeedData {
     std::string name, host;
     CDNSSeedData(const std::string& strName, const std::string& strHost) : name(strName), host(strHost) {}
 };
+
+namespace dev { namespace eth {
+    enum class Network;
+} }
 
 /**
  * CChainParams defines various tweakable parameters of a given instance of the
@@ -40,11 +43,8 @@ public:
         PUBKEY_ADDRESS,
         SCRIPT_ADDRESS,
         SECRET_KEY,     // BIP16
-        EXT_PUBLIC_KEY, // BIP32
-        EXT_SECRET_KEY, // BIP32
-        EXT_COIN_TYPE,  // BIP44
         STAKING_ADDRESS,
-
+        LEASING_ADDRESS,
         MAX_BASE58_TYPES
     };
 
@@ -104,6 +104,7 @@ public:
     std::string NetworkIDString() const { return strNetworkID; }
     const std::vector<CDNSSeedData>& DNSSeeds() const { return vSeeds; }
     const std::vector<unsigned char>& Base58Prefix(Base58Type type) const { return base58Prefixes[type]; }
+    const std::string& Bech32HRP() const { return bech32_hrp; }
     const std::vector<CAddress>& FixedSeeds() const { return vFixedSeeds; }
     virtual const Checkpoints::CCheckpointData& Checkpoints() const = 0;
     int PoolMaxTransactions() const { return nPoolMaxTransactions; }
@@ -112,6 +113,11 @@ public:
     int64_t GetProposalEstablishmentTime() const { return nProposalEstablishmentTime; }
 
     CAmount GetMinColdStakingAmount() const { return nMinColdStakingAmount; }
+    CAmount GetMinLeasingAmount() const { return nMinLeasingAmount; }
+
+    int GetLeasingRewardMaturity()  const { return nLeasingRewardMaturity; }
+    int GetLeasingRewardPeriod() const { return nLeasingRewardPeriod; }
+    int GetMaxLeasingRewards() const { return nMaxLeasingRewards; }
 
     /** Spork key and Masternode Handling **/
     std::string SporkPubKey() const { return strSporkPubKey; }
@@ -165,6 +171,11 @@ public:
     int Zerocoin_Block_Public_Spend_Enabled() const { return nPublicZCSpends; }
     int Zerocoin_Block_Last_Checkpoint() const { return nBlockLastAccumulatorCheckpoint; }
 
+    /////////////qtum
+    int MPoSRewardRecipients() const { return nMPoSRewardRecipients; }
+
+    std::string EVMGenesisInfo(dev::eth::Network network) const;
+
 protected:
     CChainParams() {}
 
@@ -199,6 +210,7 @@ protected:
     int nMinerThreads;
     std::vector<CDNSSeedData> vSeeds;
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
+    std::string bech32_hrp;
     CBaseChainParams::Network networkID;
     std::string strNetworkID;
     CBlock genesis;
@@ -250,12 +262,21 @@ protected:
     int nBlockLastAccumulatorCheckpoint;
 
     CAmount nMinColdStakingAmount;
+    CAmount nMinLeasingAmount;
+
+    int nLeasingRewardMaturity;
+    int nLeasingRewardPeriod;
+    int nMaxLeasingRewards;
 
     // fake serial attack
     int nFakeSerialBlockheightEnd = 0;
     CAmount nSupplyBeforeFakeSerial = 0;
-};
 
+    //////////qtum
+    int nMPoSRewardRecipients;
+};
+void ReplaceInt(const int64_t& number, const std::string& key, std::string& str);
+std::string toHexString(int64_t intValue);
 /**
  * Return the currently selected parameters. This won't change after app startup
  * outside of the unit tests.

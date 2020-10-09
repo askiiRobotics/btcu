@@ -160,7 +160,7 @@ bool MasterNodeWizardDialog::createMN(){
         // First create the mn key
         CKey secret;
         secret.MakeNewKey(false);
-        CBitcoinSecret mnKey = CBitcoinSecret(secret);
+        CBTCUSecret mnKey = CBTCUSecret(secret);
         std::string mnKeyString = mnKey.ToString();
 
         // second create mn address
@@ -188,7 +188,7 @@ bool MasterNodeWizardDialog::createMN(){
         std::string port = portStr.toStdString();
 
         // New receive address
-        CBitcoinAddress address;
+        CBTCUAddress address;
         PairResult r = walletModel->getNewAddress(address, alias);
 
         if (!r.result) {

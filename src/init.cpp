@@ -71,6 +71,12 @@
 #include "zmq/zmqnotificationinterface.h"
 #endif
 
+#ifdef ENABLE_LEASING_MANAGER
+#include "leasing/leasingmanager.h"
+#endif
+
+#include "contract.h"
+
 
 #ifdef ENABLE_WALLET
 CWallet* pwalletMain = NULL;
@@ -79,6 +85,10 @@ int nWalletBackups = 10;
 #endif
 volatile bool fFeeEstimatesInitialized = false;
 volatile bool fRestartRequested = false; // true: restart false: shutdown
+
+#ifdef ENABLE_LEASING_MANAGER
+CLeasingManager* pleasingManagerMain = nullptr;
+#endif
 
 #if ENABLE_ZMQ
 static CZMQNotificationInterface* pzmqNotificationInterface = NULL;
@@ -254,6 +264,16 @@ void PrepareShutdown()
         bitdb.Flush(true);
 #endif
 
+#ifdef ENABLE_LEASING_MANAGER
+    if (pleasingManagerMain) {
+        if (pwalletMain)
+            pwalletMain->pLeasingManager = nullptr;
+        UnregisterValidationInterface(pleasingManagerMain);
+        delete pleasingManagerMain;
+        pleasingManagerMain = nullptr;
+    }
+#endif // ENABLE_LEASING_MANAGER
+
 #if ENABLE_ZMQ
     if (pzmqNotificationInterface) {
         UnregisterValidationInterface(pzmqNotificationInterface);
@@ -270,6 +290,8 @@ void PrepareShutdown()
     }
 #endif
     UnregisterAllValidationInterfaces();
+
+    ContractStateShutdown();
 }
 
 /**
@@ -1203,6 +1225,9 @@ bool AppInit2()
             boost::filesystem::path chainstateDir = GetDataDir() / "chainstate";
             boost::filesystem::path sporksDir = GetDataDir() / "sporks";
             boost::filesystem::path zerocoinDir = GetDataDir() / "zerocoin";
+#ifdef ENABLE_LEASING_MANAGER
+            boost::filesystem::path leasingDir = GetDataDir() / "leasing";
+#endif // ENABLE_LEASING_MANAGER
 
             LogPrintf("Deleting blockchain folders blocks, chainstate, sporks and zerocoin\n");
             // We delete in 4 individual steps in case one of the folder is missing already
@@ -1226,6 +1251,13 @@ bool AppInit2()
                     boost::filesystem::remove_all(zerocoinDir);
                     LogPrintf("-resync: folder deleted: %s\n", zerocoinDir.string().c_str());
                 }
+
+#ifdef ENABLE_LEASING_MANAGER
+                if (boost::filesystem::exists(leasingDir)){
+                    boost::filesystem::remove_all(leasingDir);
+                    LogPrintf("-resync: folder deleted: %s\n", leasingDir.string().c_str());
+                }
+#endif // ENABLE_LEASING_MANAGER
             } catch (const boost::filesystem::filesystem_error& error) {
                 LogPrintf("Failed to delete blockchain folders %s\n", error.what());
             }
@@ -1459,13 +1491,24 @@ bool AppInit2()
                 zerocoinDB = new CZerocoinDB(0, false, fReindex);
                 pSporkDB = new CSporkDB(0, false, false);
 
+                //Calculate chainstate hash
+                std::string strChainState;
+                if(int err_code = HashChainstate(strChainState) != 0)
+                {
+                   strLoadError = _("Error hashing chainstate");
+                   strLoadError = strprintf("%s : %d", strLoadError, err_code);
+                   break;
+                }
+                g_hashChainstate = uint256(strChainState);
+
                 pblocktree = new CBlockTreeDB(nBlockTreeDBCache, false, fReindex);
                 pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);
                 pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
 
+                pcoinsdbview->Upgrade(Params().HashGenesisBlock());
+
                 g_ValidatorsState.load();
-                
                 if (fReindex)
                     pblocktree->WriteReindexing(true);
 
@@ -1489,6 +1532,12 @@ bool AppInit2()
                 // (we're likely using a testnet datadir, or the other way around).
                 if (!mapBlockIndex.empty() && mapBlockIndex.count(Params().HashGenesisBlock()) == 0)
                     return InitError(_("Incorrect or no genesis block found. Wrong datadir for network?"));
+
+                {
+                    WaitableLock lock(g_best_block_mutex);
+                    g_best_block = Params().HashGenesisBlock();
+                    g_best_block_cv.notify_all();
+                }
 
                 // Initialize the block index (no-op if non-empty database was already loaded)
                 if (!InitBlockIndex()) {
@@ -1611,6 +1660,8 @@ bool AppInit2()
         }
     }
 
+    ContractStateInit();
+
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
@@ -1723,7 +1774,7 @@ bool AppInit2()
             uiInterface.InitMessage(_("Rescanning..."));
             LogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
             const int64_t nWalletRescanTime = GetTimeMillis();
-            if (pwalletMain->ScanForWalletTransactions(pindexRescan, true, true) == -1) {
+            if (pwalletMain->ScanForWalletTransactions(pcoinsTip->SeekToFirst(), pindexRescan, true, true) == -1) {
                 return error("Shutdown requested over the txs scan. Exiting.");
             }
             LogPrintf("Rescan completed in %15dms\n", GetTimeMillis() - nWalletRescanTime);
@@ -1967,9 +2018,19 @@ bool AppInit2()
 
     StartNode(threadGroup, scheduler);
 
+#ifdef ENABLE_LEASING_MANAGER
+    pleasingManagerMain = new CLeasingManager();
+    RegisterValidationInterface(pleasingManagerMain);
+
 #ifdef ENABLE_WALLET
-    // Generate coins in the background
     if (pwalletMain)
+        pwalletMain->pLeasingManager = pleasingManagerMain;
+#endif // ENABLE_WALLET
+#endif // ENABLE_LEASING_MANAGER
+
+#if defined(ENABLE_WALLET) && defined(ENABLE_LEASING_MANAGER)
+    // Generate coins in the background
+    if (pwalletMain && pleasingManagerMain)
         GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 1));
 #endif
 
@@ -1992,7 +2053,6 @@ bool AppInit2()
         }
     }
 #endif
-
 
     return !fRequestShutdown;
 }

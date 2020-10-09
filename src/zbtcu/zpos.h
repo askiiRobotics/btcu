@@ -11,7 +11,7 @@
 #include "kernel.h"
 #include "txdb.h"
 
-class CLegacyZPivStake : public CStakeInput
+class CLegacyZBTCUStake : public CStakeInput
 {
 private:
     uint32_t nChecksum;
@@ -19,7 +19,7 @@ private:
     uint256 hashSerial;
 
 public:
-    explicit CLegacyZPivStake(const libzerocoin::CoinSpend& spend);
+    explicit CLegacyZBTCUStake(const libzerocoin::CoinSpend& spend);
     bool IsZBTCU() const override { return true; }
     uint32_t GetChecksum() const { return nChecksum; }
     CBlockIndex* GetIndexFrom() override;

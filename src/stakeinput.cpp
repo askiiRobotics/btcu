@@ -12,32 +12,31 @@
 #include "wallet/wallet.h"
 
 
-bool CPivStake::SetInput(CTransaction txPrev, unsigned int n)
+bool CBTCUStake::SetInput(CTransaction txPrev, unsigned int n)
 {
     this->txFrom = txPrev;
     this->nPosition = n;
     return true;
 }
 
-bool CPivStake::GetTxFrom(CTransaction& tx) const
+bool CBTCUStake::GetTxFrom(CTransaction& tx) const
 {
     tx = txFrom;
     return true;
 }
 
-bool CPivStake::CreateTxIn(CWallet* pwallet, CTxIn& txIn, uint256 hashTxOut)
+bool CBTCUStake::CreateTxIn(CWallet* pwallet, CTxIn& txIn, uint256 hashTxOut)
 {
     txIn = CTxIn(txFrom.GetHash(), nPosition);
     return true;
 }
 
-CAmount CPivStake::GetValue() const
+CAmount CBTCUStake::GetValue() const
 {
     return txFrom.vout[nPosition].nValue;
 }
 
-bool CPivStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmount nTotal)
-{
+bool CBTCUStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmount nTotal) {
     std::vector<valtype> vSolutions;
     txnouttype whichType;
     CScript scriptPubKeyKernel = txFrom.vout[nPosition].scriptPubKey;
@@ -45,7 +44,8 @@ bool CPivStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmoun
         return error("%s: failed to parse kernel", __func__);
 
     if (whichType != TX_PUBKEY && whichType != TX_PUBKEYHASH && whichType != TX_COLDSTAKE)
-        return error("%s: type=%d (%s) not supported for scriptPubKeyKernel", __func__, whichType, GetTxnOutputType(whichType));
+        return error("%s: type=%d (%s) not supported for scriptPubKeyKernel", __func__, whichType,
+                     GetTxnOutputType(whichType));
 
     CScript scriptPubKey;
     CKey key;
@@ -56,7 +56,6 @@ bool CPivStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmoun
 
         // convert to P2PK inputs
         scriptPubKey << key.GetPubKey() << OP_CHECKSIG;
-
     } else {
         // if P2CS, check that we have the coldstaking private key
         if ( whichType == TX_COLDSTAKE && !pwallet->GetKey(CKeyID(uint160(vSolutions[0])), key) )
@@ -84,7 +83,7 @@ bool CPivStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmoun
     return true;
 }
 
-CDataStream CPivStake::GetUniqueness() const
+CDataStream CBTCUStake::GetUniqueness() const
 {
     //The unique identifier for a BTCU stake is the outpoint
     CDataStream ss(SER_NETWORK, 0);
@@ -93,7 +92,7 @@ CDataStream CPivStake::GetUniqueness() const
 }
 
 //The block that the UTXO was added to the chain
-CBlockIndex* CPivStake::GetIndexFrom()
+CBlockIndex* CBTCUStake::GetIndexFrom()
 {
     if (pindexFrom)
         return pindexFrom;

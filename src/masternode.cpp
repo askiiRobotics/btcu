@@ -64,6 +64,7 @@ CMasternode::CMasternode() :
     vin = CTxIn();
     addr = CService();
     pubKeyCollateralAddress = CPubKey();
+    pubKeyLeasing = CPubKey();
     pubKeyMasternode = CPubKey();
     activeState = MASTERNODE_ENABLED;
     sigTime = GetAdjustedTime();
@@ -89,6 +90,7 @@ CMasternode::CMasternode(const CMasternode& other) :
     vin = other.vin;
     addr = other.addr;
     pubKeyCollateralAddress = other.pubKeyCollateralAddress;
+    pubKeyLeasing = other.pubKeyLeasing;
     pubKeyMasternode = other.pubKeyMasternode;
     activeState = other.activeState;
     sigTime = other.sigTime;
@@ -114,6 +116,7 @@ uint256 CMasternode::GetSignatureHash() const
     ss << addr;
     ss << sigTime;
     ss << pubKeyCollateralAddress;
+    ss << pubKeyLeasing;
     ss << pubKeyMasternode;
     ss << protocolVersion;
     return ss.GetHash();
@@ -124,6 +127,7 @@ std::string CMasternode::GetStrMessage() const
     return (addr.ToString() +
             std::to_string(sigTime) +
             pubKeyCollateralAddress.GetID().ToString() +
+            pubKeyLeasing.GetID().ToString() +
             pubKeyMasternode.GetID().ToString() +
             std::to_string(protocolVersion)
     );
@@ -136,6 +140,7 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
 {
     if (mnb.sigTime > sigTime) {
         pubKeyMasternode = mnb.pubKeyMasternode;
+        pubKeyLeasing = mnb.pubKeyLeasing;
         pubKeyCollateralAddress = mnb.pubKeyCollateralAddress;
         sigTime = mnb.sigTime;
         vchSig = mnb.vchSig;
@@ -349,12 +354,18 @@ CMasternodeBroadcast::CMasternodeBroadcast() :
         CMasternode()
 { }
 
-CMasternodeBroadcast::CMasternodeBroadcast(CService newAddr, CTxIn newVin, CPubKey pubKeyCollateralAddressNew, CPubKey pubKeyMasternodeNew, int protocolVersionIn) :
+CMasternodeBroadcast::CMasternodeBroadcast(
+    CService newAddr,
+    CTxIn newVin, CPubKey pubKeyCollateralAddressNew,
+    CPubKey pubKeyLeasingNew,
+    CPubKey pubKeyMasternodeNew,
+    int protocolVersionIn) :
         CMasternode()
 {
     vin = newVin;
     addr = newAddr;
     pubKeyCollateralAddress = pubKeyCollateralAddressNew;
+    pubKeyLeasing = pubKeyLeasingNew;
     pubKeyMasternode = pubKeyMasternodeNew;
     protocolVersion = protocolVersionIn;
 }
@@ -368,6 +379,8 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
     CTxIn txin;
     CPubKey pubKeyCollateralAddressNew;
     CKey keyCollateralAddressNew;
+    CPubKey pubKeyLeasingNew;
+    CKey keyLeasingNew;
     CPubKey pubKeyMasternodeNew;
     CKey keyMasternodeNew;
 
@@ -384,7 +397,11 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
         return false;
     }
 
-    if (!pwalletMain->GetMasternodeVinAndKeys(txin, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex)) {
+    if (!pwalletMain->GetMasternodeVinAndKeys(
+        txin, pubKeyCollateralAddressNew, keyCollateralAddressNew,
+        pubKeyLeasingNew, keyLeasingNew,
+        strTxHash, strOutputIndex))
+    {
         strErrorRet = strprintf("Could not allocate txin %s:%s for masternode %s", strTxHash, strOutputIndex, strService);
         LogPrint("masternode","CMasternodeBroadcast::Create -- %s\n", strErrorRet);
         return false;
@@ -394,10 +411,20 @@ bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMast
     if(!CheckDefaultPort(strService, strErrorRet, "CMasternodeBroadcast::Create"))
         return false;
 
-    return Create(txin, CService(strService), keyCollateralAddressNew, pubKeyCollateralAddressNew, keyMasternodeNew, pubKeyMasternodeNew, strErrorRet, mnbRet);
+    return Create(
+        txin, CService(strService),
+        keyCollateralAddressNew, pubKeyCollateralAddressNew,
+        keyLeasingNew, pubKeyLeasingNew,
+        keyMasternodeNew, pubKeyMasternodeNew,
+        strErrorRet, mnbRet);
 }
 
-bool CMasternodeBroadcast::Create(CTxIn txin, CService service, CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew, CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew, std::string& strErrorRet, CMasternodeBroadcast& mnbRet)
+bool CMasternodeBroadcast::Create(
+    CTxIn txin, CService service,
+    CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew,
+    CKey keyLeasingNew, CPubKey pubKeyLeasingNew,
+    CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew,
+    std::string& strErrorRet, CMasternodeBroadcast& mnbRet)
 {
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
@@ -408,8 +435,9 @@ bool CMasternodeBroadcast::Create(CTxIn txin, CService service, CKey keyCollater
         fNewSigs = chainActive.NewSigsActive();
     }
 
-    LogPrint("masternode", "CMasternodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyMasternodeNew.GetID() = %s\n",
-        CBitcoinAddress(pubKeyCollateralAddressNew.GetID()).ToString(),
+    LogPrint("masternode", "CMasternodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, pubKeyLeasingAddressNew = %s, pubKeyMasternodeNew.GetID() = %s\n",
+        CBTCUAddress(pubKeyCollateralAddressNew.GetID()).ToString(),
+        CBTCUAddress(pubKeyLeasingNew.GetID()).ToString(),
         pubKeyMasternodeNew.GetID().ToString());
 
     CMasternodePing mnp(txin);
@@ -420,7 +448,7 @@ bool CMasternodeBroadcast::Create(CTxIn txin, CService service, CKey keyCollater
         return false;
     }
 
-    mnbRet = CMasternodeBroadcast(service, txin, pubKeyCollateralAddressNew, pubKeyMasternodeNew, PROTOCOL_VERSION);
+    mnbRet = CMasternodeBroadcast(service, txin, pubKeyCollateralAddressNew, pubKeyLeasingNew, pubKeyMasternodeNew, PROTOCOL_VERSION);
 
     if (!mnbRet.IsValidNetAddr()) {
         strErrorRet = strprintf("Invalid IP address %s, masternode=%s", mnbRet.addr.ToStringIP (), txin.prevout.hash.ToString());
@@ -541,6 +569,17 @@ bool CMasternodeBroadcast::CheckAndUpdate(int& nDos)
         LogPrint("masternode","mnb - pubkey2 the wrong size\n");
         nDos = 100;
         return false;
+    }
+
+    if (pubKeyLeasing.size()) {
+        CScript pubkeyScript3;
+        pubkeyScript3 = GetScriptForDestination(pubKeyLeasing.GetID());
+
+        if (pubkeyScript3.size() != 25) {
+            LogPrint("masternode", "mnb - pubkey3 the wrong size\n");
+            nDos = 100;
+            return false;
+        }
     }
 
     if (!vin.scriptSig.empty()) {

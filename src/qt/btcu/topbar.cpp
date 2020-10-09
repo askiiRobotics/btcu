@@ -77,6 +77,9 @@ TopBar::TopBar(BTCUGUI* _mainWindow, QWidget *parent) :
     ui->pushButtonColdStaking->setButtonClassStyle("cssClass", "btn-check-cold-staking-inactive");
     ui->pushButtonColdStaking->setButtonText("Cold Staking Disabled");
 
+    ui->pushButtonLeasing->setButtonClassStyle("cssClass", "btn-check-leasing-inactive");
+    ui->pushButtonLeasing->setButtonText("Leasing Disabled");
+
     ui->pushButtonSync->setButtonClassStyle("cssClass", "btn-check-sync");
     ui->pushButtonSync->setButtonText(" %54 Synchronizing..");
 
@@ -112,6 +115,7 @@ TopBar::TopBar(BTCUGUI* _mainWindow, QWidget *parent) :
     connect(ui->pushButtonTheme, SIGNAL(Mouse_Pressed()), this, SLOT(onThemeClicked()));
     connect(ui->pushButtonFAQ, SIGNAL(Mouse_Pressed()), _mainWindow, SLOT(openFAQ()));
     connect(ui->pushButtonColdStaking, SIGNAL(Mouse_Pressed()), this, SLOT(onColdStakingClicked()));
+    connect(ui->pushButtonLeasing, SIGNAL(Mouse_Pressed()), this, SLOT(onLeasingClicked()));
     connect(ui->pushButtonSync, &ExpandableButton::Mouse_HoverLeave, this, &TopBar::refreshProgressBarSize);
     connect(ui->pushButtonSync, &ExpandableButton::Mouse_Hover, this, &TopBar::refreshProgressBarSize);
 }
@@ -325,6 +329,34 @@ void TopBar::onColdStakingClicked() {
     Q_EMIT onShowHideColdStakingChanged(show);
 }
 
+void TopBar::onLeasingClicked() {
+
+    bool isLeasingEnabled = walletModel->isLeasing();
+    ui->pushButtonLeasing->setChecked(isLeasingEnabled);
+
+    bool show = (isInitializing) ? walletModel->getOptionsModel()->isLeasingScreenEnabled() :
+                walletModel->getOptionsModel()->invertLeasingScreenStatus();
+    QString className;
+    QString text;
+
+    if (isLeasingEnabled) {
+        text = "Leasing Active";
+        className = (show) ? "btn-check-leasing-checked" : "btn-check-leasing-unchecked";
+    } else if (show) {
+        className = "btn-check-leasing";
+        text = "Leasing Enabled";
+    } else {
+        className = "btn-check-leasing-inactive";
+        text = "Leasing Disabled";
+    }
+
+    ui->pushButtonLeasing->setButtonClassStyle("cssClass", className, true);
+    ui->pushButtonLeasing->setButtonText(text);
+    updateStyle(ui->pushButtonLeasing);
+
+    Q_EMIT onShowHideLeasingChanged(show);
+}
+
 TopBar::~TopBar(){
     if(timerStakingIcon){
         timerStakingIcon->stop();
@@ -481,6 +513,7 @@ void TopBar::loadWalletModel(){
 
     refreshStatus();
     onColdStakingClicked();
+    onLeasingClicked();
 
     isInitializing = false;
 }

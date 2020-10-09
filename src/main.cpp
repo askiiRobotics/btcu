@@ -42,6 +42,7 @@
 #include "utilmoneystr.h"
 #include "validationinterface.h"
 #include "zbtcuchain.h"
+#include "leasing/leasing_tx_verify.h"
 
 #include "zbtcu/zerocoin.h"
 #include "libzerocoin/Denominations.h"
@@ -55,7 +56,6 @@
 #include <boost/foreach.hpp>
 #include <atomic>
 #include <queue>
-
 
 #if defined(NDEBUG)
 #error "BTCU cannot be compiled without assertions."
@@ -77,6 +77,7 @@ int64_t nTimeBestReceived = 0;
 CWaitableCriticalSection g_best_block_mutex;
 std::condition_variable g_best_block_cv;
 uint256 g_best_block;
+uint256 g_hashChainstate;
 
 int nScriptCheckThreads = 0;
 std::atomic<bool> fImporting{false};
@@ -804,7 +805,7 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason)
  */
 bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
 {
-    if (tx.IsCoinBase() || tx.HasZerocoinSpendInputs())
+    if (tx.IsCoinBase() || tx.HasZerocoinSpendInputs() || tx.IsLeasingReward())
         return true; // coinbase has no inputs and zerocoinspend has a special input
     //todo should there be a check for a 'standard' zerocoinspend here?
 
@@ -1134,7 +1135,8 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
     // Check transaction
     int chainHeight = chainActive.Height();
     bool fColdStakingActive = sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
-    if (!CheckTransaction(tx, chainHeight >= Params().Zerocoin_StartHeight(), true, state, isBlockBetweenFakeSerialAttackRange(chainHeight), fColdStakingActive))
+    bool fLeasingActive = sporkManager.IsSporkActive(SPORK_1017_LEASING_ENFORCEMENT);
+    if (!CheckTransaction(tx, chainHeight >= Params().Zerocoin_StartHeight(), true, state, isBlockBetweenFakeSerialAttackRange(chainHeight), fColdStakingActive, fLeasingActive))
         return state.DoS(100, error("%s : CheckTransaction failed", __func__), REJECT_INVALID, "bad-tx");
 
     // Coinbase is only valid in a block, not as a loose transaction
@@ -1146,6 +1148,11 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
     if (tx.IsCoinStake())
         return state.DoS(100, error("%s : coinstake as individual tx (id=%s): %s",
                 __func__, tx.GetHash().GetHex(), tx.ToString()), REJECT_INVALID, "coinstake");
+
+    // Leasing reward is also only valid in a block, not as a loose transaction
+    if (tx.IsLeasingReward())
+        return state.DoS(100, error("%s : leasing reward as individual tx (id=%s): %s",
+                __func__, tx.GetHash().GetHex(), tx.ToString()), REJECT_INVALID, "leasing reward");
 
     // Only accept nLockTime-using transactions that can be mined in the next
     // block; we don't want our mempool filled up with transactions that can't
@@ -1339,9 +1346,9 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
             }
         }
 
-        if (fRejectInsaneFee && nFees > ::minRelayTxFee.GetFee(nSize) * 10000)
+        if (fRejectInsaneFee && nFees > ::minRelayTxFee.GetFee(nSize) * 1000000)
             return error("%s : insane fees %s, %d > %d",
-                    __func__, hash.ToString(), nFees, ::minRelayTxFee.GetFee(nSize) * 10000);
+                    __func__, hash.ToString(), nFees, ::minRelayTxFee.GetFee(nSize) * 1000000);
 
         // As zero fee transactions are not going to be accepted in the near future (4.0) and the code will be fully refactored soon.
         // This is just a quick inline towards that goal, the mempool by default will not accept them. Blocking
@@ -1403,6 +1410,11 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
     if (tx.IsCoinBase())
         return state.DoS(100, error("AcceptableInputs: : coinbase as individual tx"),
             REJECT_INVALID, "coinbase");
+
+    // Leasing reward is only valid in a block, not as loose transaction
+    if (tx.IsLeasingReward())
+        return state.DoS(100, error("AcceptableInputs: : leasing reward as individual tx"),
+            REJECT_INVALID, "leasing reward");
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     std::string reason;
@@ -1552,10 +1564,10 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
             }
         }
 
-        if (fRejectInsaneFee && nFees > ::minRelayTxFee.GetFee(nSize) * 10000)
+        if (fRejectInsaneFee && nFees > ::minRelayTxFee.GetFee(nSize) * 1000000)
             return error("AcceptableInputs: : insane fees %s, %d > %d",
                 hash.ToString(),
-                nFees, ::minRelayTxFee.GetFee(nSize) * 10000);
+                nFees, ::minRelayTxFee.GetFee(nSize) * 1000000);
 
         bool fCLTVIsActivated = chainActive.Tip()->nHeight >= Params().BIP65ActivationHeight();
 
@@ -1618,6 +1630,24 @@ bool GetTransaction(const uint256& hash, CTransaction& txOut, uint256& hashBlock
             return true;
         }
 
+        if (fAllowSlow) { // use coin database to locate block that contains transaction, and scan it
+            int nHeight = -1;
+            {
+                CCoinsViewCache& view = *pcoinsTip;
+                const CCoins* coins = view.AccessCoins(hash);
+                if (coins) {
+                    if (coins->nVersion == CTransaction::BITCOIN_VERSION) {
+                        hashBlock = Params().HashGenesisBlock();
+                        txOut = CTransaction(hash, *coins);
+                        return true;
+                    }
+                    nHeight = coins->nHeight;
+                }
+            }
+            if (nHeight > 0)
+                pindexSlow = chainActive[nHeight];
+        }
+
         if (fTxIndex) {
             CDiskTxPos postx;
             if (pblocktree->ReadTxIndex(hash, postx)) {
@@ -1640,18 +1670,6 @@ bool GetTransaction(const uint256& hash, CTransaction& txOut, uint256& hashBlock
 
             // transaction not found in the index, nothing more can be done
             return false;
-        }
-
-        if (fAllowSlow) { // use coin database to locate block that contains transaction, and scan it
-            int nHeight = -1;
-            {
-                CCoinsViewCache& view = *pcoinsTip;
-                const CCoins* coins = view.AccessCoins(hash);
-                if (coins)
-                    nHeight = coins->nHeight;
-            }
-            if (nHeight > 0)
-                pindexSlow = chainActive[nHeight];
         }
     }
 
@@ -2214,7 +2232,7 @@ void static InvalidBlockFound(CBlockIndex* pindex, const CValidationState& state
 void UpdateCoins(const CTransaction& tx, CValidationState& state, CCoinsViewCache& inputs, CTxUndo& txundo, int nHeight)
 {
     // mark inputs spent
-    if (!tx.IsCoinBase() && !tx.HasZerocoinSpendInputs()) {
+    if (!tx.IsCoinBase() && !tx.HasZerocoinSpendInputs() && !tx.IsLeasingReward()) {
         txundo.vprevout.reserve(tx.vin.size());
         for (const CTxIn& txin : tx.vin) {
             txundo.vprevout.push_back(CTxInUndo());
@@ -2322,7 +2340,7 @@ CAmount GetInvalidUTXOValue()
 
 bool CheckInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, std::vector<CScriptCheck>* pvChecks)
 {
-    if (!tx.IsCoinBase() && !tx.HasZerocoinSpendInputs()) {
+    if (!tx.IsCoinBase() && !tx.HasZerocoinSpendInputs() && !tx.IsLeasingReward()) {
         if (pvChecks)
             pvChecks->reserve(tx.vin.size());
 
@@ -2570,7 +2588,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
         }
 
         // restore inputs
-        if (!tx.IsCoinBase() && !tx.HasZerocoinSpendInputs()) { // not coinbases or zerocoinspend because they dont have traditional inputs
+        if (!tx.IsCoinBase() && !tx.HasZerocoinSpendInputs() && !tx.IsLeasingReward()) { // not coinbases or zerocoinspend because they dont have traditional inputs
             const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
             if (txundo.vprevout.size() != tx.vin.size())
                 return error("DisconnectBlock() : transaction and undo data inconsistent - txundo.vprevout.siz=%d tx.vin.siz=%d", txundo.vprevout.size(), tx.vin.size());
@@ -2587,8 +2605,9 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                     coins->nHeight = undo.nHeight;
                     coins->nVersion = undo.nVersion;
                 } else {
-                    if (coins->IsPruned())
-                        fClean = fClean && error("DisconnectBlock() : undo data adding output to missing transaction");
+// Its for BTCU
+//                    if (coins->IsPruned())
+//                        fClean = fClean && error("DisconnectBlock() : undo data adding output to missing transaction");
                 }
                 if (coins->IsAvailable(out.n))
                     fClean = fClean && error("DisconnectBlock() : undo data overwriting existing output");
@@ -2786,7 +2805,7 @@ bool RecalculateBTCUSupply(int nHeightStart)
         CAmount nValueOut = 0;
         for (const CTransaction& tx : block.vtx) {
             for (unsigned int i = 0; i < tx.vin.size(); i++) {
-                if (tx.IsCoinBase())
+                if (tx.IsCoinBase() || tx.IsLeasingReward())
                     break;
 
                 if (tx.vin[i].IsZerocoinSpend()) {
@@ -2803,6 +2822,9 @@ bool RecalculateBTCUSupply(int nHeightStart)
 
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 if (i == 0 && tx.IsCoinStake())
+                    continue;
+
+                if (i == 0 && tx.IsLeasingReward())
                     continue;
 
                 nValueOut += tx.vout[i].nValue;
@@ -2919,15 +2941,26 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!fAlreadyChecked && !CheckBlock(block, state, !fJustCheck, !fJustCheck))
         return false;
 
+
     // verify that the view's current state corresponds to the previous block
-    uint256 hashPrevBlock = pindex->pprev == NULL ? uint256(0) : pindex->pprev->GetBlockHash();
-    if (hashPrevBlock != view.GetBestBlock())
-        LogPrintf("%s: hashPrev=%s view=%s\n", __func__, hashPrevBlock.GetHex(), view.GetBestBlock().GetHex());
-    assert(hashPrevBlock == view.GetBestBlock());
+    // we start from bitcoin chainstate therefore shouldn't check previous for the first block
+    if(pindex->nHeight > 0)
+    {
+       uint256 hashPrevBlock = pindex->pprev == NULL ? uint256(0): pindex->pprev->GetBlockHash();
+       if (hashPrevBlock != view.GetBestBlock())
+          LogPrintf("%s: hashPrev=%s view=%s\n", __func__, hashPrevBlock.GetHex(), view.GetBestBlock().GetHex());
+       assert(hashPrevBlock == view.GetBestBlock());
+    }
 
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
     if (block.GetHash() == Params().HashGenesisBlock()) {
+
+        //for the first block check hash of chainstate db
+        if(block.hashChainstate != g_hashChainstate)
+           LogPrintf("%s: block.hashChainstate=%s HashDir=%s\n", __func__, block.hashChainstate.GetHex(), g_hashChainstate.GetHex());
+        //assert(block.hashChainstate == g_hashChainstate);
+
         view.SetBestBlock(pindex->GetBlockHash());
         return true;
     }
@@ -2971,6 +3004,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
     CAmount nValueOut = 0;
     CAmount nValueIn = 0;
+    CAmount nLeasingOut = 0;
     unsigned int nMaxBlockSigOps = MAX_BLOCK_SIGOPS_CURRENT;
     std::vector<uint256> vSpendsInBlock;
     uint256 hashBlock = block.GetHash();
@@ -2988,7 +3022,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         // This logic is not necessary for memory pool transactions, as AcceptToMemoryPool
         // already refuses previously-known transaction ids entirely.
         const CCoins* coins = view.AccessCoins(tx.GetHash());
-        if (coins && !coins->IsPruned())
+        // BTCU TODO: specific? i > 0
+        if (i > 0 && coins && !coins->IsPruned())
             return state.DoS(100, error("ConnectBlock() : tried to overwrite transaction"),
                              REJECT_INVALID, "bad-txns-BIP30");
 
@@ -3061,7 +3096,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 }
             }
 
-        } else if (!tx.IsCoinBase()) {
+        } else if (!tx.IsCoinBase() && !tx.IsLeasingReward()) {
             if (!view.HaveInputs(tx))
                 return state.DoS(100, error("ConnectBlock() : inputs missing/spent"),
                     REJECT_INVALID, "bad-txns-inputs-missingorspent");
@@ -3103,7 +3138,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 validatorTransactions.push_back(tx);
             }
         }
-        nValueOut += tx.GetValueOut();
+        if (tx.IsLeasingReward()) {
+#ifdef ENABLE_LEASING_MANAGER
+            if (pleasingManagerMain && !CheckLeasingRewardTransaction(tx, state, *pleasingManagerMain))
+                return false;
+#endif //ENABLE_LEASING_MANAGER
+            nLeasingOut += tx.GetValueOut();
+        } else
+            nValueOut += tx.GetValueOut();
 
         CTxUndo undoDummy;
         if (i > 0) {
@@ -3147,6 +3189,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                                     FormatMoney(pindex->nMint), FormatMoney(nExpectedMint)),
                          REJECT_INVALID, "bad-cb-amount");
     }
+
+    //
+    // update supply and mint with leasing rewards
+    pindex->nMoneySupply += nLeasingOut;
+    pindex->nMint += nLeasingOut;
 
     if (!control.Wait())
         return state.DoS(100, error("%s: CheckQueue failed", __func__), REJECT_INVALID, "block-validation-failed");
@@ -3389,7 +3436,7 @@ bool static DisconnectTip(CValidationState& state)
         // ignore validation errors in resurrected transactions
         std::list<CTransaction> removed;
         CValidationState stateDummy;
-        if (tx.IsCoinBase() || tx.IsCoinStake() || !AcceptToMemoryPool(mempool, stateDummy, tx, false, NULL))
+        if (tx.IsCoinBase() || tx.IsCoinStake() || tx.IsLeasingReward() || !AcceptToMemoryPool(mempool, stateDummy, tx, false, NULL))
             mempool.remove(tx, removed, true);
     }
     mempool.removeCoinbaseSpends(pcoinsTip, pindexDelete->nHeight);
@@ -3571,7 +3618,7 @@ bool DisconnectBlockAndInputs(CValidationState& state, CTransaction txLock)
         // We only do this for blocks after the last checkpoint (reorganisation before that
         // point should only happen with -reindex/-loadblock, or a misbehaving peer.
         for (const CTransaction& tx : block.vtx) {
-            if (!tx.IsCoinBase()) {
+            if (!tx.IsCoinBase() && !tx.IsLeasingReward()) {
                 for (const CTxIn& in1 : txLock.vin) {
                     for (const CTxIn& in2 : tx.vin) {
                         if (in1.prevout == in2.prevout) foundConflictingTx = true;
@@ -4140,6 +4187,34 @@ bool CheckColdStakeFreeOutput(const CTransaction& tx, const int nHeight)
     return true;
 }
 
+bool CheckLeasingFreeOutput(const CTransaction& tx, const int nHeight)
+{
+    if (!tx.HasP2LOutputs())
+        return true;
+
+    const unsigned int outs = tx.vout.size();
+    const CTxOut& lastOut = tx.vout[outs-1];
+    if (outs >=3 && lastOut.scriptPubKey != tx.vout[outs-2].scriptPubKey) {
+        // last output can either be a mn reward or a budget payment
+        // leasing is active much after nPublicZCSpends so GetMasternodePayment is always 3 BTCU.
+        // TODO: double check this if/when MN rewards change
+        if (lastOut.nValue == 3 * COIN)
+            return true;
+
+        if (budget.IsBudgetPaymentBlock(nHeight)) {
+            // if this is a budget payment, check that SPORK_9 and SPORK_13 are active (if spork list synced)
+            return (!masternodeSync.IsSporkListSynced() ||
+                    (sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) &&
+                     sporkManager.IsSporkActive(SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT)));
+        }
+
+        return error("%s: Wrong leasing outputs: vout[%d].scriptPubKey (%s) != vout[%d].scriptPubKey (%s) - value: %s",
+                     __func__, outs-1, HexStr(lastOut.scriptPubKey), outs-2, HexStr(tx.vout[outs-2].scriptPubKey), FormatMoney(lastOut.nValue).c_str());
+    }
+
+    return true;
+}
+
 bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig)
 {
     // These are checks that are independent of context.
@@ -4201,12 +4276,14 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
         for (unsigned int i = 2; i < block.vtx.size(); i++)
             if (block.vtx[i].IsCoinStake())
                 return state.DoS(100, error("%s : more than one coinstake", __func__));
+            else if (i > 2 && block.vtx[i].IsLeasingReward())
+                return state.DoS(100, error("%s : more than one leasing reward", __func__));
     }
 
     // ----------- swiftTX transaction scanning -----------
     if (sporkManager.IsSporkActive(SPORK_3_SWIFTTX_BLOCK_FILTERING)) {
         for (const CTransaction& tx : block.vtx) {
-            if (!tx.IsCoinBase()) {
+            if (!tx.IsCoinBase() && !tx.IsLeasingReward()) {
                 //only reject blocks when it's based on complete consensus
                 for (const CTxIn& in : tx.vin) {
                     if (mapLockedInputs.count(in.prevout)) {
@@ -4227,6 +4304,9 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
 
     // Cold Staking enforcement (true during sync - reject P2CS outputs when false)
     bool fColdStakingActive = true;
+
+    // Lesing enforcement (true during sync - reject P2L outputs when false)
+    bool fLeasingActive = true;
 
     // Zerocoin activation
     bool fZerocoinActive = block.GetBlockTime() > Params().Zerocoin_StartTime();
@@ -4257,8 +4337,18 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                         REJECT_INVALID, "bad-p2cs-outs");
             }
 
+            // Last output of Leasing is not abused
+            if (IsPoS && !CheckLeasingFreeOutput(block.vtx[1], nHeight)) {
+                mapRejectedBlocks.insert(std::make_pair(block.GetHash(), GetTime()));
+                return state.DoS(0, error("%s : Leasing outputs not valid", __func__),
+                                 REJECT_INVALID, "bad-p2l-outs");
+            }
+
             // set Cold Staking Spork
             fColdStakingActive = sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
+
+            // set Leasing Spork
+            fLeasingActive = sporkManager.IsSporkActive(SPORK_1017_LEASING_ENFORCEMENT);
 
             // check masternode/budget payment
             if (!IsBlockPayeeValid(block, nHeight)) {
@@ -4283,7 +4373,8 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                 blockHeight >= Params().Zerocoin_Block_EnforceSerialRange(),
                 state,
                 isBlockBetweenFakeSerialAttackRange(blockHeight),
-                fColdStakingActive
+                fColdStakingActive,
+                fLeasingActive
         ))
             return error("%s : CheckTransaction failed", __func__);
         
@@ -5198,6 +5289,7 @@ bool CVerifyDB::VerifyDB(CCoinsView* coinsview, int nCheckLevel, int nCheckDepth
     CBlockIndex* pindexFailure = NULL;
     int nGoodTransactions = 0;
     CValidationState state;
+
     for (CBlockIndex* pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev) {
         boost::this_thread::interruption_point();
         uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(chainHeight - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
@@ -5247,8 +5339,10 @@ bool CVerifyDB::VerifyDB(CCoinsView* coinsview, int nCheckLevel, int nCheckDepth
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex))
                 return error("VerifyDB() : *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
-            if (!ConnectBlock(block, state, pindex, coins, false))
+
+            if (!ConnectBlock(block, state, pindex, coins, false)){
                 return error("VerifyDB() : *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            }
         }
     }
 
@@ -5985,6 +6079,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
                               !pSporkDB->SporkExists(SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2) ||
                               !pSporkDB->SporkExists(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) ||
                               !pSporkDB->SporkExists(SPORK_17_COLDSTAKING_ENFORCEMENT) ||
+                              !pSporkDB->SporkExists(SPORK_1017_LEASING_ENFORCEMENT) ||
                               !pSporkDB->SporkExists(SPORK_18_ZEROCOIN_PUBLICSPEND_V4);
 
         if (fMissingSporks || !fRequestedSporksIDB){

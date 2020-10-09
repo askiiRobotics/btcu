@@ -332,6 +332,17 @@ struct CCoinsStats {
     CCoinsStats() : nHeight(0), hashBlock(0), nTransactions(0), nTransactionOutputs(0), nSerializedSize(0), hashSerialized(0), nTotalAmount(0) {}
 };
 
+class CCoinsViewIterator
+{
+public:
+    virtual ~CCoinsViewIterator() = default;
+
+    virtual bool GetTrxHash(uint256&, bool fThrow = false) const;
+    virtual bool GetCoins(CCoins&, bool fThrow = false) const;
+    virtual bool Valid() const;
+    virtual void Next() const;
+
+};
 
 /** Abstract view on the open txout dataset. */
 class CCoinsView
@@ -354,6 +365,9 @@ public:
     //! Calculate statistics about the unspent transaction output set
     virtual bool GetStats(CCoinsStats& stats) const;
 
+    virtual std::unique_ptr<CCoinsViewIterator> SeekToFirst() const;
+    std::unique_ptr<CCoinsViewIterator> SeekToEnd() const { return std::unique_ptr<CCoinsViewIterator>(); }
+
     //! As we use CCoinsViews polymorphically, have a virtual destructor
     virtual ~CCoinsView() {}
 };
@@ -373,6 +387,7 @@ public:
     void SetBackend(CCoinsView& viewIn);
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
     bool GetStats(CCoinsStats& stats) const;
+    std::unique_ptr<CCoinsViewIterator> SeekToFirst() const;
 };
 
 class CCoinsViewCache;
@@ -409,7 +424,7 @@ protected:
 
     /**
      * Make mutable so that we can "fill the cache" even from Get-methods
-     * declared as "const".  
+     * declared as "const".
      */
     mutable uint256 hashBlock;
     mutable CCoinsMap cacheCoins;

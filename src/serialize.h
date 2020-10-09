@@ -19,12 +19,13 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <tuple>
 #include "libzerocoin/Denominations.h"
 #include "libzerocoin/SpendType.h"
 #include "sporkid.h"
 
 class CScript;
-
+class CSizeComputer;
 static const unsigned int MAX_SIZE = 0x02000000;
 
 /**
@@ -92,6 +93,17 @@ enum {
  */
 #define WRITEDATA(s, obj) s.write((char*)&(obj), sizeof(obj))
 #define READDATA(s, obj) s.read((char*)&(obj), sizeof(obj))
+
+#define ADD_SERIALIZE_METHODS_N                                         \
+    template<typename Stream>                                         \
+    void Serialize(Stream& s) const {                                 \
+        NCONST_PTR(this)->SerializationOp(s, CSerActionSerialize());  \
+    }                                                                 \
+    template<typename Stream>                                         \
+    void Unserialize(Stream& s) {                                     \
+        SerializationOp(s, CSerActionUnserialize());                  \
+    }
+#define READWRITE_N(...) (::SerReadWriteMany(s, ser_action, __VA_ARGS__))
 
 inline unsigned int GetSerializeSize(char a, int, int = 0)
 {
@@ -624,6 +636,16 @@ template <typename Stream, typename K, typename T>
 void Unserialize(Stream& is, std::pair<K, T>& item, int nType, int nVersion);
 
 /**
+ * tuple
+ */
+template <typename... T>
+unsigned int GetSerializeSize(const std::tuple<T...>& item, int nType, int nVersion);
+template <typename Stream, typename... T>
+void Serialize(Stream& os, const std::tuple<T...>& item, int nType, int nVersion);
+template <typename Stream, typename... T>
+void Unserialize(Stream& is, std::tuple<T...>& item, int nType, int nVersion);
+
+/**
  * map
  */
 template <typename K, typename T, typename Pred, typename A>
@@ -827,6 +849,58 @@ void Unserialize(Stream& is, std::pair<K, T>& item, int nType, int nVersion)
     Unserialize(is, item.second, nType, nVersion);
 }
 
+/**
+ * tuple
+ */
+
+template <size_t I, size_t S>
+struct CSerializeTuple {
+    template<typename... T>
+    static unsigned int size(const std::tuple<T...>& item, int nType, int nVersion) {
+        return GetSerializeSize(std::get<I>(item), nType, nVersion) + CSerializeTuple<I + 1, S>::size(item, nType, nVersion);
+    }
+
+    template <typename Stream, typename... T>
+    static void write(Stream& os, const std::tuple<T...>& item, int nType, int nVersion) {
+        Serialize(os, std::get<I>(item), nType, nVersion);
+        CSerializeTuple<I + 1, S>::write(os, item, nType, nVersion);
+    }
+
+    template <typename Stream, typename... T>
+    static void read(Stream& is, std::tuple<T...>& item, int nType, int nVersion) {
+        Unserialize(is, std::get<I>(item), nType, nVersion);
+        CSerializeTuple<I + 1, S>::read(is, item, nType, nVersion);
+    }
+};
+
+template <size_t S>
+struct CSerializeTuple<S, S> {
+    template<typename... T>
+    static unsigned int size(const std::tuple<T...>&, int, int) {
+        return 0;
+    }
+
+    template <typename Stream, typename... T>
+    static void write(Stream&, const std::tuple<T...>&, int, int) { }
+
+    template <typename Stream, typename... T>
+    static void read(Stream&, std::tuple<T...>&, int, int) { }
+};
+
+template <typename... T>
+unsigned int GetSerializeSize(const std::tuple<T...>& item, int nType, int nVersion) {
+    return CSerializeTuple<0, std::tuple_size<std::tuple<T...>>::value>::size(item, nType, nVersion);
+}
+
+template <typename Stream, typename... T>
+void Serialize(Stream& os, const std::tuple<T...>& item, int nType, int nVersion) {
+    CSerializeTuple<0, std::tuple_size<std::tuple<T...>>::value>::write(os, item, nType, nVersion);
+}
+
+template <typename Stream, typename... T>
+void Unserialize(Stream& is, std::tuple<T...>& item, int nType, int nVersion) {
+    CSerializeTuple<0, std::tuple_size<std::tuple<T...>>::value>::read(is, item, nType, nVersion);
+}
 
 /**
  * map
@@ -906,6 +980,22 @@ struct CSerActionUnserialize {
     bool ForRead() const { return true; }
 };
 
+template<typename Stream>
+void SerializeMany(Stream& s)
+{
+}
+
+template<typename Stream, typename Arg, typename... Args>
+void SerializeMany(Stream& s, const Arg& arg, const Args&... args)
+{
+    ::Serialize(s, arg);
+    ::SerializeMany(s, args...);
+}
+
+template<typename Stream>
+inline void UnserializeMany(Stream& s)
+{
+}
 template <typename Stream, typename T>
 inline void SerReadWrite(Stream& s, const T& obj, int nType, int nVersion, CSerActionSerialize ser_action)
 {
@@ -917,7 +1007,24 @@ inline void SerReadWrite(Stream& s, T& obj, int nType, int nVersion, CSerActionU
 {
     ::Unserialize(s, obj, nType, nVersion);
 }
+template<typename Stream, typename Arg, typename... Args>
+inline void UnserializeMany(Stream& s, Arg&& arg, Args&&... args)
+{
+    ::Unserialize(s, arg);
+    ::UnserializeMany(s, args...);
+}
 
+template<typename Stream, typename... Args>
+inline void SerReadWriteMany(Stream& s, CSerActionSerialize ser_action, const Args&... args)
+{
+    ::SerializeMany(s, args...);
+}
+
+template<typename Stream, typename... Args>
+inline void SerReadWriteMany(Stream& s, CSerActionUnserialize ser_action, Args&&... args)
+{
+    ::UnserializeMany(s, args...);
+}
 
 class CSizeComputer
 {

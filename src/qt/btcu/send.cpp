@@ -401,11 +401,11 @@ bool SendWidget::sendZbtcu(QList<SendCoinsRecipient> recipients){
         return false;
     }
 
-    std::list<std::pair<CBitcoinAddress*, CAmount>> outputs;
+    std::list<std::pair<CBTCUAddress*, CAmount>> outputs;
     CAmount total = 0;
     for (SendCoinsRecipient rec : recipients){
         total += rec.amount;
-        outputs.push_back(std::pair<CBitcoinAddress*, CAmount>(new CBitcoinAddress(rec.address.toStdString()),rec.amount));
+        outputs.push_back(std::pair<CBTCUAddress*, CAmount>(new CBTCUAddress(rec.address.toStdString()),rec.amount));
     }
 
     // use mints from zBTCU selector if applicable
@@ -446,7 +446,7 @@ bool SendWidget::sendZbtcu(QList<SendCoinsRecipient> recipients){
 
     std::string changeAddress = "";
     if(!boost::get<CNoDestination>(&CoinControlDialog::coinControl->destChange)){
-        changeAddress = CBitcoinAddress(CoinControlDialog::coinControl->destChange).ToString();
+        changeAddress = CBTCUAddress(CoinControlDialog::coinControl->destChange).ToString();
     }else{
         changeAddress = walletModel->getAddressTableModel()->getAddressToShow().toStdString();
     }
@@ -497,7 +497,7 @@ void SendWidget::updateEntryLabels(QList<SendCoinsRecipient> recipients){
         if(!label.isNull()) {
             QString labelOld = walletModel->getAddressTableModel()->labelForAddress(rec.address);
             if(label.compare(labelOld) != 0) {
-                CTxDestination dest = CBitcoinAddress(rec.address.toStdString()).Get();
+                CTxDestination dest = CBTCUAddress(rec.address.toStdString()).Get();
                 if (!walletModel->updateAddressBookLabels(dest, label.toStdString(),
                                                           this->walletModel->isMine(dest) ?
                                                                   AddressBook::AddressBookPurpose::RECEIVE :
@@ -517,13 +517,13 @@ void SendWidget::onChangeAddressClicked(){
     showHideOp(true);
     SendChangeAddressDialog* dialog = new SendChangeAddressDialog(window);
     if(!boost::get<CNoDestination>(&CoinControlDialog::coinControl->destChange)){
-        dialog->setAddress(QString::fromStdString(CBitcoinAddress(CoinControlDialog::coinControl->destChange).ToString()));
+        dialog->setAddress(QString::fromStdString(CBTCUAddress(CoinControlDialog::coinControl->destChange).ToString()));
     }
     if(openDialogWithOpaqueBackgroundY(dialog, window, 3, 5)) {
         if(dialog->selected) {
             QString ret;
             if (dialog->getAddress(walletModel, &ret)) {
-                CoinControlDialog::coinControl->destChange = CBitcoinAddress(ret.toStdString()).Get();
+                CoinControlDialog::coinControl->destChange = CBTCUAddress(ret.toStdString()).Get();
                 ui->btnChangeAddress->setActive(true);
             }else{
                 inform(tr("Invalid change address"));
@@ -713,7 +713,7 @@ void SendWidget::onContactMultiClicked(){
             inform(tr("Invalid address"));
             return;
         }
-        CBitcoinAddress btcuAdd = CBitcoinAddress(address.toStdString());
+        CBTCUAddress btcuAdd = CBTCUAddress(address.toStdString());
         if (walletModel->isMine(btcuAdd)) {
             inform(tr("Cannot store your own address as contact"));
             return;

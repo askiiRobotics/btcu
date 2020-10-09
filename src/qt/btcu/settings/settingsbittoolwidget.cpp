@@ -165,7 +165,7 @@ void SettingsBitToolWidget::onEncryptKeyButtonENCClicked()
         return;
     }
 
-    CBitcoinAddress addr(ui->addressIn_ENC->text().toStdString());
+    CBTCUAddress addr(ui->addressIn_ENC->text().toStdString());
     if (!addr.IsValid()) {
         ui->statusLabel_ENC->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_ENC->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
@@ -281,7 +281,7 @@ void SettingsBitToolWidget::onDecryptClicked(){
 
     key.Set(privKey.begin(), privKey.end(), fCompressed);
     CPubKey pubKey = key.GetPubKey();
-    CBitcoinAddress address(pubKey.GetID());
+    CBTCUAddress address(pubKey.GetID());
     ui->lineEditDecryptResult->setText(QString::fromStdString(address.ToString()));
 }
 
@@ -293,10 +293,10 @@ void SettingsBitToolWidget::importAddressFromDecKey(){
         return;
     }
 
-    CBitcoinAddress address(ui->lineEditDecryptResult->text().toStdString());
+    CBTCUAddress address(ui->lineEditDecryptResult->text().toStdString());
     CPubKey pubkey = key.GetPubKey();
 
-    if (!address.IsValid() || !key.IsValid() || CBitcoinAddress(pubkey.GetID()).ToString() != address.ToString()) {
+    if (!address.IsValid() || !key.IsValid() || CBTCUAddress(pubkey.GetID()).ToString() != address.ToString()) {
         ui->statusLabel_DEC->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_DEC->setText(tr("Data Not Valid.") + QString(" ") + tr("Please try again."));
         return;
@@ -327,7 +327,7 @@ void SettingsBitToolWidget::importAddressFromDecKey(){
 
         // whenever a key is imported, we need to scan the whole chain
         pwalletMain->nTimeFirstKey = 1; // 0 would be considered 'no value'
-        pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
+        pwalletMain->ScanForWalletTransactions(pcoinsTip->SeekToFirst(), chainActive.Genesis(), true);
     }
 
     ui->statusLabel_DEC->setStyleSheet("QLabel { color: green; }");

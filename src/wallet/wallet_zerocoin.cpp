@@ -216,7 +216,7 @@ bool CWallet::CreateZerocoinMintTransaction(const CAmount nValue,
 // - ZC PublicSpends
 
 bool CWallet::SpendZerocoin(CAmount nAmount, CWalletTx& wtxNew, CZerocoinSpendReceipt& receipt, std::vector<CZerocoinMint>& vMintsSelected,
-        std::list<std::pair<CBitcoinAddress*,CAmount>> addressesTo, CBitcoinAddress* changeAddress)
+        std::list<std::pair<CBTCUAddress*,CAmount>> addressesTo, CBTCUAddress* changeAddress)
 {
     // Default: assume something goes wrong. Depending on the problem this gets more specific below
     int nStatus = ZBTCU_SPEND_ERROR;
@@ -375,8 +375,8 @@ bool CWallet::CreateZCPublicSpendTransaction(
         CZerocoinSpendReceipt& receipt,
         std::vector<CZerocoinMint>& vSelectedMints,
         std::vector<CDeterministicMint>& vNewMints,
-        std::list<std::pair<CBitcoinAddress*,CAmount>> addressesTo,
-        CBitcoinAddress* changeAddress)
+        std::list<std::pair<CBTCUAddress*,CAmount>> addressesTo,
+        CBTCUAddress* changeAddress)
 {
     // Check available funds
     int nStatus = ZBTCU_TRX_FUNDS_PROBLEMS;
@@ -523,15 +523,15 @@ bool CWallet::CreateZCPublicSpendTransaction(
             }
 
             //if there are addresses to send to then use them, if not generate a new address to send to
-            CBitcoinAddress destinationAddr;
+            CBTCUAddress destinationAddr;
             if (addressesTo.size() == 0) {
                 CPubKey pubkey;
                 assert(reserveKey.GetReservedKey(pubkey)); // should never fail
-                destinationAddr = CBitcoinAddress(pubkey.GetID());
+                destinationAddr = CBTCUAddress(pubkey.GetID());
                 addressesTo.push_back(std::make_pair(&destinationAddr, nValue));
             }
 
-            for (std::pair<CBitcoinAddress*,CAmount> pair : addressesTo){
+            for (std::pair<CBTCUAddress*,CAmount> pair : addressesTo){
                 CScript scriptZerocoinSpend = GetScriptForDestination(pair.first->Get());
                 //add output to btcu address to the transaction (the actual primary spend taking place)
                 // TODO: check value?

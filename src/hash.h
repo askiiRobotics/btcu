@@ -22,11 +22,13 @@
 #include "crypto/sph_keccak.h"
 #include "crypto/sph_skein.h"
 #include "crypto/sha512.h"
+#include "util.h"
 
 #include <iomanip>
 #include <openssl/sha.h>
 #include <sstream>
 #include <vector>
+#include <boost/filesystem.hpp>
 
 
 typedef uint256 ChainCode;
@@ -161,6 +163,48 @@ inline std::string Hash(std::string input)
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
     }
     return ss.str();
+}
+
+/**Compute the 256-bit hash from directory*/
+inline int HashChainstate(std::string &strHash)
+{
+
+   const boost::filesystem::path& path = GetDataDir() / "chainstate";
+   if (!boost::filesystem::exists(path)) {
+      boost::filesystem::create_directories(path);
+   }
+   unsigned char hash[SHA256_DIGEST_LENGTH];
+   SHA256_CTX sha256;
+   SHA256_Init(&sha256);
+   const int bufSize = 32768;
+   unsigned char *buffer = (unsigned char *) malloc(bufSize);
+   int bytesRead = 0;
+   if(!buffer) return ENOMEM;
+
+   //Iterate files in directory
+   for(auto & p : boost::filesystem::recursive_directory_iterator( path ))
+   {
+      //Perform single file
+      const boost::filesystem::path cp = (p);
+      //if(cp.string().find("LOCK") != std::string::npos || cp.string().find("LOG") != std::string::npos || cp.string().find("MANIFEST") != std::string::npos)
+      if(cp.string().find(".ldb") == std::string::npos)
+         continue;
+
+      FILE *file = fopen(cp.string().c_str(), "rb");
+      if(!file) return -534;
+      while((bytesRead = fread(buffer, 1, bufSize, file)))
+      {
+         SHA256_Update(&sha256, buffer, bytesRead);
+      }
+      fclose(file);
+
+   }
+
+   free(buffer);
+   SHA256_Final(hash, &sha256);
+   std::string input (reinterpret_cast<const char *> (hash),sizeof (hash) / sizeof (hash[0]));
+   strHash = Hash(input);
+   return 0;
 }
 
 /** Compute the 256-bit hash of a void pointer */

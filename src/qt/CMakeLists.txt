@@ -10,14 +10,11 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif ()
 
-find_package(Qrcode)
-if (QRCODE_FOUND)
-    include_directories ( ${QRCODE_INCLUDE_DIR} )
-    link_directories ( ${QRCODE_LIBRARY_DIRS} )
-endif()
+find_package(Qrcode REQUIRED)
+include_directories ( ${QRCODE_INCLUDE_DIR} )
 
 unset(Qt5Enables)
-foreach(comp Widgets Core Gui Network LinguistTools DBus Svg Charts)
+foreach(comp Widgets Core Gui Network LinguistTools DBus Svg Charts Test)
     find_package(Qt5${comp})
     set(Qt5Enables "${Qt5Enables};Qt5${comp}_FOUND")
     if(Qt5${comp}_FOUND)
@@ -58,6 +55,7 @@ source_group("QtHeaders" FILES ${LOCAL_QT_HEADERS})
 
 find_package(Protobuf REQUIRED)
 if(Protobuf_FOUND)
+    message(STATUS "INCLUDE: ${Protobuf_INCLUDE_DIR}")
     message(STATUS "Found Protobuf compiler: ${Protobuf_PROTOC_EXECUTABLE}")
     message(STATUS "Found Protobuf library: ${Protobuf_LIBRARIES}")
 endif()
@@ -132,6 +130,7 @@ SET(QT_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/optionbutton.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/mninfodialog.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/coldstakingmodel.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/leasingmodel.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/mnmodel.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/masternodewizarddialog.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/mnrow.cpp
@@ -148,6 +147,7 @@ SET(QT_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/receivewidget.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/myaddressrow.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/csrow.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/lrow.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/addressholder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/tooltipmenu.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/addresseswidget.cpp
@@ -155,6 +155,7 @@ SET(QT_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/denomgenerationdialog.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/privacywidget.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/coldstakingwidget.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/leasingwidget.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/settings/settingsbackupwallet.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/settings/settingsbittoolwidget.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/settings/settingsconsolewidget.cpp
@@ -223,11 +224,11 @@ target_include_directories(btcu-qt PUBLIC ${ENDIAN_INCLUDES} ${CMAKE_SOURCE_DIR}
 target_link_libraries(btcu-qt
         qt_stuff
         univalue
-        SERVER_A UTIL_A WALLET_A CLI_A COMMON_A BITCOIN_CRYPTO_A ZEROCOIN_A
+        SERVER_A WALLET_A CLI_A UTIL_A COMMON_A ZEROCOIN_A BITCOIN_CRYPTO_A
         leveldb leveldb_sse42 memenv secp256k1
         ${BerkeleyDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARIES} ${LIBEVENT_LIB}
-        pthread
-        libqrencode.a
+        ${QRCODE_LIB}
+        Threads::Threads
         )
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(btcu-qt "-framework Cocoa")
@@ -256,4 +257,57 @@ if (Qt5DBus_FOUND)
 endif()
 if (Qt5Charts_FOUND)
     target_link_libraries(btcu-qt Qt5::Charts ${QT_LIBRARIES})
+endif()
+
+set(QT_TEST_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/test_main.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/uritests.cpp
+
+        # wallet
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/paymentservertests.cpp
+    )
+
+add_executable(test_btcu-qt ${QT_TEST_SOURCES})
+add_dependencies(test_btcu-qt translations_target libunivalue libsecp256k1 leveldb leveldb_sse42 memenv)
+target_compile_options(test_btcu-qt PUBLIC -fPIC)
+target_include_directories(test_btcu-qt PUBLIC
+        ${ENDIAN_INCLUDES}
+        ${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
+        ${CMAKE_CURRENT_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/leveldb/include
+        ${CMAKE_SOURCE_DIR}/src/univalue/include
+        ${CMAKE_SOURCE_DIR}/src/secp256k1/include
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/settings
+        ${OPENSSL_INCLUDE_DIR}
+        ${BerkeleyDB_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
+    )
+
+target_link_libraries(test_btcu-qt PUBLIC
+        qt_stuff
+        univalue
+        SERVER_A WALLET_A CLI_A UTIL_A COMMON_A ZEROCOIN_A BITCOIN_CRYPTO_A
+        leveldb leveldb_sse42 memenv secp256k1
+        ${BerkeleyDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARIES} ${LIBEVENT_LIB}
+        pthread
+        ${QRCODE_LIB}
+        Qt5::Gui Qt5::Core Qt5::Widgets Qt5::Network Qt5::Svg Qt5::Test ${QT_LIBRARIES}
+    )
+
+if(GMP_FOUND)
+    target_link_libraries(test_btcu-qt PUBLIC ${GMP_LIBRARY})
+    target_include_directories(test_btcu-qt PUBLIC ${GMP_INCLUDE_DIR})
+endif()
+if (Qt5DBus_FOUND)
+    target_link_libraries(test_btcu-qt PUBLIC Qt5::DBus ${QT_LIBRARIES})
+endif()
+if (Qt5Charts_FOUND)
+    target_link_libraries(test_btcu-qt PUBLIC Qt5::Charts ${QT_LIBRARIES})
+endif()
+if(ZMQ_FOUND)
+    target_link_libraries(test_btcu-qt PUBLIC ZMQ_A ${ZMQ_LIB})
+    target_include_directories(test_btcu-qt PUBLIC ${ZMQ_INCLUDE_DIR})
 endif()

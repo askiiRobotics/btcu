@@ -6,9 +6,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+
 #include "addressbook.h"
 #include "amount.h"
-#include "base58.h"
+#include "btcu_address.h"
 #include "core_io.h"
 #include "init.h"
 #include "net.h"
@@ -32,6 +33,9 @@
 #include <univalue.h>
 #include <iostream>
 
+#include "validation.h"
+#include "coincontrol.h"
+#include "contract.h"
 
 int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
@@ -82,7 +86,7 @@ std::string AccountFromValue(const UniValue& value)
     return strAccount;
 }
 
-CBitcoinAddress GetNewAddressFromAccount(const std::string purpose, const UniValue &params,
+CBTCUAddress GetNewAddressFromAccount(const std::string purpose, const UniValue &params,
         const CChainParams::Base58Type addrType = CChainParams::PUBKEY_ADDRESS)
 {
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -91,11 +95,792 @@ CBitcoinAddress GetNewAddressFromAccount(const std::string purpose, const UniVal
     if (!params.isNull() && params.size() > 0)
         strAccount = AccountFromValue(params[0]);
 
-    CBitcoinAddress address;
+    CBTCUAddress address;
     PairResult r = pwalletMain->getNewAddress(address, strAccount, purpose, addrType);
     if(!r.result)
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, *r.status);
     return address;
+}
+
+bool IsValidContractSenderAddressKey(const CTxDestination &dest)
+{
+    const CKeyID *keyID = boost::get<CKeyID>(&dest);
+    return keyID != 0;
+}
+bool SetDefaultSignSenderAddress(CWallet* const pwallet, CTxDestination& destAdress)
+{
+    // Set default sender address if none provided
+    // Select any valid unspent output that can be used for contract sender address
+    std::vector<COutput> vecOutputs;
+
+    assert(pwallet != NULL);
+    pwallet->AvailableCoins(&vecOutputs, false, NULL, true);
+
+    for (const COutput& out : vecOutputs) {
+        const CScript& scriptPubKey = out.tx->vout[out.i].scriptPubKey;
+        bool fValidAddress = ExtractDestination(scriptPubKey, destAdress)
+                             && IsValidContractSenderAddressKey(destAdress);
+
+        if (!fValidAddress)
+            continue;
+        break;
+    }
+
+    return !boost::get<CNoDestination>(&destAdress);
+}
+bool SetDefaultPayForContractAddress(CWallet* const pwallet, CCoinControl & coinControl)
+{
+    // Set default coin to pay for the contract
+    // Select any valid unspent output that can be used to pay for the contract
+    std::vector<COutput> vecOutputs;
+    coinControl.fAllowOtherInputs=true;
+
+    assert(pwallet != NULL);
+    pwallet->AvailableCoins(&vecOutputs, false, NULL, true);
+
+    for (const COutput& out : vecOutputs) {
+        CTxDestination destAdress;
+        const CScript& scriptPubKey = out.tx->vout[out.i].scriptPubKey;//->tx->vout[out.i].scriptPubKey;
+        bool fValidAddress = ExtractDestination(scriptPubKey, destAdress)
+                             && IsValidContractSenderAddressKey(destAdress);
+
+        if (!fValidAddress)
+            continue;
+
+        coinControl.Select(COutPoint(out.tx->GetHash(),out.i));
+        break;
+    }
+
+    return coinControl.HasSelected();
+}
+bool IsValidDestinationKey(const CTxDestination& dest) {
+    return dest.which() != 0;
+}
+
+bool GetSenderDest(CWallet * const pwallet, const CTransaction& tx, CTxDestination& txSenderDest)
+{
+    // Initialize variables
+    CScript senderPubKey;
+
+    // Get sender destination
+    if(tx.HasOpSender())
+    {
+        // Get destination from the outputs
+        for(CTxOut out : tx.vout)
+        {
+            if(out.scriptPubKey.HasOpSender())
+            {
+                ExtractSenderData(out.scriptPubKey, &senderPubKey, 0);
+                break;
+            }
+        }
+    }
+    else
+    {
+        // Get destination from the inputs
+        senderPubKey = pwallet->mapWallet.at(tx.vin[0].prevout.hash).tx->vout[tx.vin[0].prevout.n].scriptPubKey;
+    }
+
+    // Extract destination from script
+    return ExtractDestination(senderPubKey, txSenderDest);
+}
+
+CKeyID GetKeyForDestination(const CCryptoKeyStore& store, const CTxDestination& dest)
+{
+    // Only supports destinations which map to single public keys, i.e. P2PKH,
+    // P2WPKH, and P2SH-P2WPKH.
+    if (auto id = boost::get<CKeyID>(&dest)) {
+        return CKeyID(*id);
+    }
+    if (auto witness_id = boost::get<WitnessV0KeyHash>(&dest)) {
+        return CKeyID(*witness_id);
+    }
+    if (auto script_hash = boost::get<CScriptID>(&dest)) {
+        CScript script;
+        CScriptID script_id(*script_hash);
+        CTxDestination inner_dest;
+        if (store.GetCScript(script_id, script) && ExtractDestination(script, inner_dest)) {
+            if (auto inner_witness_id = boost::get<WitnessV0KeyHash>(&inner_dest)) {
+                return CKeyID(*inner_witness_id);
+            }
+        }
+    }
+    return CKeyID();
+}
+
+UniValue createcontract(const UniValue& params, bool fHelp){
+
+    //std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
+    //CWallet* const pwallet = wallet.get();
+
+
+    auto locked_chain = nullptr;//pwalletMain->chain().lock();
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    //QtumDGP qtumDGP(globalState.get(), fGettingValuesDGP);
+    uint64_t blockGasLimit = 40000000;//= qtumDGP.getBlockGasLimit(::ChainActive().Height());
+    uint64_t minGasPrice = 40;//CAmount(qtumDGP.getMinGasPrice(::ChainActive().Height()));
+    CAmount nGasPrice = 40;//(minGasPrice>DEFAULT_GAS_PRICE)?minGasPrice:DEFAULT_GAS_PRICE;
+
+    if (fHelp || params.size() > 1)
+        throw std::runtime_error("createcontract"
+               "\nCreate a contract with bytcode." +
+               HelpRequiringPassphrase() + "\n"
+
+                       "bytecode"//, RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "contract bytcode."},
+                       "gasLimit"//, RPCArg::Type::AMOUNT, RPCArg::Optional::OMITTED, "gasLimit, default: "+i64tostr(DEFAULT_GAS_LIMIT_OP_CREATE)+", max: "+i64tostr(blockGasLimit)},
+                       "gasPrice"//, RPCArg::Type::AMOUNT, RPCArg::Optional::OMITTED, "gasPrice QTUM price per gas unit, default: "+FormatMoney(nGasPrice)+", min:"+FormatMoney(minGasPrice)},
+                       "senderaddress"//, RPCArg::Type::STR_HEX, RPCArg::Optional::OMITTED, "The qtum address that will be used to create the contract."},
+                       "broadcast"//, RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "Whether to broadcast the transaction or not."},
+                       "changeToSender"//, RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "Return the change to the sender."},
+
+                       "[\n"
+                       "  {\n"
+                       "    \"txid\" : (string) The transaction id.\n"
+                       "    \"sender\" : (string) CURRENCY_UNIT  address of the sender.\n"
+                                                                      "    \"hash160\" : (string) ripemd-160 hash of the sender.\n"
+                                                                      "    \"address\" : (string) expected contract address.\n"
+                                                                      "  }\n"
+                                                                      "]\n" +
+
+                       HelpExampleCli("createcontract", "\"60606040525b33600060006101000a81548173ffffffffffffffffffffffffffffffffffffffff02191690836c010000000000000000000000009081020402179055506103786001600050819055505b600c80605b6000396000f360606040526008565b600256\"")
+                       + HelpExampleCli("createcontract", "\"60606040525b33600060006101000a81548173ffffffffffffffffffffffffffffffffffffffff02191690836c010000000000000000000000009081020402179055506103786001600050819055505b600c80605b6000396000f360606040526008565b600256\" 6000000 +FormatMoney(minGasPrice)+\"QM72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" true")
+    );
+
+
+    std::string bytecode=params[0].get_str();
+
+    if(bytecode.size() % 2 != 0 || !CheckHex(bytecode))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
+
+    uint64_t nGasLimit=DEFAULT_GAS_LIMIT_OP_CREATE;
+    if (params.size() > 1){
+        nGasLimit = params[1].get_int64();
+        if (nGasLimit > blockGasLimit)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Maximum is: "+i64tostr(blockGasLimit)+")");
+        if (nGasLimit < MINIMUM_GAS_LIMIT)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Minimum is: "+i64tostr(MINIMUM_GAS_LIMIT)+")");
+        if (nGasLimit <= 0)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit");
+    }
+
+    if (params.size() > 2){
+        nGasPrice = AmountFromValue(params[2]);
+        if (nGasPrice <= 0)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice");
+        CAmount maxRpcGasPrice = 10000000;//gArgs.GetArg("-rpcmaxgasprice", MAX_RPC_GAS_PRICE);
+        if (nGasPrice > (int64_t)maxRpcGasPrice)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice, Maximum allowed in RPC calls is: "+FormatMoney(maxRpcGasPrice)+" (use -rpcmaxgasprice to change it)");
+        if (nGasPrice < (int64_t)minGasPrice)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice (Minimum is: "+FormatMoney(minGasPrice)+")");
+    }
+
+    bool fHasSender=false;
+    CTxDestination senderAddress;
+    if (params.size() > 3){
+        senderAddress = CBTCUAddress(params[3].get_str()).Get();
+        if (!IsValidDestinationKey(senderAddress))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Qtum address to send from");
+        if (!IsValidContractSenderAddressKey(senderAddress))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid contract sender address. Only P2PK and P2PKH allowed");
+        else
+            fHasSender=true;
+    }
+
+    bool fBroadcast=true;
+    if (params.size() > 4){
+        fBroadcast=params[4].get_bool();
+    }
+
+    bool fChangeToSender=true;
+    if (params.size() > 5){
+        fChangeToSender=params[5].get_bool();
+    }
+
+    std::unique_ptr<CCoinControl> coinControl;
+    CTxDestination signSenderAddress = CNoDestination();
+
+    if(fHasSender){
+        // Find a UTXO with sender address
+        std::vector<COutput> vecOutputs;
+
+        coinControl.reset(new CCoinControl());
+        coinControl->fAllowOtherInputs=true;
+
+        assert(pwalletMain != NULL);
+        pwalletMain->AvailableCoins(&vecOutputs, false, NULL, true);
+
+        for (const COutput& out : vecOutputs) {
+            CTxDestination destAdress;
+            const CScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+            bool fValidAddress = ExtractDestination(scriptPubKey, destAdress);
+
+            if (!fValidAddress || senderAddress != destAdress)
+                continue;
+
+            coinControl->Select(COutPoint(out.tx->GetHash(),out.i));
+            break;
+        }
+
+        if (coinControl->HasSelected()) {
+            // Change to the sender
+            if(fChangeToSender){
+                coinControl->destChange=senderAddress;
+            }
+            signSenderAddress = senderAddress;
+        } else
+            coinControl.reset();
+
+    } else {
+        coinControl.reset();
+        SetDefaultSignSenderAddress(pwalletMain, signSenderAddress);
+    }
+
+    EnsureWalletIsUnlocked();
+
+    CAmount nGasFee=nGasPrice*nGasLimit;
+
+    CAmount curBalance = pwalletMain->GetBalance();
+
+    // Check amount
+    if (nGasFee <= 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
+
+    if (nGasFee > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    // Build OP_EXEC script
+    CScript scriptPubKey = CScript() << CScriptNum(VersionVM::GetEVMDefault().toRaw()) << CScriptNum(nGasLimit) << CScriptNum(nGasPrice) << ParseHex(bytecode) <<OP_CREATE;
+    if(IsValidDestination(signSenderAddress))
+    {
+        CKeyID key_id = GetKeyForDestination(*pwalletMain, signSenderAddress);
+        CKey key;
+        if (!pwalletMain->GetKey(key_id, key)) {
+            throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+        }
+        std::vector<unsigned char> scriptSig;
+        scriptPubKey = (CScript() << CScriptNum(addresstype::PUBKEYHASH) << ToByteVector(key_id) << ToByteVector(scriptSig) << OP_SENDER) + scriptPubKey;
+    }
+    else
+    {
+            // OP_SENDER will always be used when QIP5Height is active
+            throw JSONRPCError(RPC_TYPE_ERROR, "Sender address fail to set for OP_SENDER.");
+    }
+
+
+    // Create and send the transaction
+    CAmount nFeeRequired = 0;
+    std::string strError;
+    CAmount nValue = CTxOut(0, scriptPubKey).GetMinNotDustSize(::minRelayTxFee);
+
+    //CTransactionRef tx;
+    // make our change address
+    CReserveKey reservekey(pwalletMain);
+    CWalletTx wtx;
+    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtx, reservekey, nFeeRequired, strError, coinControl.get(), ALL_COINS, true, nGasFee, true, true, signSenderAddress)) {
+        if (nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    CTxDestination txSenderDest;
+    GetSenderDest(pwalletMain, wtx, txSenderDest);
+
+    if (fHasSender && !(senderAddress == txSenderDest)){
+        throw JSONRPCError(RPC_TYPE_ERROR, "Sender could not be set, transaction was not committed!");
+    }
+
+    UniValue result(UniValue::VOBJ);
+    if(fBroadcast){
+        CValidationState state;
+        if (!pwalletMain->CommitTransaction(wtx, reservekey))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
+
+        std::string txId=wtx.GetHash().GetHex();
+        result.pushKV("txid", txId);
+
+        CTxDestination txSenderAdress(txSenderDest);
+        CKeyID keyid = GetKeyForDestination(*pwalletMain, txSenderAdress);
+
+        result.pushKV("sender", CBTCUAddress(txSenderAdress).ToString());
+        result.pushKV("hash160", HexStr(valtype(keyid.begin(),keyid.end())));
+
+        std::vector<unsigned char> SHA256TxVout(32);
+        std::vector<unsigned char> contractAddress(20);
+        std::vector<unsigned char> txIdAndVout(wtx.GetHash().begin(), wtx.GetHash().end());
+        uint32_t voutNumber=0;
+        for (const CTxOut& txout : wtx.vout) {
+            if(txout.scriptPubKey.HasOpCreate()){
+                std::vector<unsigned char> voutNumberChrs;
+                if (voutNumberChrs.size() < sizeof(voutNumber))voutNumberChrs.resize(sizeof(voutNumber));
+                std::memcpy(voutNumberChrs.data(), &voutNumber, sizeof(voutNumber));
+                txIdAndVout.insert(txIdAndVout.end(),voutNumberChrs.begin(),voutNumberChrs.end());
+                break;
+            }
+            voutNumber++;
+        }
+        CSHA256().Write(txIdAndVout.data(), txIdAndVout.size()).Finalize(SHA256TxVout.data());
+        CRIPEMD160().Write(SHA256TxVout.data(), SHA256TxVout.size()).Finalize(contractAddress.data());
+        result.pushKV("address", HexStr(contractAddress));
+    }else{
+        std::string strHex = EncodeHexTx(wtx);
+        result.pushKV("raw transaction", strHex);
+    }
+    return result;
+}
+
+UniValue sendtocontract(const UniValue& params, bool fHelp){
+
+    //std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
+    //CWallet* const pwallet = wallet.get();
+
+    //if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+    //    return NullUniValue;
+    //}
+
+    //auto locked_chain = pwallet->chain().lock();
+    //LOCK(pwallet->cs_wallet);
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    QtumDGP qtumDGP(globalState.get(), fGettingValuesDGP);
+    uint64_t blockGasLimit = 40000000;//qtumDGP.getBlockGasLimit(::ChainActive().Height());
+    uint64_t minGasPrice = 40;//CAmount(qtumDGP.getMinGasPrice(::ChainActive().Height()));
+    CAmount nGasPrice = 40;// (minGasPrice>DEFAULT_GAS_PRICE)?minGasPrice:DEFAULT_GAS_PRICE;
+
+    if (fHelp || params.size() > 2) {
+        throw std::runtime_error(std::string("sendtocontract"
+                                             "\nSend funds and data to a contract.") +
+
+                                 std::string(
+                                         "contractaddress" //RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "The contract address that will receive the funds and data."},
+                                         "datahex"//, RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "data to send."},
+                                         "amount"//, RPCArg::Type::AMOUNT, RPCArg::Optional::OMITTED, "The amount in " + CURRENCY_UNIT + " to send. eg 0.1, default: 0"},
+                                         "gasLimit"//, RPCArg::Type::AMOUNT, RPCArg::Optional::OMITTED, "gasLimit, default: "+i64tostr(DEFAULT_GAS_LIMIT_OP_SEND)+", max: "+i64tostr(blockGasLimit)},
+                                         "gasPrice"//, RPCArg::Type::AMOUNT, RPCArg::Optional::OMITTED, "gasPrice Qtum price per gas unit, default: "+FormatMoney(nGasPrice)+", min:"+FormatMoney(minGasPrice)},
+                                         "senderaddress"//, RPCArg::Type::STR_HEX, RPCArg::Optional::OMITTED, "The qtum address that will be used as sender."},
+                                         "broadcast"//, RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "Whether to broadcast the transaction or not."},
+                                         "changeToSender"//, RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "Return the change to the sender."},
+                                         //},
+                                         //RPCResult{
+                                         "[\n"
+                                         "  {\n"
+                                         "    \"txid\" : (string) The transaction id.\n"
+                                         "    \"sender\" : (string)  + CURRENCY_UNIT +  address of the sender.\n"
+                                         "    \"hash160\" : (string) ripemd-160 hash of the sender.\n"
+                                         "  }\n"
+                                         "]\n") +
+                                 //},
+                                 //RPCExamples{
+                                 HelpExampleCli("sendtocontract",
+                                                "\"c6ca2697719d00446d4ea51f6fac8fd1e9310214\" \"54f6127f\"")
+                                 + HelpExampleCli("sendtocontract",
+                                                  "\"c6ca2697719d00446d4ea51f6fac8fd1e9310214\" \"54f6127f\" 12.0015 6000000 " +
+                                                  FormatMoney(minGasPrice) +
+                                                  " \"QM72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\""));
+        //           },
+        //}.Check(request);
+    }
+
+    std::string contractaddress = params[0].get_str();
+    if(contractaddress.size() != 40 || !CheckHex(contractaddress))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect contract address");
+
+    dev::Address addrAccount(contractaddress);
+    if(!globalState->addressInUse(addrAccount))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "contract address does not exist");
+
+    std::string datahex = params[1].get_str();
+    if(datahex.size() % 2 != 0 || !CheckHex(datahex))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
+
+    CAmount nAmount = 0;
+    if (params.size() > 2){
+        nAmount = AmountFromValue(params[2]);
+        if (nAmount < 0)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+    }
+
+    uint64_t nGasLimit=DEFAULT_GAS_LIMIT_OP_SEND;
+    if (params.size() > 3){
+        nGasLimit = params[3].get_int64();
+        if (nGasLimit > blockGasLimit)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Maximum is: "+i64tostr(blockGasLimit)+")");
+        if (nGasLimit < MINIMUM_GAS_LIMIT)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit (Minimum is: "+i64tostr(MINIMUM_GAS_LIMIT)+")");
+        if (nGasLimit <= 0)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasLimit");
+    }
+
+    if (params.size() > 4){
+        nGasPrice = AmountFromValue(params[4]);
+        if (nGasPrice <= 0)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice");
+        CAmount maxRpcGasPrice = 10000000; //gArgs.GetArg("-rpcmaxgasprice", MAX_RPC_GAS_PRICE);
+        if (nGasPrice > (int64_t)maxRpcGasPrice)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice, Maximum allowed in RPC calls is: "+FormatMoney(maxRpcGasPrice)+" (use -rpcmaxgasprice to change it)");
+        if (nGasPrice < (int64_t)minGasPrice)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid value for gasPrice (Minimum is: "+FormatMoney(minGasPrice)+")");
+    }
+
+    bool fHasSender=false;
+    CTxDestination senderAddress;
+    if (params.size() > 5){
+        senderAddress = CBTCUAddress(params[5].get_str()).Get();
+        if (!IsValidDestination(senderAddress))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Qtum address to send from");
+        if (!IsValidContractSenderAddress(senderAddress))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid contract sender address. Only P2PK and P2PKH allowed");
+        else
+            fHasSender=true;
+    }
+
+    bool fBroadcast=true;
+    if (params.size() > 6){
+        fBroadcast=params[6].get_bool();
+    }
+
+    bool fChangeToSender=true;
+    if (params.size() > 7){
+        fChangeToSender=params[7].get_bool();
+    }
+
+    CCoinControl coinControl;
+
+    CTxDestination signSenderAddress = CNoDestination();
+    if(fHasSender){
+        // Find a UTXO with sender address
+        std::vector<COutput> vecOutputs;
+
+        coinControl.fAllowOtherInputs=true;
+
+        assert(pwalletMain != NULL);
+        pwalletMain->AvailableCoins(&vecOutputs, false, NULL, true);
+
+        for (const COutput& out : vecOutputs) {
+
+            CTxDestination destAdress;
+            const CScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+            bool fValidAddress = ExtractDestination(scriptPubKey, destAdress);
+
+            if (!fValidAddress || senderAddress != destAdress)
+                continue;
+
+            coinControl.Select(COutPoint(out.tx->GetHash(),out.i));
+
+            break;
+
+        }
+
+        if(coinControl.HasSelected())
+        {
+            // Change to the sender
+            if(fChangeToSender){
+                coinControl.destChange=senderAddress;
+            }
+        }
+        else
+        {
+            // Create op sender transaction when op sender is activated
+            //if(!(::ChainActive().Height() >= Params().GetConsensus().QIP5Height))
+                throw JSONRPCError(RPC_TYPE_ERROR, "Sender address does not have any unspent outputs");
+        }
+
+        //if(::ChainActive().Height() >= Params().GetConsensus().QIP5Height)
+        //{
+            // Set the sender address
+            signSenderAddress = senderAddress;
+        //}
+    }
+    else
+    {
+        //if(::ChainActive().Height() >= Params().GetConsensus().QIP5Height)
+        //{
+            // If no sender address provided set to the default sender address
+            SetDefaultSignSenderAddress(pwalletMain, signSenderAddress);
+        //}
+    }
+
+    EnsureWalletIsUnlocked(pwalletMain);
+
+    CAmount nGasFee=nGasPrice*nGasLimit;
+
+    CAmount curBalance = pwalletMain->GetBalance();
+
+    // Check amount
+    if (nGasFee <= 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount for gas fee");
+
+    if (nAmount+nGasFee > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    // Select default coin that will pay for the contract if none selected
+    if(!coinControl.HasSelected() && !SetDefaultPayForContractAddress(pwalletMain, coinControl))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Does not have any P2PK or P2PKH unspent outputs to pay for the contract.");
+
+    // Build OP_EXEC_ASSIGN script
+    CScript scriptPubKey = CScript() << CScriptNum(VersionVM::GetEVMDefault().toRaw()) << CScriptNum(nGasLimit) << CScriptNum(nGasPrice) << ParseHex(datahex) << ParseHex(contractaddress) << OP_CALL;
+    //if(::ChainActive().Height() >= Params().GetConsensus().QIP5Height)
+    //{
+        if(IsValidDestination(signSenderAddress))
+        {
+            CKeyID key_id = GetKeyForDestination(*pwalletMain, signSenderAddress);
+            CKey key;
+            if (!pwalletMain->GetKey(key_id, key)) {
+                throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+            }
+            std::vector<unsigned char> scriptSig;
+            scriptPubKey = (CScript() << CScriptNum(addresstype::PUBKEYHASH) << ToByteVector(key_id) << ToByteVector(scriptSig) << OP_SENDER) + scriptPubKey;
+        }
+        else
+        {
+            // OP_SENDER will always be used when QIP5Height is active
+            throw JSONRPCError(RPC_TYPE_ERROR, "Sender address fail to set for OP_SENDER.");
+        }
+    //}
+
+    // Create and send the transaction
+    CAmount nFeeRequired;
+    std::string strError;
+    std::vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = {scriptPubKey, nAmount, false};
+    vecSend.push_back(recipient);
+    /*
+    CWalletTx wtx;
+    if (!pwalletMain->CreateTransaction(scriptPubKey, 50000, wtx, reservekey, nFeeRequired, strError, &coinControl, ALL_COINS, true, nGasFee, true)) {
+        if (nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }*/
+    //CTransactionRef tx;
+    CWalletTx wtx;
+    CReserveKey reservekey(pwalletMain);
+    if (!pwalletMain->CreateTransaction(scriptPubKey, 50000, wtx, reservekey, nFeeRequired, strError, &coinControl, ALL_COINS, true, nGasFee, true)) {
+        if (nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    CTxDestination txSenderDest;
+    GetSenderDest(pwalletMain, wtx, txSenderDest);
+
+    if (fHasSender && !(senderAddress == txSenderDest)){
+        throw JSONRPCError(RPC_TYPE_ERROR, "Sender could not be set, transaction was not committed!");
+    }
+
+    UniValue result(UniValue::VOBJ);
+
+    if(fBroadcast){
+
+
+        CValidationState state;
+        if (!pwalletMain->CommitTransaction(wtx, reservekey))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
+
+        std::string txId=wtx.GetHash().GetHex();
+        result.pushKV("txid", txId);
+
+        CTxDestination txSenderAdress(txSenderDest);
+        CKeyID keyid = GetKeyForDestination(*pwalletMain, txSenderAdress);
+
+        result.pushKV("sender", CBTCUAddress(txSenderAdress).ToString());
+        result.pushKV("hash160", HexStr(valtype(keyid.begin(),keyid.end())));
+    }else{
+        //std::string strHex = EncodeHexTx(*tx, RPCSerializationFlags());
+        //result.pushKV("raw transaction", strHex);
+    }
+
+    return result;
+}
+
+//////////////////////////////////////////////////////////////////////
+UniValue listcontracts(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw std::runtime_error(std::string("listcontracts"
+               "\nGet the contracts list.\n"));
+               /*{
+                       {"start", RPCArg::Type::NUM,  "1", "The starting account index"},
+                       {"maxDisplay", RPCArg::Type::NUM,  "20", "Max accounts to list"},
+               },
+               RPCResult{
+                       "{\n"
+                       "  \"account\": n,                            (numeric) balance for the account\n"
+                       "  ...\n"
+                       "}\n"
+               },
+               RPCExamples{
+                       HelpExampleCli("listcontracts", "")
+                       + HelpExampleRpc("listcontracts", "")
+               },
+    }.Check(request);*/
+
+    LOCK(cs_main);
+
+    int start=1;
+    if (params.size() > 0){
+        start = params[0].get_int();
+        if (start<= 0)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid start, min=1");
+    }
+
+    int maxDisplay=20;
+    if (params.size() > 1){
+        maxDisplay = params[1].get_int();
+        if (maxDisplay <= 0)
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid maxDisplay");
+    }
+
+    UniValue result(UniValue::VOBJ);
+
+    auto map = globalState->addresses();
+    int contractsCount=(int)map.size();
+
+    if (contractsCount>0 && start > contractsCount)
+        throw JSONRPCError(RPC_TYPE_ERROR, "start greater than max index "+ itostr(contractsCount));
+
+    int itStartPos=std::min(start-1,contractsCount);
+    int i=0;
+    for (auto it = std::next(map.begin(),itStartPos); it!=map.end(); it++)
+    {
+        result.pushKV(it->first.hex(),ValueFromAmount(CAmount(globalState->balance(it->first))));
+        i++;
+        if(i==maxDisplay)break;
+    }
+
+    return result;
+}
+
+UniValue executionResultToJSON(const dev::eth::ExecutionResult& exRes)
+{
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("gasUsed", CAmount(exRes.gasUsed));
+    std::stringstream ss;
+    ss << exRes.excepted;
+    result.pushKV("excepted", ss.str());
+    result.pushKV("newAddress", exRes.newAddress.hex());
+    result.pushKV("output", HexStr(exRes.output));
+    result.pushKV("codeDeposit", static_cast<int32_t>(exRes.codeDeposit));
+    result.pushKV("gasRefunded", CAmount(exRes.gasRefunded));
+    result.pushKV("depositSize", static_cast<int32_t>(exRes.depositSize));
+    result.pushKV("gasForDeposit", CAmount(exRes.gasForDeposit));
+    result.pushKV("exceptedMessage", exceptedMessage(exRes.excepted, exRes.output));
+    return result;
+}
+
+UniValue transactionReceiptToJSON(const QtumTransactionReceipt& txRec)
+{
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("stateRoot", txRec.stateRoot().hex());
+    result.pushKV("utxoRoot", txRec.utxoRoot().hex());
+    result.pushKV("gasUsed", CAmount(txRec.cumulativeGasUsed()));
+    result.pushKV("bloom", txRec.bloom().hex());
+    UniValue logEntries(UniValue::VARR);
+    dev::eth::LogEntries logs = txRec.log();
+    for(dev::eth::LogEntry log : logs){
+        UniValue logEntrie(UniValue::VOBJ);
+        logEntrie.pushKV("address", log.address.hex());
+        UniValue topics(UniValue::VARR);
+        for(dev::h256 l : log.topics){
+            topics.push_back(l.hex());
+        }
+        logEntrie.pushKV("topics", topics);
+        logEntrie.pushKV("data", HexStr(log.data));
+        logEntries.push_back(logEntrie);
+    }
+    result.pushKV("log", logEntries);
+    return result;
+}
+
+UniValue callcontract(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2)
+        throw std::runtime_error(std::string("callcontract\n"
+               "\nCall contract methods offline.\n"
+               //{
+                       "address, RPCArg::Type::STR_HEX, RPCArg::Optional::NO, The contract address\n"
+                       "data RPCArg::Type::STR_HEX, RPCArg::Optional::NO, The data hex string\n"
+                       "senderAddress RPCArg::Type::STR, RPCArg::Optional::OMITTED_NAMED_ARG, The sender address string\n"
+                       "gasLimit RPCArg::Type::NUM, RPCArg::Optional::OMITTED_NAMED_ARG, The gas limit for executing the contract.\n"
+               //},
+               //RPCResult{
+                       "{\n"
+                       "  \"address\": \"contract address\",             (string)  address of the contract\n"
+                       "  \"executionResult\": {                       (object)  method execution result\n"
+                       "    \"gasUsed\": n,                            (numeric) gas used\n"
+                       "    \"excepted\": \"exception\",                 (string)  thrown exception\n"
+                       "    \"newAddress\": \"contract address\",        (string)  new address of the contract\n"
+                       "    \"output\": \"data\",                        (string)  returned data from the method\n"
+                       "    \"codeDeposit\": n,                        (numeric) code deposit\n"
+                       "    \"gasRefunded\": n,                        (numeric) gas refunded\n"
+                       "    \"depositSize\": n,                        (numeric) deposit size\n"
+                       "    \"gasForDeposit\": n                       (numeric) gas for deposit\n"
+                       "  },\n"
+                       "  \"transactionReceipt\": {                    (object)  transaction receipt\n"
+                       "    \"stateRoot\": \"hash\",                     (string)  state root hash\n"
+                       "    \"gasUsed\": n,                            (numeric) gas used\n"
+                       "    \"bloom\": \"bloom\",                        (string)  bloom\n"
+                       "    \"log\": [                                 (array)  logs from the receipt\n"
+                       "      {\n"
+                       "        \"address\": \"address\",                (string)  contract address\n"
+                       "        \"topics\":                            (array)  topics\n"
+                       "        [\n"
+                       "          \"topic\",                           (string)  topic\n"
+                       "        ],\n"
+                       "        \"data\": \"data\"                       (string)  logged data\n"
+                       "      }\n"
+                       "    ]\n"
+                       "  }\n"
+                       "}\n") +
+
+               //RPCExamples{
+                       HelpExampleCli("callcontract", "eb23c0b3e6042821da281a2e2364feb22dd543e3 06fdde03")
+                       + HelpExampleRpc("callcontract", "eb23c0b3e6042821da281a2e2364feb22dd543e3 06fdde03"));
+               //},
+    //}.Check(request);
+
+    LOCK(cs_main);
+
+    std::string strAddr = params[0].get_str();
+    std::string data = params[1].get_str();
+
+    if(data.size() % 2 != 0 || !CheckHex(data))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid data (data not hex)");
+
+    if(strAddr.size() != 40 || !CheckHex(strAddr))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect address");
+
+    dev::Address addrAccount(strAddr);
+    if(!globalState->addressInUse(addrAccount))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not exist");
+
+    dev::Address senderAddress;
+    if(params.size() >= 3){
+        CTxDestination qtumSenderAddress = CBTCUAddress(params[2].get_str()).Get();
+        if (IsValidDestination(qtumSenderAddress)) {
+            const CKeyID *keyid = boost::get<CKeyID>(&qtumSenderAddress);
+            senderAddress = dev::Address(HexStr(valtype(keyid->begin(),keyid->end())));
+        }else{
+            senderAddress = dev::Address(params[2].get_str());
+        }
+
+    }
+    uint64_t gasLimit=0;
+    if(params.size() >= 4){
+        gasLimit = params[3].get_int64();
+    }
+
+
+    std::vector<ResultExecute> execResults = CallContract(addrAccount, ParseHex(data), senderAddress, gasLimit);
+
+    if(fRecordLogOpcodes){
+        writeVMlog(execResults);
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("address", strAddr);
+    result.pushKV("executionResult", executionResultToJSON(execResults[0].execRes));
+    result.pushKV("transactionReceipt", transactionReceiptToJSON(execResults[0].txRec));
+
+    return result;
 }
 
 UniValue getnewaddress(const UniValue& params, bool fHelp)
@@ -137,7 +922,23 @@ UniValue getnewstakingaddress(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("getnewstakingaddress", "") + HelpExampleRpc("getnewstakingaddress", ""));
 
-    return GetNewAddressFromAccount("coldstaking", params, CChainParams::STAKING_ADDRESS).ToString();
+    return GetNewAddressFromAccount(AddressBook::AddressBookPurpose::COLD_STAKING, params, CChainParams::STAKING_ADDRESS).ToString();
+}
+
+UniValue getnewleasingaddress(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 0)
+        throw std::runtime_error(
+            "getnewleasingaddress ( \"account\" )\n"
+            "\nReturns a new BTCU leasing address for receiving leases.\n"
+
+            "\nResult:\n"
+            "\"btcuaddress\"    (string) The new btcu address\n"
+
+            "\nExamples:\n" +
+            HelpExampleCli("getnewleasingaddress", "") + HelpExampleRpc("getnewleasingaddress", ""));
+
+    return GetNewAddressFromAccount(AddressBook::AddressBookPurpose::LEASING, params, CChainParams::LEASING_ADDRESS).ToString();
 }
 
 UniValue delegatoradd(const UniValue& params, bool fHelp)
@@ -160,7 +961,7 @@ UniValue delegatoradd(const UniValue& params, bool fHelp)
             HelpExampleRpc("delegatoradd", "\"DMJRSsuU9zfyrvxVaAEFQqK4MxZg6vgeS6\"") +
             HelpExampleRpc("delegatoradd", "\"DMJRSsuU9zfyrvxVaAEFQqK4MxZg6vgeS6\" \"myPaperWallet\""));
 
-    CBitcoinAddress address(params[0].get_str());
+    CBTCUAddress address(params[0].get_str());
     if (!address.IsValid() || address.IsStakingAddress())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
 
@@ -191,7 +992,7 @@ UniValue delegatorremove(const UniValue& params, bool fHelp)
             HelpExampleCli("delegatorremove", "DMJRSsuU9zfyrvxVaAEFQqK4MxZg6vgeS6") +
             HelpExampleRpc("delegatorremove", "\"DMJRSsuU9zfyrvxVaAEFQqK4MxZg6vgeS6\""));
 
-    CBitcoinAddress address(params[0].get_str());
+    CBTCUAddress address(params[0].get_str());
     if (!address.IsValid() || address.IsStakingAddress())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
 
@@ -216,10 +1017,15 @@ UniValue delegatorremove(const UniValue& params, bool fHelp)
 
 UniValue ListaddressesForPurpose(const std::string strPurpose)
 {
-    const CChainParams::Base58Type addrType = (
-            AddressBook::IsColdStakingPurpose(strPurpose) ?
-                    CChainParams::STAKING_ADDRESS :
-                    CChainParams::PUBKEY_ADDRESS);
+    const CChainParams::Base58Type addrType = [&]() -> CChainParams::Base58Type {
+        if (AddressBook::IsColdStakingPurpose(strPurpose)) {
+            return CChainParams::STAKING_ADDRESS;
+        } else if (AddressBook::IsLeasingPurpose(strPurpose)) {
+            return CChainParams::LEASING_ADDRESS;
+        }
+        return CChainParams::PUBKEY_ADDRESS;
+    }();
+
     UniValue ret(UniValue::VARR);
     {
         LOCK(pwalletMain->cs_wallet);
@@ -227,7 +1033,7 @@ UniValue ListaddressesForPurpose(const std::string strPurpose)
             if (addr.second.purpose != strPurpose) continue;
             UniValue entry(UniValue::VOBJ);
             entry.push_back(Pair("label", addr.second.name));
-            entry.push_back(Pair("address", CBitcoinAddress(addr.first, addrType).ToString()));
+            entry.push_back(Pair("address", CBTCUAddress(addr.first, addrType).ToString()));
             ret.push_back(entry);
         }
     }
@@ -265,6 +1071,36 @@ UniValue listdelegators(const UniValue& params, bool fHelp)
             ListaddressesForPurpose(AddressBook::AddressBookPurpose::DELEGATOR));
 }
 
+UniValue listleasees(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw std::runtime_error(
+            "listleasees ( fBlacklist )\n"
+            "\nShows the list of allowed leasee addresses for leasing.\n"
+
+            "\nArguments:\n"
+            "1. fBlacklist             (boolean, optional, default = false) Show addresses removed\n"
+            "                          from the leasees whitelist\n"
+
+            "\nResult:\n"
+            "[\n"
+            "   {\n"
+            "   \"label\": \"yyy\",    (string) account label\n"
+            "   \"address\": \"xxx\",  (string) BTCU address string\n"
+            "   }\n"
+            "  ...\n"
+            "]\n"
+
+            "\nExamples:\n" +
+            HelpExampleCli("listleasees" , "") +
+            HelpExampleRpc("listleasees", ""));
+
+    const bool fBlacklist = (params.size() > 0 ? params[0].get_bool() : false);
+    return (fBlacklist ?
+            ListaddressesForPurpose(AddressBook::AddressBookPurpose::LEASABLE) :
+            ListaddressesForPurpose(AddressBook::AddressBookPurpose::LEASEE));
+}
+
 UniValue liststakingaddresses(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -288,7 +1124,30 @@ UniValue liststakingaddresses(const UniValue& params, bool fHelp)
     return ListaddressesForPurpose(AddressBook::AddressBookPurpose::COLD_STAKING);
 }
 
-CBitcoinAddress GetAccountAddress(std::string strAccount, bool bForceNew = false)
+UniValue listleasingaddresses(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw std::runtime_error(
+            "listleasingaddresses \"addr\"\n"
+            "\nShows the list of leasing addresses for this wallet.\n"
+
+            "\nResult:\n"
+            "[\n"
+            "   {\n"
+            "   \"label\": \"yyy\",  (string) account label\n"
+            "   \"address\": \"xxx\",  (string) BTCU address string\n"
+            "   }\n"
+            "  ...\n"
+            "]\n"
+
+            "\nExamples:\n" +
+            HelpExampleCli("listleasingaddresses" , "") +
+            HelpExampleRpc("listleasingaddresses", ""));
+
+    return ListaddressesForPurpose(AddressBook::AddressBookPurpose::LEASING);
+}
+
+CBTCUAddress GetAccountAddress(std::string strAccount, bool bForceNew = false)
 {
     CWalletDB walletdb(pwalletMain->strWalletFile);
 
@@ -319,7 +1178,7 @@ CBitcoinAddress GetAccountAddress(std::string strAccount, bool bForceNew = false
         walletdb.WriteAccount(strAccount, account);
     }
 
-    return CBitcoinAddress(account.vchPubKey.GetID());
+    return CBTCUAddress(account.vchPubKey.GetID());
 }
 
 UniValue getaccountaddress(const UniValue& params, bool fHelp)
@@ -379,7 +1238,7 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
 
     CKeyID keyID = vchPubKey.GetID();
 
-    return CBitcoinAddress(keyID).ToString();
+    return CBTCUAddress(keyID).ToString();
 }
 
 
@@ -399,7 +1258,7 @@ UniValue setaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CBTCUAddress address(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
 
@@ -442,7 +1301,7 @@ UniValue getaccount(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CBTCUAddress address(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
 
@@ -479,8 +1338,8 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
-    for (const PAIRTYPE(CBitcoinAddress, AddressBook::CAddressBookData) & item : pwalletMain->mapAddressBook) {
-        const CBitcoinAddress& address = item.first;
+    for (const PAIRTYPE(CBTCUAddress, AddressBook::CAddressBookData) & item : pwalletMain->mapAddressBook) {
+        const CBTCUAddress& address = item.first;
         const std::string& strName = item.second.name;
         if (strName == strAccount)
             ret.push_back(address.ToString());
@@ -512,7 +1371,7 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
-    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, NULL, ALL_COINS, fUseIX, (CAmount)0, false, validatorRegister, validatorVote)) {
+    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, NULL, ALL_COINS, fUseIX, (CAmount)0, false, false, CNoDestination(),validatorRegister, validatorVote)) {
         if (nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         LogPrintf("SendMoney() : %s\n", strError);
@@ -549,7 +1408,7 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CBTCUAddress address(params[0].get_str());
     if (!address.IsValid() || address.IsStakingAddress())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
 
@@ -587,7 +1446,7 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
     }
 
     // Get Staking Address
-    CBitcoinAddress stakeAddr(params[0].get_str());
+    CBTCUAddress stakeAddr(params[0].get_str());
     CKeyID stakeKey;
     if (!stakeAddr.IsValid() || !stakeAddr.IsStakingAddress())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU staking address");
@@ -614,7 +1473,7 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
     EnsureWalletIsUnlocked();
 
     // Get Owner Address
-    CBitcoinAddress ownerAddr;
+    CBTCUAddress ownerAddr;
     CKeyID ownerKey;
     if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty()) {
         // Address provided
@@ -775,6 +1634,203 @@ UniValue rawdelegatestake(const UniValue& params, bool fHelp)
     return result;
 }
 
+UniValue CreateLeasingTransaction(const UniValue& params, CWalletTx& wtxNew, CReserveKey& reservekey)
+{
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    // Check that Leasing has been enforced or fForceNotEnabled = true
+    bool fForceNotEnabled = false;
+    if (params.size() > 4 && !params[4].isNull())
+        fForceNotEnabled = params[4].get_bool();
+
+    if (!sporkManager.IsSporkActive(SPORK_1017_LEASING_ENFORCEMENT) && !fForceNotEnabled) {
+        std::string errMsg = "Leasing disabled with SPORK 1017.\n"
+                             "You may force the leasing setting fForceNotEnabled to true.\n"
+                             "WARNING: If relayed before activation, this tx will be rejected resulting in a ban.\n";
+        throw JSONRPCError(RPC_WALLET_ERROR, errMsg);
+    }
+
+    // Get Leasing Address
+    CBTCUAddress leaserAddr(params[0].get_str());
+    CKeyID leaserKey;
+    if (!leaserAddr.IsValid() || !leaserAddr.IsLeasingAddress())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU leasing address");
+    if (!leaserAddr.GetKeyID(leaserKey))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Unable to get leaser pubkey hash from leasingaddress");
+
+    // Get Amount
+    CAmount nValue = AmountFromValue(params[1]);
+    if (nValue < Params().GetMinLeasingAmount())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount (%d). Min amount: %d",
+                                                            nValue, Params().GetMinLeasingAmount()));
+    // Check amount
+    CAmount currBalance = pwalletMain->GetBalance();
+    if (nValue > currBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    std::string strError;
+    EnsureWalletIsUnlocked();
+
+    // Get Owner Address
+    CBTCUAddress ownerAddr;
+    CKeyID ownerKey;
+    if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty()) {
+        // Address provided
+        ownerAddr.SetString(params[2].get_str());
+        if (!ownerAddr.IsValid() || ownerAddr.IsLeasingAddress())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU spending address");
+        if (!ownerAddr.GetKeyID(ownerKey))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Unable to get spend pubkey hash from owneraddress");
+        // Check that the owner address belongs to this wallet, or fForceExternalAddr is true
+        bool fForceExternalAddr = params.size() > 3 && !params[3].isNull() ? params[3].get_bool() : false;
+        if (!fForceExternalAddr && !pwalletMain->HaveKey(ownerKey)) {
+            std::string errMsg = strprintf("The provided owneraddress \"%s\" is not present in this wallet.\n"
+                                           "Set 'fExternalOwner' argument to true, in order to force the leasing to an external owner address.\n"
+                                           "e.g. leasetoaddress leasingaddress amount owneraddress true.\n"
+                                           "WARNING: Only the owner of the key to owneraddress will be allowed to spend these coins after the leasing.",
+                                           ownerAddr.ToString());
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, errMsg);
+        }
+
+    } else {
+        // Get new owner address from keypool
+        ownerAddr = GetNewAddressFromAccount(AddressBook::AddressBookPurpose::LEASED, NullUniValue);
+        if (!ownerAddr.GetKeyID(ownerKey))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Unable to get spend pubkey hash from owneraddress");
+    }
+
+    // Get P2L script for addresses
+    CScript scriptPubKey = GetScriptForLeasing(leaserKey, ownerKey);
+
+    // Create the transaction
+    CAmount nFeeRequired;
+    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, NULL, ALL_COINS, /*fUseIX*/ false, (CAmount)0)) {
+        if (nValue + nFeeRequired > currBalance)
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        LogPrintf("%s : %s\n", __func__, strError);
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("owner_address", ownerAddr.ToString()));
+    result.push_back(Pair("leaser_address", leaserAddr.ToString()));
+    return result;
+}
+
+UniValue leasetoaddress(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 2 || params.size() > 5)
+        throw std::runtime_error(
+            "leasetoaddress \"leasingaddress\" amount ( \"owneraddress\" fExternalOwner fForceNotEnabled)\n"
+            "\nLease an amount to a given address for mining. The amount is a real and is rounded to the nearest 0.00000001\n" +
+            HelpRequiringPassphrase() + "\n"
+
+            "\nArguments:\n"
+            "1. \"leasingaddress\"      (string, required) The btcu leasing address to lease.\n"
+            "2. \"amount\"              (numeric, required) The amount in BTCU to lease for mining. eg 100\n"
+            "3. \"owneraddress\"        (string, optional) The btcu address corresponding to the key that will be able to spend the rewards. \n"
+            "                               If not provided, or empty string, a new wallet address is generated.\n"
+            "4. \"fExternalOwner\"      (boolean, optional, default = false) use the provided 'owneraddress' anyway, even if not present in this wallet.\n"
+            "                               WARNING: The owner of the keys to 'owneraddress' will be the only one allowed to spend these rewards.\n"
+            "5. \"fForceNotEnabled\"    (boolean, optional, default = false) force the creation even if SPORK 1017 is disabled (for tests)."
+
+            "\nResult:\n"
+            "{\n"
+            "   \"owner_address\": \"xxx\"   (string) The owner (leasee) owneraddress.\n"
+            "   \"leaser_address\": \"xxx\"  (string) The miner (leaser) leasingaddress.\n"
+            "   \"txid\": \"xxx\"            (string) The leasing transaction id.\n"
+            "}\n"
+
+            "\nExamples:\n" +
+            HelpExampleCli("leasetoaddress", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\" 100") +
+            HelpExampleCli("leasetoaddress", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\" 1000 \"DMJRSsuU9zfyrvxVaAEFQqK4MxZg34fk\"") +
+            HelpExampleRpc("leasetoaddress", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\", 1000, \"DMJRSsuU9zfyrvxVaAEFQqK4MxZg34fk\""));
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    CWalletTx wtx;
+    CReserveKey reservekey(pwalletMain);
+    UniValue ret = CreateLeasingTransaction(params, wtx, reservekey);
+
+    if (!pwalletMain->CommitTransaction(wtx, reservekey, "tx"))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+
+    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+    return ret;
+}
+
+UniValue rawleasetoaddress(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 2 || params.size() > 4)
+        throw std::runtime_error(
+            "rawleasetoaddress \"leasingaddress\" amount ( \"owneraddress\" fExternalOwner )\n"
+            "\nLease an amount to a given address for mining. The amount is a real and is rounded to the nearest 0.00000001\n" +
+            HelpRequiringPassphrase() + "\n"
+
+            "\nArguments:\n"
+            "1. \"leasingaddress\"      (string, required) The btcu leasing address to lease.\n"
+            "2. \"amount\"              (numeric, required) The amount in BTCU to lease for mining. eg 100\n"
+            "3. \"owneraddress\"        (string, optional) The btcu address corresponding to the key that will be able to spend the rewards. \n"
+            "                               If not provided, or empty string, a new wallet address is generated.\n"
+            "4. \"fExternalOwner\"      (boolean, optional, default = false) use the provided 'owneraddress' anyway, even if not present in this wallet.\n"
+            "                               WARNING: The owner of the keys to 'owneraddress' will be the only one allowed to spend these rewards.\n"
+            "5. \"fForceNotEnabled\"    (boolean, optional, default = false) force the creation even if SPORK 1017 is disabled (for tests)."
+
+            "\nResult:\n"
+            "{\n"
+            "  \"txid\" : \"id\",        (string) The transaction id (same as provided)\n"
+            "  \"version\" : n,          (numeric) The version\n"
+            "  \"size\" : n,             (numeric) The serialized transaction size\n"
+            "  \"locktime\" : ttt,       (numeric) The lock time\n"
+            "  \"vin\" : [               (array of json objects)\n"
+            "     {\n"
+            "       \"txid\": \"id\",    (string) The transaction id\n"
+            "       \"vout\": n,         (numeric) \n"
+            "       \"scriptSig\": {     (json object) The script\n"
+            "         \"asm\": \"asm\",  (string) asm\n"
+            "         \"hex\": \"hex\"   (string) hex\n"
+            "       },\n"
+            "       \"sequence\": n      (numeric) The script sequence number\n"
+            "     }\n"
+            "     ,...\n"
+            "  ],\n"
+            "  \"vout\" : [              (array of json objects)\n"
+            "     {\n"
+            "       \"value\" : x.xxx,            (numeric) The value in btc\n"
+            "       \"n\" : n,                    (numeric) index\n"
+            "       \"scriptPubKey\" : {          (json object)\n"
+            "         \"asm\" : \"asm\",          (string) the asm\n"
+            "         \"hex\" : \"hex\",          (string) the hex\n"
+            "         \"reqSigs\" : n,            (numeric) The required sigs\n"
+            "         \"type\" : \"pubkeyhash\",  (string) The type, eg 'pubkeyhash'\n"
+            "         \"addresses\" : [           (json array of string)\n"
+            "           \"btcuaddress\"           (string) btcu address\n"
+            "           ,...\n"
+            "         ]\n"
+            "       }\n"
+            "     }\n"
+            "     ,...\n"
+            "  ],\n"
+            "  \"hex\" : \"data\",       (string) The serialized, hex-encoded data for 'txid'\n"
+            "}\n"
+
+            "\nExamples:\n" +
+            HelpExampleCli("rawleasetoaddress", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\" 100") +
+            HelpExampleCli("rawleasetoaddress", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\" 1000 \"DMJRSsuU9zfyrvxVaAEFQqK4MxZg34fk\"") +
+            HelpExampleRpc("rawleasetoaddress", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\", 1000, \"DMJRSsuU9zfyrvxVaAEFQqK4MxZg34fk\""));
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    CWalletTx wtx;
+    CReserveKey reservekey(pwalletMain);
+    UniValue ret = CreateLeasingTransaction(params, wtx, reservekey);
+
+    UniValue result(UniValue::VOBJ);
+    TxToUniv(wtx, 0, result);
+
+    return ret;
+}
+
 UniValue sendtoaddressix(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)
@@ -802,7 +1858,7 @@ UniValue sendtoaddressix(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CBTCUAddress address(params[0].get_str());
     if (!address.IsValid() || address.IsStakingAddress())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
 
@@ -856,11 +1912,11 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
         UniValue jsonGrouping(UniValue::VARR);
         for (CTxDestination address : grouping) {
             UniValue addressInfo(UniValue::VARR);
-            addressInfo.push_back(CBitcoinAddress(address).ToString());
+            addressInfo.push_back(CBTCUAddress(address).ToString());
             addressInfo.push_back(ValueFromAmount(balances[address]));
             {
-                if (pwalletMain->mapAddressBook.find(CBitcoinAddress(address).Get()) != pwalletMain->mapAddressBook.end())
-                    addressInfo.push_back(pwalletMain->mapAddressBook.find(CBitcoinAddress(address).Get())->second.name);
+                if (pwalletMain->mapAddressBook.find(CBTCUAddress(address).Get()) != pwalletMain->mapAddressBook.end())
+                    addressInfo.push_back(pwalletMain->mapAddressBook.find(CBTCUAddress(address).Get())->second.name);
             }
             jsonGrouping.push_back(addressInfo);
         }
@@ -901,7 +1957,7 @@ UniValue signmessage(const UniValue& params, bool fHelp)
     std::string strAddress = params[0].get_str();
     std::string strMessage = params[1].get_str();
 
-    CBitcoinAddress addr(strAddress);
+    CBTCUAddress addr(strAddress);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
@@ -951,7 +2007,7 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     // btcu address
-    CBitcoinAddress address = CBitcoinAddress(params[0].get_str());
+    CBTCUAddress address = CBTCUAddress(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
     CScript scriptPubKey = GetScriptForDestination(address.Get());
@@ -1314,7 +2370,7 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     std::string strAccount = AccountFromValue(params[0]);
-    CBitcoinAddress address(params[1].get_str());
+    CBTCUAddress address(params[1].get_str());
     if (!address.IsValid() || address.IsStakingAddress())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
     CAmount nAmount = AmountFromValue(params[2]);
@@ -1390,13 +2446,13 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     if (params.size() > 3 && !params[3].isNull() && !params[3].get_str().empty())
         wtx.mapValue["comment"] = params[3].get_str();
 
-    std::set<CBitcoinAddress> setAddress;
+    std::set<CBTCUAddress> setAddress;
     std::vector<std::pair<CScript, CAmount> > vecSend;
 
     CAmount totalAmount = 0;
     std::vector<std::string> keys = sendTo.getKeys();
     for (const std::string& name_ : keys) {
-        CBitcoinAddress address(name_);
+        CBTCUAddress address(name_);
         if (!address.IsValid() || address.IsStakingAddress())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid BTCU address: ")+name_);
 
@@ -1477,7 +2533,7 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
     pwalletMain->AddCScript(inner);
 
     pwalletMain->SetAddressBook(innerID, strAccount, AddressBook::AddressBookPurpose::SEND);
-    return CBitcoinAddress(innerID).ToString();
+    return CBTCUAddress(innerID).ToString();
 }
 
 
@@ -1514,7 +2570,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
             filter = filter | ISMINE_WATCH_ONLY;
 
     // Tally
-    std::map<CBitcoinAddress, tallyitem> mapTally;
+    std::map<CBTCUAddress, tallyitem> mapTally;
     for (std::map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
         const CWalletTx& wtx = (*it).second;
 
@@ -1548,10 +2604,10 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
     // Reply
     UniValue ret(UniValue::VARR);
     std::map<std::string, tallyitem> mapAccountTally;
-    for (const PAIRTYPE(CBitcoinAddress, AddressBook::CAddressBookData) & item : pwalletMain->mapAddressBook) {
-        const CBitcoinAddress& address = item.first;
+    for (const PAIRTYPE(CBTCUAddress, AddressBook::CAddressBookData) & item : pwalletMain->mapAddressBook) {
+        const CBTCUAddress& address = item.first;
         const std::string& strAccount = item.second.name;
-        std::map<CBitcoinAddress, tallyitem>::iterator it = mapTally.find(address);
+        std::map<CBTCUAddress, tallyitem>::iterator it = mapTally.find(address);
         if (it == mapTally.end() && !fIncludeEmpty)
             continue;
 
@@ -1681,7 +2737,7 @@ UniValue listcoldutxos(const UniValue& params, bool fHelp)
     if (fHelp || params.size() > 1)
         throw std::runtime_error(
             "listcoldutxos ( nonWhitelistedOnly )\n"
-            "\nList P2CS unspent outputs received by this wallet as cold-staker-\n"
+            "\nList P2CS unspent outputs received by this wallet as cold-staker\n"
 
             "\nArguments:\n"
             "1. nonWhitelistedOnly   (boolean, optional, default=false) Whether to exclude P2CS from whitelisted delegators.\n"
@@ -1739,8 +2795,81 @@ UniValue listcoldutxos(const UniValue& params, bool fHelp)
             entry.push_back(Pair("txidn", (int)i));
             entry.push_back(Pair("amount", ValueFromAmount(out.nValue)));
             entry.push_back(Pair("confirmations", pcoin->GetDepthInMainChain(false)));
-            entry.push_back(Pair("cold-staker", CBitcoinAddress(addresses[0], CChainParams::STAKING_ADDRESS).ToString()));
-            entry.push_back(Pair("coin-owner", CBitcoinAddress(addresses[1]).ToString()));
+            entry.push_back(Pair("cold-staker", CBTCUAddress(addresses[0], CChainParams::STAKING_ADDRESS).ToString()));
+            entry.push_back(Pair("coin-owner", CBTCUAddress(addresses[1]).ToString()));
+            entry.push_back(Pair("whitelisted", fWhitelisted ? "true" : "false"));
+            results.push_back(entry);
+        }
+    }
+
+    return results;
+}
+
+UniValue listleasingutxos(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw std::runtime_error(
+            "listleasingutxos ( nonWhitelistedOnly )\n"
+            "\nList P2L unspent outputs received by this wallet as leaser\n"
+
+            "\nArguments:\n"
+            "1. nonWhitelistedOnly   (boolean, optional, default=false) Whether to exclude P2L from whitelisted leasees.\n"
+
+            "\nResult:\n"
+            "[\n"
+            "  {\n"
+            "    \"txid\" : \"true\",            (string) The transaction id of the P2L utxo\n"
+            "    \"txidn\" : \"accountname\",    (string) The output number of the P2L utxo\n"
+            "    \"amount\" : x.xxx,             (numeric) The amount of the P2L utxo\n"
+            "    \"confirmations\" : n,          (numeric) The number of confirmations of the P2L utxo\n"
+            "    \"coin-leaser\" : n,            (string) The cold-leaser address of the P2L utxo\n"
+            "    \"coin-owner\" : n,             (string) The coin-owner address of the P2L utxo\n"
+            "    \"whitelisted\" : n             (string) \"true\"/\"false\" coin-owner in leasee whitelist\n"
+            "  }\n"
+            "  ,...\n"
+            "]\n"
+
+            "\nExamples:\n" +
+            HelpExampleCli("listleasingutxos", "") + HelpExampleCli("listleasingutxos", "true"));
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    bool fExcludeWhitelisted = false;
+    if (params.size() > 0)
+        fExcludeWhitelisted = params[0].get_bool();
+    UniValue results(UniValue::VARR);
+
+    for (std::map<uint256, CWalletTx>::const_iterator it =
+        pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it) {
+        const uint256& wtxid = it->first;
+        const CWalletTx* pcoin = &(*it).second;
+        if (!CheckFinalTx(*pcoin) || !pcoin->IsTrusted())
+            continue;
+
+        // if this tx has no unspent P2L outputs for us, skip it
+        if(pcoin->GetLeasingCredit() == 0 && pcoin->GetLeasedCredit() == 0)
+            continue;
+
+        for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
+            const CTxOut& out = pcoin->vout[i];
+            isminetype mine = pwalletMain->IsMine(out);
+            if (!bool(mine & ISMINE_LEASING) && !bool(mine & ISMINE_LEASED))
+                continue;
+            txnouttype type;
+            std::vector<CTxDestination> addresses;
+            int nRequired;
+            if (!ExtractDestinations(out.scriptPubKey, type, addresses, nRequired))
+                continue;
+            const bool fWhitelisted = pwalletMain->mapAddressBook.count(addresses[1]) > 0;
+            if (fExcludeWhitelisted && fWhitelisted)
+                continue;
+            UniValue entry(UniValue::VOBJ);
+            entry.push_back(Pair("txid", wtxid.GetHex()));
+            entry.push_back(Pair("txidn", (int)i));
+            entry.push_back(Pair("amount", ValueFromAmount(out.nValue)));
+            entry.push_back(Pair("confirmations", pcoin->GetDepthInMainChain(false)));
+            entry.push_back(Pair("coin-leaser", CBTCUAddress(addresses[0], CChainParams::LEASING_ADDRESS).ToString()));
+            entry.push_back(Pair("coin-owner", CBTCUAddress(addresses[1]).ToString()));
             entry.push_back(Pair("whitelisted", fWhitelisted ? "true" : "false"));
             results.push_back(entry);
         }
@@ -1751,7 +2880,7 @@ UniValue listcoldutxos(const UniValue& params, bool fHelp)
 
 static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
 {
-    CBitcoinAddress addr;
+    CBTCUAddress addr;
     if (addr.Set(dest))
         entry.push_back(Pair("address", addr.ToString()));
 }
@@ -2085,7 +3214,7 @@ UniValue listsinceblock(const UniValue& params, bool fHelp)
 
     CBlockIndex* pindex = NULL;
     int target_confirms = 1;
-    isminefilter filter = ISMINE_SPENDABLE_ALL | ISMINE_COLD;
+    isminefilter filter = ISMINE_SPENDABLE_ALL | ISMINE_COLD | ISMINE_LEASING;
 
     if (params.size() > 0) {
         uint256 blockId = 0;
@@ -2173,7 +3302,7 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
     uint256 hash;
     hash.SetHex(params[0].get_str());
 
-    isminefilter filter = ISMINE_SPENDABLE_ALL | ISMINE_COLD;
+    isminefilter filter = ISMINE_SPENDABLE_ALL | ISMINE_COLD | ISMINE_LEASING;
     if (params.size() > 1)
         if (params[1].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
@@ -2713,9 +3842,13 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
             "  \"balance\": xxxxxxx,                      (numeric) the total BTCU balance of the wallet (cold balance excluded)\n"
             "  \"delegated_balance\": xxxxx,              (numeric) the BTCU balance held in P2CS (cold staking) contracts\n"
             "  \"cold_staking_balance\": xx,              (numeric) the BTCU balance held in cold staking addresses\n"
+            "  \"leased_balance\": xxxxx,                 (numeric) the BTCU balance held in P2L (leasing) contracts\n"
+            "  \"leasing_balance\": xxxxx,                (numeric) the BTCU balance held in leasing addresses\n"
             "  \"unconfirmed_balance\": xxx,              (numeric) the total unconfirmed balance of the wallet in BTCU\n"
             "  \"immature_delegated_balance\": xxxxxx,    (numeric) the delegated immature balance of the wallet in BTCU\n"
             "  \"immature_cold_staking_balance\": xxxxxx, (numeric) the cold-staking immature balance of the wallet in BTCU\n"
+            "  \"immature_leased_balance\": xxxxxx,       (numeric) the leased immature balance of the wallet in BTCU\n"
+            "  \"immature_leasing_balance\": xxxxxx,      (numeric) the leasing immature balance of the wallet in BTCU\n"
             "  \"immature_balance\": xxxxxx,              (numeric) the total immature balance of the wallet in BTCU\n"
             "  \"txcount\": xxxxxxx,                      (numeric) the total number of transactions in the wallet\n"
             "  \"keypoololdest\": xxxxxx,                 (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
@@ -2734,10 +3867,14 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("balance", ValueFromAmount(pwalletMain->GetBalance())));
     obj.push_back(Pair("delegated_balance", ValueFromAmount(pwalletMain->GetDelegatedBalance())));
     obj.push_back(Pair("cold_staking_balance", ValueFromAmount(pwalletMain->GetColdStakingBalance())));
+    obj.push_back(Pair("leased_balance", ValueFromAmount(pwalletMain->GetLeasedBalance())));
+    obj.push_back(Pair("leasing_balance", ValueFromAmount(pwalletMain->GetLeasingBalance())));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance())));
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance())));
     obj.push_back(Pair("immature_delegated_balance",    ValueFromAmount(pwalletMain->GetImmatureDelegatedBalance())));
     obj.push_back(Pair("immature_cold_staking_balance",    ValueFromAmount(pwalletMain->GetImmatureColdStakingBalance())));
+    obj.push_back(Pair("immature_leased_balance", ValueFromAmount(pwalletMain->GetImmatureLeasedBalance())));
+    obj.push_back(Pair("immature_leasing_balance", ValueFromAmount(pwalletMain->GetImmatureLeasingBalance())));
     obj.push_back(Pair("txcount", (int)pwalletMain->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize", (int)pwalletMain->GetKeyPoolSize()));
@@ -2925,7 +4062,7 @@ UniValue printAddresses()
     for (const COutput& out : vCoins) {
         CTxDestination utxoAddress;
         ExtractDestination(out.tx->vout[out.i].scriptPubKey, utxoAddress);
-        std::string strAdd = CBitcoinAddress(utxoAddress).ToString();
+        std::string strAdd = CBTCUAddress(utxoAddress).ToString();
 
         if (mapAddresses.find(strAdd) == mapAddresses.end()) //if strAdd is not already part of the map
             mapAddresses[strAdd] = (double)out.tx->vout[out.i].nValue / (double)COIN;
@@ -2988,7 +4125,7 @@ UniValue multisend(const UniValue& params, bool fHelp)
             if (pwalletMain->vMultiSend.size() < 1)
                 throw JSONRPCError(RPC_INVALID_REQUEST, "Unable to activate MultiSend, check MultiSend vector");
 
-            if (CBitcoinAddress(pwalletMain->vMultiSend[0].first).IsValid()) {
+            if (CBTCUAddress(pwalletMain->vMultiSend[0].first).IsValid()) {
                 pwalletMain->fMultiSendStake = true;
                 if (!walletdb.WriteMSettings(true, pwalletMain->fMultiSendMasternodeReward, pwalletMain->nLastMultiSendHeight)) {
                     UniValue obj(UniValue::VOBJ);
@@ -3006,7 +4143,7 @@ UniValue multisend(const UniValue& params, bool fHelp)
             if (pwalletMain->vMultiSend.size() < 1)
                 throw JSONRPCError(RPC_INVALID_REQUEST, "Unable to activate MultiSend, check MultiSend vector");
 
-            if (CBitcoinAddress(pwalletMain->vMultiSend[0].first).IsValid()) {
+            if (CBTCUAddress(pwalletMain->vMultiSend[0].first).IsValid()) {
                 pwalletMain->fMultiSendMasternodeReward = true;
 
                 if (!walletdb.WriteMSettings(pwalletMain->fMultiSendStake, true, pwalletMain->nLastMultiSendHeight)) {
@@ -3049,7 +4186,7 @@ UniValue multisend(const UniValue& params, bool fHelp)
     }
     if (params.size() == 2 && params[0].get_str() == "disable") {
         std::string disAddress = params[1].get_str();
-        if (!CBitcoinAddress(disAddress).IsValid())
+        if (!CBTCUAddress(disAddress).IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "address you want to disable is not valid");
         else {
             pwalletMain->vDisabledAddresses.push_back(disAddress);
@@ -3090,7 +4227,7 @@ UniValue multisend(const UniValue& params, bool fHelp)
 
     //if the user is entering a new MultiSend item
     std::string strAddress = params[0].get_str();
-    CBitcoinAddress address(strAddress);
+    CBTCUAddress address(strAddress);
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
     if (std::stoi(params[1].get_str().c_str()) < 0)
@@ -3573,17 +4710,17 @@ UniValue spendzerocoinmints(const UniValue& params, bool fHelp)
 extern UniValue DoZbtcuSpend(const CAmount nAmount, std::vector<CZerocoinMint>& vMintsSelected, std::string address_str)
 {
     int64_t nTimeStart = GetTimeMillis();
-    CBitcoinAddress address = CBitcoinAddress(); // Optional sending address. Dummy initialization here.
+    CBTCUAddress address = CBTCUAddress(); // Optional sending address. Dummy initialization here.
     CWalletTx wtx;
     CZerocoinSpendReceipt receipt;
     bool fSuccess;
 
-    std::list<std::pair<CBitcoinAddress*, CAmount>> outputs;
+    std::list<std::pair<CBTCUAddress*, CAmount>> outputs;
     if(address_str != "") { // Spend to supplied destination address
-        address = CBitcoinAddress(address_str);
+        address = CBTCUAddress(address_str);
         if(!address.IsValid() || address.IsStakingAddress())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU address");
-        outputs.push_back(std::pair<CBitcoinAddress*, CAmount>(&address, nAmount));
+        outputs.push_back(std::pair<CBTCUAddress*, CAmount>(&address, nAmount));
     }
 
     EnsureWalletIsUnlocked();
@@ -3617,7 +4754,7 @@ extern UniValue DoZbtcuSpend(const CAmount nAmount, std::vector<CZerocoinMint>& 
         if(txout.IsZerocoinMint())
             out.push_back(Pair("address", "zerocoinmint"));
         else if(ExtractDestination(txout.scriptPubKey, dest))
-            out.push_back(Pair("address", CBitcoinAddress(dest).ToString()));
+            out.push_back(Pair("address", CBTCUAddress(dest).ToString()));
         vout.push_back(out);
     }
 
@@ -3881,9 +5018,9 @@ UniValue exportzerocoins(const UniValue& params, bool fHelp)
         if (mint.GetVersion() >= 2) {
             CKey key;
             key.SetPrivKey(mint.GetPrivKey(), true);
-            CBitcoinSecret cBitcoinSecret;
-            cBitcoinSecret.SetKey(key);
-            objMint.push_back(Pair("k", cBitcoinSecret.ToString()));
+            CBTCUSecret CBTCUSecret;
+            CBTCUSecret.SetKey(key);
+            objMint.push_back(Pair("k", CBTCUSecret.ToString()));
         }
         jsonList.push_back(objMint);
     }
@@ -3961,7 +5098,7 @@ UniValue importzerocoins(const UniValue& params, bool fHelp)
         CPrivKey privkey;
         if (nVersion >= libzerocoin::PrivateCoin::PUBKEY_VERSION) {
             std::string strPrivkey = find_value(o, "k").get_str();
-            CBitcoinSecret vchSecret;
+            CBTCUSecret vchSecret;
             bool fGood = vchSecret.SetString(strPrivkey);
             CKey key = vchSecret.GetKey();
             if (!key.IsValid() && fGood)
@@ -4283,7 +5420,7 @@ UniValue spendrawzerocoin(const UniValue& params, bool fHelp)
 
     std::string priv_key_str = params[3].get_str();
     CPrivKey privkey;
-    CBitcoinSecret vchSecret;
+    CBTCUSecret vchSecret;
     bool fGood = vchSecret.SetString(priv_key_str);
     CKey key = vchSecret.GetKey();
     if (!key.IsValid() && fGood)

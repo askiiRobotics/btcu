@@ -88,5 +88,5 @@ jsonrpcstub_create(web3jsonrpc test.json
     dev::rpc::TestFace ${CMAKE_CURRENT_SOURCE_DIR} TestFace
     TestClient ${CMAKE_CURRENT_BINARY_DIR} TestClient
 )
-
+target_include_directories(web3jsonrpc PRIVATE "${UTILS_INCLUDE_DIR}" ../ethash/include)
 target_link_libraries(web3jsonrpc ethashseal webthree libjson-rpc-cpp::server)

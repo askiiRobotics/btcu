@@ -108,6 +108,16 @@ CAmount CTxOut::GetZerocoinMinted() const
     return nValue;
 }
 
+bool CTxOut::IsPayToLeasing() const
+{
+    return scriptPubKey.IsPayToLeasing();
+}
+
+bool CTxOut::IsLeasingReward() const
+{
+    return scriptPubKey.IsLeasingReward();
+}
+
 std::string CTxOut::ToString() const
 {
     return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, scriptPubKey.ToString().substr(0,30));
@@ -144,6 +154,10 @@ void CTransaction::UpdateHash() const
 CTransaction::CTransaction() : hash(), nVersion(CTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0), validatorRegister(), validatorVote() { }
 CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), validatorRegister(tx.validatorRegister), validatorVote(tx.validatorVote) {
     UpdateHash();
+}
+
+CTransaction::CTransaction(const uint256& coinsHash, const CCoins& coins):
+    hash(coinsHash), nVersion(coins.nVersion), vout(coins.vout), nLockTime(0) {
 }
 
 CTransaction& CTransaction::operator=(const CTransaction &tx) {
@@ -195,7 +209,21 @@ bool CTransaction::IsCoinStake() const
     if (vin[0].prevout.IsNull() && !fAllowNull)
         return false;
 
-    return (vout.size() >= 2 && vout[0].IsEmpty());
+    return (vout.size() >= 2 && vout[0].IsEmpty() && !vout[1].IsLeasingReward());
+}
+
+bool CTransaction::IsLeasingReward() const
+{
+    if (1 != vin.size() || !vin[0].prevout.IsNull() || vout.size() < 2 || !vout[0].IsEmpty())
+        return false;
+
+    // Skip first vout - its empty
+    auto itr = vout.begin();
+    for (++itr; vout.end() != itr; ++itr)
+        if (!itr->IsLeasingReward())
+            return false;
+
+    return true;
 }
 
 bool CTransaction::IsValidatorRegister() const
@@ -245,6 +273,15 @@ bool CTransaction::HasP2CSOutputs() const
 {
     for(const CTxOut& txout : vout) {
         if (txout.scriptPubKey.IsPayToColdStaking())
+            return true;
+    }
+    return false;
+}
+
+bool CTransaction::HasP2LOutputs() const
+{
+    for(const CTxOut& txout : vout) {
+        if (txout.scriptPubKey.IsPayToLeasing())
             return true;
     }
     return false;
@@ -364,4 +401,67 @@ std::string CTransaction::ToString() const
     for (unsigned int i = 0; i < vout.size(); i++)
         str += "    " + vout[i].ToString() + "\n";
     return str;
+}
+
+///////////////////////////////////////////////////////////// qtum
+bool CTransaction::HasCreateOrCall() const{
+   for(const CTxOut& v : vout){
+      if(v.scriptPubKey.HasOpCreate() || v.scriptPubKey.HasOpCall()){
+         return true;
+      }
+   }
+   return false;
+}
+
+
+
+bool CTransaction::HasOpSpend() const{
+   for(const CTxIn& i : vin){
+      if(i.scriptSig.HasOpSpend()){
+         return true;
+      }
+   }
+   return false;
+}
+/////////////////////////////////////////////////////////////
+
+bool CTransaction::HasOpCreate() const
+{
+   for(const CTxOut& v : vout){
+      if(v.scriptPubKey.HasOpCreate()){
+         return true;
+      }
+   }
+   return false;
+}
+
+bool CTransaction::HasOpCall() const
+{
+   for(const CTxOut& v : vout){
+      if(v.scriptPubKey.HasOpCall()){
+         return true;
+      }
+   }
+   return false;
+}
+
+template <class T>
+bool hasOpSender(const T& txTo)
+{
+   for(const CTxOut& v : txTo.vout){
+      if(v.scriptPubKey.HasOpSender()){
+         return true;
+      }
+   }
+   return false;
+}
+
+bool CTransaction::HasOpSender() const
+{
+   return hasOpSender(*this);
+}
+
+bool CMutableTransaction::HasOpSender() const
+{
+   return hasOpSender(*this);
 }

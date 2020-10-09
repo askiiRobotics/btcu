@@ -68,7 +68,7 @@ private Q_SLOTS:
     void onCopyOwnerClicked();
     void onAddressCopyClicked();
     void onAddressEditClicked();
-    void onTxArrived(const QString& hash, const bool& isCoinStake, const bool& isCSAnyType);
+    void onTxArrived(const QString& hash, const bool& isCoinStake, const bool& isCSAnyType, const bool& isLAnyType);
     void onContactsClicked(bool ownerAdd);
     void clearAll();
     void onLabelClicked();
@@ -110,7 +110,7 @@ private:
 
     int nDisplayUnit;
 
-    void showAddressGenerationDialog(bool isPaymentRequest);
+    void showAddressGenerationDialog();
     void onContactsClicked();
     void tryRefreshDelegations();
     bool refreshDelegations();

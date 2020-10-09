@@ -25,7 +25,7 @@
 
 class CAccount;
 class CAccountingEntry;
-class CBitcoinAddress;
+class CBTCUAddress;
 struct CBlockLocator;
 class CKeyPool;
 class CMasterKey;

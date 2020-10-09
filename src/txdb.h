@@ -55,6 +55,20 @@ struct CDiskTxPos : public CDiskBlockPos {
     }
 };
 
+class CCoinsViewDBIterator: public CCoinsViewIterator
+{
+    std::unique_ptr<CLevelDBIterator> pCursor;
+
+public:
+    CCoinsViewDBIterator(std::unique_ptr<CLevelDBIterator> cursor): pCursor(std::move(cursor)) {}
+    ~CCoinsViewDBIterator() = default;
+
+    bool GetTrxHash(uint256&, bool fThrow = false) const override;
+    bool GetCoins(CCoins&, bool fThrow = false) const override;
+    bool Valid() const override;
+    void Next() const override;
+};
+
 /** CCoinsView backed by the LevelDB coin database (chainstate/) */
 class CCoinsViewDB : public CCoinsView
 {
@@ -64,11 +78,13 @@ protected:
 public:
     CCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
+    bool Upgrade(const uint256& hashBestBlock);
     bool GetCoins(const uint256& txid, CCoins& coins) const;
     bool HaveCoins(const uint256& txid) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
     bool GetStats(CCoinsStats& stats) const;
+    std::unique_ptr<CCoinsViewIterator> SeekToFirst() const override;
 };
 
 /** Access to the block database (blocks/index/) */

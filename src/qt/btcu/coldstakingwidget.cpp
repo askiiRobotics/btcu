@@ -223,7 +223,7 @@ void ColdStakingWidget::loadWalletModel(){
 
 }
 
-void ColdStakingWidget::onTxArrived(const QString& hash, const bool& isCoinStake, const bool& isCSAnyType) {
+void ColdStakingWidget::onTxArrived(const QString& hash, const bool& isCoinStake, const bool& isCSAnyType, const bool& isLAnyType) {
     if (isCSAnyType) {
         tryRefreshDelegations();
     }
@@ -520,17 +520,17 @@ void ColdStakingWidget::onCoinControlClicked(){
 }
 
 void ColdStakingWidget::onColdStakeClicked() {
-    showAddressGenerationDialog(false);
+    showAddressGenerationDialog();
 }
 
-void ColdStakingWidget::showAddressGenerationDialog(bool isPaymentRequest) {
+void ColdStakingWidget::showAddressGenerationDialog() {
     if(walletModel && !isShowingDialog) {
         if (!verifyWalletUnlocked()) return;
         isShowingDialog = true;
         showHideOp(true);
         RequestDialog *dialog = new RequestDialog(window);
         dialog->setWalletModel(walletModel);
-        dialog->setPaymentRequest(isPaymentRequest);
+        dialog->setRequestType(RequestType::ColdStaking);
         openDialogWithOpaqueBackgroundY(dialog, window, 3.5, 12);
         if (dialog->res == 1){
             inform(tr("URI copied to clipboard"));
@@ -694,7 +694,7 @@ void ColdStakingWidget::onLabelClicked(QString dialogTitle, const QModelIndex &i
             QString label = dialog->getLabel();
             std::string stdString = qAddress.toStdString();
             std::string purpose = walletModel->getAddressTableModel()->purposeForAddress(stdString);
-            const CBitcoinAddress address = CBitcoinAddress(stdString.data());
+            const CBTCUAddress address = CBTCUAddress(stdString.data());
             if (!label.isEmpty() && walletModel->updateAddressBookLabels(
                     address.Get(),
                     label.toUtf8().constData(),

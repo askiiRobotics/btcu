@@ -16,7 +16,8 @@
 #include "rpc/server.h"
 #include "spork.h"
 #include "timedata.h"
-#include "util.h"
+#include "rpc/util.h"
+#include "script/standard.h"
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
@@ -244,6 +245,41 @@ private:
 
 public:
     DescribeAddressVisitor(isminetype mineIn) : mine(mineIn) {}
+    //TO_FIX: Add correct body for function
+    void ProcessSubScript(const CScript& subscript, UniValue& obj) const
+    {   /*
+        // Always present: script type and redeemscript
+        std::vector<std::vector<unsigned char>> solutions_data;
+        txnouttype which_type = Solver(subscript, solutions_data);
+        obj.pushKV("script", GetTxnOutputType(which_type));
+        obj.pushKV("hex", HexStr(subscript.begin(), subscript.end()));
+
+        CTxDestination embedded;
+        if (ExtractDestination(subscript, embedded)) {
+            // Only when the script corresponds to an address.
+            UniValue subobj(UniValue::VOBJ);
+            UniValue detail = DescribeAddress(embedded);
+            subobj.pushKVs(detail);
+            UniValue wallet_detail = boost::apply_visitor(*this, embedded);
+            subobj.pushKVs(wallet_detail);
+            subobj.pushKV("address", EncodeDestination(embedded));
+            subobj.pushKV("scriptPubKey", HexStr(subscript.begin(), subscript.end()));
+            // Always report the pubkey at the top level, so that `getnewaddress()['pubkey']` always works.
+            if (subobj.exists("pubkey")) obj.pushKV("pubkey", subobj["pubkey"]);
+            obj.pushKV("embedded", std::move(subobj));
+        } else if (which_type == TX_MULTISIG) {
+            // Also report some information on multisig scripts (which do not have a corresponding address).
+            // TODO: abstract out the common functionality between this logic and ExtractDestinations.
+            obj.pushKV("sigsrequired", solutions_data[0][0]);
+            UniValue pubkeys(UniValue::VARR);
+            for (size_t i = 1; i < solutions_data.size() - 1; ++i) {
+                CPubKey key(solutions_data[i].begin(), solutions_data[i].end());
+                pubkeys.push_back(HexStr(key.begin(), key.end()));
+            }
+            obj.pushKV("pubkeys", std::move(pubkeys));
+        }
+        */
+    }
 
     UniValue operator()(const CNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
@@ -252,7 +288,7 @@ public:
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
         if (bool(mine & ISMINE_ALL)) {
-            pwalletMain->GetPubKey(keyID, vchPubKey);
+            pwalletMain->CCryptoKeyStore::GetPubKey(keyID, vchPubKey);
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
             obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
         }
@@ -263,7 +299,7 @@ public:
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("isscript", true));
         CScript subscript;
-        pwalletMain->GetCScript(scriptID, subscript);
+        pwalletMain->CCryptoKeyStore::GetCScript(scriptID, subscript);
         std::vector<CTxDestination> addresses;
         txnouttype whichType;
         int nRequired;
@@ -272,11 +308,40 @@ public:
         obj.push_back(Pair("hex", HexStr(subscript.begin(), subscript.end())));
         UniValue a(UniValue::VARR);
         for (const CTxDestination& addr : addresses)
-            a.push_back(CBitcoinAddress(addr).ToString());
+            a.push_back(CBTCUAddress(addr).ToString());
         obj.push_back(Pair("addresses", a));
         if (whichType == TX_MULTISIG)
             obj.push_back(Pair("sigsrequired", nRequired));
         return obj;
+    }
+
+    UniValue operator()(const WitnessV0KeyHash& id) const
+    {
+      UniValue obj(UniValue::VOBJ);
+      obj.pushKV("isscript", false);
+      obj.pushKV("iswitness", true);
+      obj.pushKV("witness_version", 0);
+      obj.pushKV("witness_program", HexStr(id.begin(), id.end()));
+      return obj;
+    }
+
+    UniValue operator()(const WitnessV0ScriptHash& id) const
+    {
+      UniValue obj(UniValue::VOBJ);
+      obj.pushKV("isscript", true);
+      obj.pushKV("iswitness", true);
+      obj.pushKV("witness_version", 0);
+      obj.pushKV("witness_program", HexStr(id.begin(), id.end()));
+      return obj;
+    }
+
+    UniValue operator()(const WitnessUnknown& id) const
+    {
+      UniValue obj(UniValue::VOBJ);
+      obj.pushKV("iswitness", true);
+      obj.pushKV("witness_version", (int)id.version);
+      obj.pushKV("witness_program", HexStr(id.program, id.program + id.length));
+      return obj;
     }
 };
 #endif
@@ -378,7 +443,7 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
     LOCK(cs_main);
 #endif
 
-    CBitcoinAddress address(params[0].get_str());
+    CBTCUAddress address(params[0].get_str());
     bool isValid = address.IsValid();
 
     UniValue ret(UniValue::VOBJ);
@@ -392,8 +457,9 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
 
 #ifdef ENABLE_WALLET
         isminetype mine = pwalletMain ? IsMine(*pwalletMain, dest) : ISMINE_NO;
-        ret.push_back(Pair("ismine", bool(mine & (ISMINE_SPENDABLE_ALL | ISMINE_COLD))));
+        ret.push_back(Pair("ismine", bool(mine & (ISMINE_SPENDABLE_ALL | ISMINE_COLD | ISMINE_LEASING))));
         ret.push_back(Pair("isstaking", address.IsStakingAddress()));
+        ret.push_back(Pair("isleasing", address.IsLeasingAddress()));
         ret.push_back(Pair("iswatchonly", bool(mine & ISMINE_WATCH_ONLY)));
         UniValue detail = boost::apply_visitor(DescribeAddressVisitor(mine), dest);
         ret.pushKVs(detail);
@@ -428,14 +494,14 @@ CScript _createmultisig_redeemScript(const UniValue& params)
         const std::string& ks = keys[i].get_str();
 #ifdef ENABLE_WALLET
         // Case 1: BTCU address and we have full public key:
-        CBitcoinAddress address(ks);
+        CBTCUAddress address(ks);
         if (pwalletMain && address.IsValid()) {
             CKeyID keyID;
             if (!address.GetKeyID(keyID))
                 throw std::runtime_error(
                     strprintf("%s does not refer to a key", ks));
             CPubKey vchPubKey;
-            if (!pwalletMain->GetPubKey(keyID, vchPubKey))
+            if (!pwalletMain->CCryptoKeyStore::GetPubKey(keyID, vchPubKey))
                 throw std::runtime_error(
                     strprintf("no full public key for address %s", ks));
             if (!vchPubKey.IsFullyValid())
@@ -495,7 +561,7 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
     // Construct using pay-to-script-hash:
     CScript inner = _createmultisig_redeemScript(params);
     CScriptID innerID(inner);
-    CBitcoinAddress address(innerID);
+    CBTCUAddress address(innerID);
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("address", address.ToString()));
@@ -535,7 +601,7 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
     std::string strSign = params[1].get_str();
     std::string strMessage = params[2].get_str();
 
-    CBitcoinAddress addr(strAddress);
+    CBTCUAddress addr(strAddress);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
@@ -598,7 +664,7 @@ UniValue getstakingstatus(const UniValue& params, bool fHelp)
             "  \"haveconnections\": true|false,    (boolean) if network connections are present\n"
             "  \"mnsync\": true|false,             (boolean) if masternode data is synced\n"
             "  \"walletunlocked\": true|false,     (boolean) if the wallet is unlocked\n"
-            "  \"stakeablecoins\": true|false,      (boolean) if the wallet has mintable balance (greater than reserve balance)\n"
+            "  \"stakeablecoins\": true|false,     (boolean) if the wallet has mintable balance (greater than reserve balance)\n"
             "  \"hashLastStakeAttempt\": xxx       (hex string) hash of last block on top of which the miner attempted to stake\n"
             "  \"heightLastStakeAttempt\": n       (integer) height of last block on top of which the miner attempted to stake\n"
             "  \"timeLastStakeAttempt\": n         (integer) time of last attempted stake\n"

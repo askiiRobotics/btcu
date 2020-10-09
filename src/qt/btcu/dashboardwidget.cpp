@@ -115,6 +115,8 @@ DashboardWidget::DashboardWidget(BTCUGUI* parent) :
     ui->comboBoxSortType->addItem(tr("Hot stakes"), TransactionFilterProxy::TYPE(TransactionRecord::StakeHot));
     ui->comboBoxSortType->addItem(tr("Delegated"), TransactionFilterProxy::TYPE(TransactionRecord::P2CSDelegationSent) | TransactionFilterProxy::TYPE(TransactionRecord::P2CSDelegationSentOwner));
     ui->comboBoxSortType->addItem(tr("Delegations"), TransactionFilterProxy::TYPE(TransactionRecord::P2CSDelegation));
+    ui->comboBoxSortType->addItem(tr("Leased"), TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasingSent) | TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasingSentOwner));
+    ui->comboBoxSortType->addItem(tr("Leasings"), TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasing));
     ui->comboBoxSortType->setCurrentIndex(0);
     connect(ui->comboBoxSortType, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onSortTypeChanged(const QString&)));
 
@@ -242,7 +244,7 @@ void DashboardWidget::loadWalletModel(){
     updateDisplayUnit();
 }
 
-void DashboardWidget::onTxArrived(const QString& hash, const bool& isCoinStake, const bool& isCSAnyType) {
+void DashboardWidget::onTxArrived(const QString& hash, const bool& isCoinStake, const bool& isCSAnyType, const bool& isLAnyType) {
     showList();
 #ifdef USE_QTCHARTS
     if (isCoinStake) {

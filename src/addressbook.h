@@ -20,9 +20,15 @@ namespace AddressBook {
         extern const std::string DELEGATOR;
         extern const std::string COLD_STAKING;
         extern const std::string COLD_STAKING_SEND;
+        extern const std::string LEASEE;
+        extern const std::string LEASABLE;
+        extern const std::string LEASED;
+        extern const std::string LEASING;
+        extern const std::string LEASING_SEND;
     }
 
     bool IsColdStakingPurpose(const std::string& purpose);
+    bool IsLeasingPurpose(const std::string& purpose);
 
 /** Address book data */
     class CAddressBookData {

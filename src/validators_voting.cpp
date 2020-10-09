@@ -1,3 +1,4 @@
+#include "validators_voting.h"
 #include "validators_state.h"
 #include <consensus/validator_tx_verify.h>
 #include "blocksignature.h"
@@ -140,6 +141,30 @@ boost::optional<CPubKey> GetValidatorPubKey(const CTxIn &validatorVin)
     return pubKeyOpt;
 }
 
+boost::optional<CPubKey> GetGenesisValidatorPubKey(const CTxIn &validatorVin)
+{
+    boost::optional<CPubKey> pubKeyOpt;
+    
+    if(VinIsGenesis(validatorVin))
+    {
+        auto genesisValidators = Params().GenesisBlock().vtx[0].validatorRegister;
+        for(auto &gv : genesisValidators)
+        {
+            if(gv.vin == validatorVin)
+            {
+                pubKeyOpt.emplace(gv.pubKey);
+                break;
+            }
+        }
+    }
+    return pubKeyOpt;
+}
+
+bool VinIsGenesis(const CTxIn &vin)
+{
+    return (vin.prevout.hash == uint256(0));
+}
+
 bool VinIsUnspent(const CTxIn &vin, const CCoinsViewCache &view)
 {
     // check for presence it UTXO set
@@ -148,6 +173,8 @@ bool VinIsUnspent(const CTxIn &vin, const CCoinsViewCache &view)
 
 bool CheckValidator(const CBlock& block, const CCoinsViewCache &view)
 {
-    return (VinIsUnspent(block.validatorVin, view) &&  // validator's VIN is unspent
-            CheckValidatorSignature(block)); // signature can be checked only if validator is in g_ValidatorsList (public key is retrieved from it)
+    auto vinIsUnspent = VinIsGenesis(block.validatorVin) ? true : VinIsUnspent(block.validatorVin, view);
+    
+    // for a regular validator a VIN should be unspent and signature can be checked only if validator is in g_ValidatorsList (public key is retrieved from it)
+    return (vinIsUnspent && CheckValidatorSignature(block));
 }

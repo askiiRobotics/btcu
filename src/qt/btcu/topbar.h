@@ -52,6 +52,7 @@ Q_SIGNALS:
     void themeChanged(bool isLight);
     void walletSynced(bool isSync);
     void onShowHideColdStakingChanged(bool show);
+    void onShowHideLeasingChanged(bool show);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -64,6 +65,7 @@ private Q_SLOTS:
     void refreshStatus();
     void openLockUnlock();
     void onColdStakingClicked();
+    void onLeasingClicked();
     void refreshProgressBarSize();
     void expandSync();
 private:

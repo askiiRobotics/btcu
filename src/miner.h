@@ -9,8 +9,9 @@
 #define BITCOIN_MINER_H
 
 #include "primitives/block.h"
-
+#include "main.h"
 #include <stdint.h>
+#include "optional.h"
 
 class CBlock;
 class CBlockHeader;
@@ -48,5 +49,10 @@ struct CBlockTemplate {
     std::vector<CAmount> vTxFees;
     std::vector<int64_t> vTxSigOps;
 };
-
+///////////////////////////////////////////// // qtum
+extern uint64_t minGasPrice;
+extern uint64_t hardBlockGasLimit;
+extern uint64_t softBlockGasLimit;
+extern uint64_t txGasLimit;
+/////////////////////////////////////////////
 #endif // BITCOIN_MINER_H

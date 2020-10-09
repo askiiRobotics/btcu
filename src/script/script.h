@@ -30,6 +30,19 @@ static const int MAX_SCRIPT_SIZE = 10000;
 // otherwise as UNIX timestamp.
 static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 
+/////////////////////qtum
+// Maximum base script length in bytes
+static const int MAX_BASE_SCRIPT_SIZE = 10000;
+
+// Maximum number of non-push operations per script
+static const int MAX_OPS_PER_SCRIPT = 201;
+
+// Maximum number of public keys per multisig
+static const int MAX_PUBKEYS_PER_MULTISIG = 20;
+
+// Maximum number of values on script interpreter stack
+static const int MAX_STACK_SIZE = 1000;
+
 template <typename T>
 std::vector<unsigned char> ToByteVector(const T& in)
 {
@@ -163,6 +176,7 @@ enum opcodetype
     OP_NOP1 = 0xb0,
     OP_NOP2 = 0xb1,
     OP_CHECKLOCKTIMEVERIFY = OP_NOP2,
+    OP_CHECKSEQUENCEVERIFY = 0xb2,
     OP_NOP3 = 0xb2,
     OP_NOP4 = 0xb3,
     OP_NOP5 = 0xb4,
@@ -180,9 +194,28 @@ enum opcodetype
     // cold staking
     OP_CHECKCOLDSTAKEVERIFY = 0xd1,
 
+    // Execute EXT byte code. (qtum sc)
+    OP_CREATE = 0xe1,
+    OP_CALL = 0xe2,
+    OP_SPEND = 0xe3,
+    OP_SENDER = 0xe4,
+
+    // leasing
+    OP_CHECKLEASEVERIFY = 0xd7,
+    OP_LEASINGREWARD = 0xd8,
+
     // template matching params
+    OP_ADDRESS_TYPE = 0xf2,
+    OP_ADDRESS = 0xf3,
+    OP_SCRIPT_SIG = 0xf4,
+    OP_GAS_PRICE = 0xf5,
+    OP_VERSION = 0xf6,
+    OP_GAS_LIMIT = 0xf7,
+    OP_DATA = 0xf8,
+    OP_INTEGER = 0xf9,
     OP_SMALLINTEGER = 0xfa,
     OP_PUBKEYS = 0xfb,
+    OP_TRXHASH = 0xfc,
     OP_PUBKEYHASH = 0xfd,
     OP_PUBKEY = 0xfe,
 
@@ -246,7 +279,7 @@ public:
     inline bool operator==(const int64_t& rhs) const    { return m_value == rhs; }
     inline bool operator!=(const int64_t& rhs) const    { return m_value != rhs; }
     inline bool operator<=(const int64_t& rhs) const    { return m_value <= rhs; }
-    inline bool operator< (const int64_t& rhs) const    { return m_value <  rhs; }
+    inline bool operator < (const int64_t& rhs) const    { return m_value <  rhs; }
     inline bool operator>=(const int64_t& rhs) const    { return m_value >= rhs; }
     inline bool operator> (const int64_t& rhs) const    { return m_value >  rhs; }
 
@@ -264,6 +297,9 @@ public:
 
     inline CScriptNum& operator+=( const CScriptNum& rhs)       { return operator+=(rhs.m_value);  }
     inline CScriptNum& operator-=( const CScriptNum& rhs)       { return operator-=(rhs.m_value);  }
+
+    inline CScriptNum operator&(   const int64_t& rhs)    const { return CScriptNum(m_value & rhs);}
+    inline CScriptNum operator&(   const CScriptNum& rhs) const { return operator&(rhs.m_value);   }
 
     inline CScriptNum operator-()                         const
     {
@@ -306,6 +342,30 @@ public:
     {
         return serialize(m_value);
     }
+
+   ///////////////////////////////// qtum
+   static uint64_t vch_to_uint64(const std::vector<unsigned char>& vch)
+   {
+      if (vch.size() > 8) {
+         throw scriptnum_error("script number overflow");
+      }
+
+      if (vch.empty())
+         return 0;
+
+      uint64_t result = 0;
+      for (size_t i = 0; i != vch.size(); ++i)
+         result |= static_cast<uint64_t>(vch[i]) << 8*i;
+
+      // If the input vector's most significant byte is 0x80, remove it from
+      // the result's msb and return a negative.
+      if (vch.back() & 0x80)
+         throw scriptnum_error("Negative gas value.");
+      // return -((uint64_t)(result & ~(0x80ULL << (8 * (vch.size() - 1)))));
+
+      return result;
+   }
+   /////////////////////////////////
 
     static std::vector<unsigned char> serialize(const int64_t& value)
     {
@@ -616,10 +676,20 @@ public:
     bool IsNormalPaymentScript() const;
     bool IsPayToScriptHash() const;
     bool IsPayToColdStaking() const;
+    bool IsPayToLeasing() const;
+    bool IsLeasingReward() const;
     bool StartsWithOpcode(const opcodetype opcode) const;
     bool IsZerocoinMint() const;
     bool IsZerocoinSpend() const;
     bool IsZerocoinPublicSpend() const;
+
+   ///////////////////////////////////////////////// // qtum
+   bool IsPayToPubkey() const;
+   bool IsPayToPubkeyHash() const;
+   /////////////////////////////////////////////////
+
+   bool IsPayToWitnessScriptHash() const;
+   bool IsWitnessProgram(int& version, std::vector<unsigned char>& program) const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;
@@ -635,12 +705,64 @@ public:
         return (size() > 0 && *begin() == OP_RETURN) || (size() > MAX_SCRIPT_SIZE);
     }
 
+   bool ExtractPubKey(CPubKey& pubKeyOut) const;
+
     std::string ToString() const;
     void clear()
     {
         // The default std::vector::clear() does not release memory.
         std::vector<unsigned char>().swap(*this);
     }
+
+   ///////////////////////////////////////// qtum
+   bool HasOpCreate() const
+   {
+      return Find(OP_CREATE) == 1;
+   }
+
+   bool HasOpCall() const
+   {
+      return Find(OP_CALL) == 1;
+   }
+
+   bool HasOpSpend() const
+   {
+      return size()==1 && *begin() == OP_SPEND;
+   }
+
+   bool HasOpSender() const
+   {
+      return Find(OP_SENDER) == 1;
+   }
+   bool ReplaceParam(opcodetype findOp, int posBefore, const std::vector<unsigned char>& vchParam, CScript& scriptRet) const;
+    bool UpdateSenderSig(const std::vector<unsigned char>& scriptSig, CScript& scriptRet) const
+    {
+        return ReplaceParam(OP_SENDER, 1, scriptSig, scriptRet);
+    }
+    CScript WithoutSenderSig() const
+    {
+        std::vector<unsigned char> scriptSig;
+        CScript scriptRet;
+        if(!UpdateSenderSig(scriptSig, scriptRet))
+            scriptRet = CScript(begin(), end());
+        return scriptRet;
+    }
 };
 
+
+struct CScriptWitness
+{
+    // Note that this encodes the data elements being pushed, rather than
+    // encoding them as a CScript that pushes them.
+    std::vector<std::vector<unsigned char> > stack;
+
+    // Some compilers complain without a default constructor
+    CScriptWitness() { }
+
+    bool IsNull() const { return stack.empty(); }
+
+    void SetNull() { stack.clear(); stack.shrink_to_fit(); }
+
+    std::string ToString() const;
+};
 #endif // BITCOIN_SCRIPT_SCRIPT_H

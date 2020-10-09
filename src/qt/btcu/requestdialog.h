@@ -18,6 +18,12 @@ namespace Ui {
 class RequestDialog;
 }
 
+enum class RequestType {
+    Payment,
+    ColdStaking,
+    Leasing
+};
+
 class RequestDialog : public QDialog
 {
     Q_OBJECT
@@ -27,7 +33,7 @@ public:
     ~RequestDialog();
 
     void setWalletModel(WalletModel *model);
-    void setPaymentRequest(bool isPaymentRequest);
+    void setRequestType(RequestType rt);
     void showEvent(QShowEvent *event) override;
     int res = -1;
 
@@ -39,7 +45,7 @@ private Q_SLOTS:
 private:
     Ui::RequestDialog *ui;
     int pos = 0;
-    bool isPaymentRequest = true;
+    RequestType requestType;
     WalletModel *walletModel;
     SnackBar *snackBar = nullptr;
     // Cached last address

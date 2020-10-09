@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 2.8)
 project (libff)
 
 # Default to RelWithDebInfo configuration if no configuration is explicitly specified.
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type on single-configuration generators" FORCE)
-endif()
+#if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+#  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type on single-configuration generators" FORCE)
+#endif()
 
 set(
   CURVE
@@ -59,7 +59,7 @@ option(
 option(
   WITH_PROCPS
   "Use procps for memory profiling"
-  ON
+  OFF
 )
 
 option(
@@ -97,20 +97,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   endif()
 endif()
 
-find_path(GMP_INCLUDE_DIR NAMES gmp.h)
-find_library(GMP_LIBRARY gmp)
-if(GMP_LIBRARY MATCHES ${CMAKE_SHARED_LIBRARY_SUFFIX})
-  set(gmp_library_type SHARED)
-else()
-  set(gmp_library_type STATIC)
-endif()
-message(STATUS "GMP: ${GMP_LIBRARY}, ${GMP_INCLUDE_DIR}")
-add_library(GMP::gmp ${gmp_library_type} IMPORTED)
-set_target_properties(
-  GMP::gmp PROPERTIES
-  IMPORTED_LOCATION ${GMP_LIBRARY}
-  INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
-)
+find_package(GMP REQUIRED)
 
 find_package(OpenSSL REQUIRED)
 INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
@@ -194,11 +181,11 @@ if("${USE_ASM}")
 endif()
 
 # Configure CCache if available
-find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
-        set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-        set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-endif(CCACHE_FOUND)
+#find_program(CCACHE_FOUND ccache)
+#if(CCACHE_FOUND)
+#        set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+#        set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+#endif(CCACHE_FOUND)
 
 if ("${IS_LIBFF_PARENT}")
   find_program(

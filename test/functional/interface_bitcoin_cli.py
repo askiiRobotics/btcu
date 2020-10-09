@@ -19,7 +19,7 @@ class TestBitcoinCli(BtcuTestFramework):
         self.log.info("Sleeping 30 seconds...")
         time.sleep(30)
 
-        self.log.info("Compare responses from gewalletinfo RPC and `btcu-cli getwalletinfo`")
+        self.log.info("Compare responses from getwalletinfo RPC and `btcu-cli getwalletinfo`")
         cli_response = self.nodes[0].cli.getwalletinfo()
         rpc_response = self.nodes[0].getwalletinfo()
         assert_equal(cli_response, rpc_response)

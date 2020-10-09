@@ -320,5 +320,10 @@
         <file alias="ic-check-cold-staking">btcu/res/img/ic-check-cold-staking.svg</file>
         <file alias="ic-check-cold-staking-off">btcu/res/img/ic-check-cold-staking-off.svg</file>
         <file alias="ic-check-cold-staking-enabled">btcu/res/img/ic-check-cold-staking-enabled.svg</file>
+        <file alias="ic-nav-leasing">btcu/res/img/ic-nav-leasing.svg</file>
+        <file alias="ic-nav-leasing-active">btcu/res/img/ic-nav-leasing-active.svg</file>
+        <file alias="ic-check-leasing">btcu/res/img/ic-check-leasing.svg</file>
+        <file alias="ic-check-leasing-off">btcu/res/img/ic-check-leasing-off.svg</file>
+        <file alias="ic-check-leasing-enabled">btcu/res/img/ic-check-leasing-enabled.svg</file>
     </qresource>
 </RCC>

@@ -63,6 +63,7 @@ void TxRow::setType(bool isLightTheme, int type, bool isConfirmed){
         case TransactionRecord::StakeZBTCU:
         case TransactionRecord::MNReward:
         case TransactionRecord::StakeMint:
+        case TransactionRecord::LeasingReward:
             path = "://ic-transaction-staked";
             css = "text-list-amount-receive";
             break;
@@ -101,6 +102,14 @@ void TxRow::setType(bool isLightTheme, int type, bool isConfirmed){
         case TransactionRecord::P2CSDelegation:
             path = "://ic-transaction-cs-contract";
             css = "text-list-amount-unconfirmed";
+            break;
+        case TransactionRecord::P2LLeasingSent:
+        case TransactionRecord::P2LLeasingSentOwner:
+        case TransactionRecord::P2LLeasing:
+        case TransactionRecord::P2LUnlockOwner:
+        case TransactionRecord::P2LUnlockLeaser:
+            path = "://ic-transaction-cs-contract";
+            css = "text-list-amount-send";
             break;
         case TransactionRecord::P2CSUnlockOwner:
         case TransactionRecord::P2CSUnlockStaker:

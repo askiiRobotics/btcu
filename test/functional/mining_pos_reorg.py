@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2019 The PIVX developers
-// Copyright (c) 2020 The BTCU developers
+# Copyright (c) 2020 The BTCU developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -91,7 +91,7 @@ class ReorgStakeTest(BtcuTestFramework):
         tx_A0 = self.nodes[2].createrawzerocoinspend(mints[0]["serial hash"], addy)
         tx_A1 = self.nodes[2].createrawzerocoinspend(mints[1]["serial hash"], addy)
         # Spending same coins to different recipients to get different txids
-        new_addy = "yAVWM5urwaTyhiuFQHP2aP47rdZsLUG5PH"
+        new_addy = "mnGkNvsGnaL5jyTmtGw88fm2JA6CehcGMS"
         tx_B0 = self.nodes[2].createrawzerocoinspend(mints[0]["serial hash"], new_addy)
         tx_B1 = self.nodes[2].createrawzerocoinspend(mints[1]["serial hash"], new_addy)
 
@@ -153,7 +153,7 @@ class ReorgStakeTest(BtcuTestFramework):
         stakeinput_amount = float(stakeinput_tx_json["vout"][int(stakeinput["vout"])]["value"])
         rawtx_unsigned = self.nodes[0].createrawtransaction(
             [{"txid": stakeinput["txid"], "vout": int(stakeinput["vout"])}],
-            {"xxncEuJK27ygNh7imNfaX8JV6ZQUnoBqzN": (stakeinput_amount-0.01)})
+            {"mzVmgJQWw9wLCKcqT1nmMWRNL7oe4uLmH1": (stakeinput_amount-0.01)})
         rawtx = self.nodes[0].signrawtransaction(rawtx_unsigned)
         assert(rawtx["complete"])
         try:

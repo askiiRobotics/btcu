@@ -335,6 +335,8 @@ static const CRPCCommand vRPCCommands[] =
         {"generating", "gethashespersec", &gethashespersec, true, false, false},
         {"generating", "setgenerate", &setgenerate, true, true, false},
         {"generating", "generate", &generate, true, true, false},
+
+        {"generating", "genesisstake", &genesisstake, true, true, false},
 #endif
 
         /* Raw transactions */
@@ -371,6 +373,7 @@ static const CRPCCommand vRPCCommands[] =
         {"btcu", "masternodedebug", &masternodedebug, true, true, false},
         {"btcu", "startmasternode", &startmasternode, true, true, false},
         {"btcu", "createmasternodekey", &createmasternodekey, true, true, false},
+        {"btcu", "getpubkey", &getpubkey, true, true, false},
         {"btcu", "getmasternodeoutputs", &getmasternodeoutputs, true, true, false},
         {"btcu", "listmasternodeconf", &listmasternodeconf, true, true, false},
         {"btcu", "getmasternodestatus", &getmasternodestatus, true, true, false},
@@ -414,6 +417,7 @@ static const CRPCCommand vRPCCommands[] =
         {"wallet", "getdelegatedbalance", &getdelegatedbalance, false, false, true},
         {"wallet", "getnewaddress", &getnewaddress, true, false, true},
         {"wallet", "getnewstakingaddress", &getnewstakingaddress, true, false, true},
+        {"wallet", "getnewleasingaddress", &getnewleasingaddress, true, false, true},
         {"wallet", "getrawchangeaddress", &getrawchangeaddress, true, false, true},
         {"wallet", "getreceivedbyaccount", &getreceivedbyaccount, false, false, true},
         {"wallet", "getreceivedbyaddress", &getreceivedbyaddress, false, false, true},
@@ -430,8 +434,10 @@ static const CRPCCommand vRPCCommands[] =
         {"wallet", "listaccounts", &listaccounts, false, false, true},
         {"wallet", "listdelegators", &listdelegators, false, false, true},
         {"wallet", "liststakingaddresses", &liststakingaddresses, false, false, true},
+        {"wallet", "listleasingaddresses", &listleasingaddresses, false, false, true},
         {"wallet", "listaddressgroupings", &listaddressgroupings, false, false, true},
         {"wallet", "listcoldutxos", &listcoldutxos, false, false, true},
+        {"wallet", "listleasingutxos", &listleasingutxos, false, false, true},
         {"wallet", "listlockunspent", &listlockunspent, false, false, true},
         {"wallet", "listreceivedbyaccount", &listreceivedbyaccount, false, false, true},
         {"wallet", "listreceivedbyaddress", &listreceivedbyaddress, false, false, true},
@@ -442,6 +448,8 @@ static const CRPCCommand vRPCCommands[] =
         {"wallet", "move", &movecmd, false, false, true},
         {"wallet", "multisend", &multisend, false, false, true},
         {"wallet", "rawdelegatestake", &rawdelegatestake, false, false, true},
+        {"wallet", "leasetoaddress", &leasetoaddress, false, false, true},
+        {"wallet", "rawleasetoaddress", &rawleasetoaddress, false, false, true},
         {"wallet", "sendfrom", &sendfrom, false, false, true},
         {"wallet", "sendmany", &sendmany, false, false, true},
         {"wallet", "sendtoaddress", &sendtoaddress, false, false, true},
@@ -455,7 +463,10 @@ static const CRPCCommand vRPCCommands[] =
         {"wallet", "walletpassphrase", &walletpassphrase, true, false, true},
         {"wallet", "delegatoradd", &delegatoradd, true, false, true},
         {"wallet", "delegatorremove", &delegatorremove, true, false, true},
-
+        {"wallet", "createcontract", &createcontract, true, false, true},
+        {"wallet", "sendtocontract", &sendtocontract, true, false, true},
+        {"wallet", "listcontracts", &listcontracts, true, false, true},
+        {"wallet", "callcontract", &callcontract, true, false, true},
         {"zerocoin", "createrawzerocoinspend", &createrawzerocoinspend, false, false, true},
         {"zerocoin", "getzerocoinbalance", &getzerocoinbalance, false, false, true},
         {"zerocoin", "listmintedzerocoins", &listmintedzerocoins, false, false, true},

@@ -23,6 +23,7 @@
 #include "qt/btcu/addresseswidget.h"
 #include "qt/btcu/privacywidget.h"
 #include "qt/btcu/coldstakingwidget.h"
+#include "qt/btcu/leasingwidget.h"
 #include "qt/btcu/masternodeswidget.h"
 #include "qt/btcu/snackbar.h"
 #include "qt/btcu/settings/settingswidget.h"
@@ -70,6 +71,7 @@ public Q_SLOTS:
     void goToPrivacy();
     void goToMasterNodes();
     void goToColdStaking();
+    void goToLeasing();
     void goToSettings();
 
     void connectActions();
@@ -134,6 +136,7 @@ private:
     PrivacyWidget *privacyWidget = nullptr;
     MasterNodesWidget *masterNodesWidget = nullptr;
     ColdStakingWidget *coldStakingWidget = nullptr;
+    std::unique_ptr<LeasingWidget> leasingWidget;
     SettingsWidget* settingsWidget = nullptr;
 
     SnackBar *snackBar = nullptr;

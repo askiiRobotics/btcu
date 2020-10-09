@@ -10,7 +10,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "miner.h"
-
+#include "txmempool.h"
 #include "amount.h"
 #include "consensus/merkle.h"
 #include "consensus/tx_verify.h" // needed in case of no ENABLE_WALLET
@@ -27,17 +27,27 @@
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
+#ifdef ENABLE_LEASING_MANAGER
+#include "leasing/leasingmanager.h"
+#endif
 #include "validationinterface.h"
 #include "masternode-payments.h"
 #include "blocksignature.h"
 #include "spork.h"
 #include "invalid.h"
 #include "zbtcuchain.h"
+#include "contract.h"
 
 
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
 
+///////////////////////////////////////////// // qtum
+uint64_t minGasPrice = 1;
+uint64_t hardBlockGasLimit;
+uint64_t softBlockGasLimit;
+uint64_t txGasLimit;
+/////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -111,6 +121,155 @@ CBlockIndex* GetChainTip()
     return mapBlockIndex.at(p->GetBlockHash());
 }
 
+bool AttemptToAddContractToBlock(CTxMemPoolEntry& me, CTransaction& tx, CBlock* pblock, uint64_t minGasPrice) {
+    //if (nTimeLimit != 0 && GetAdjustedTime() >= nTimeLimit - BYTECODE_TIME_BUFFER) {
+    //    return false;
+    //}
+    if (GetBoolArg("-disablecontractstaking", false))
+    {
+        return false;
+    }
+
+    dev::h256 oldHashStateRoot(globalState->rootHash());
+    dev::h256 oldHashUTXORoot(globalState->rootHashUTXO());
+    // operate on local vars first, then later apply to `this`
+    uint64_t nBlockWeight =0;//= pblock->nBlockWeight;
+    uint64_t nBlockSigOpsCost =0;//= pblock->nBlockSigOpsCost;
+
+    unsigned int contractflags = SCRIPT_EXEC_BYTE_CODE;//= GetContractScriptFlags(nHeight, chainparams.GetConsensus());
+
+    std::vector<CTransactionRef> blockTransactions;
+    for (auto t: pblock->vtx)
+    {
+        blockTransactions.push_back(std::make_shared<const CTransaction>(t));
+    }
+    //TODO: Add convertation from pblock transactions
+    QtumTxConverter convert(tx, NULL, NULL, contractflags);
+
+    ExtractQtumTX resultConverter;
+    if(!convert.extractionQtumTransactions(resultConverter)){
+        //this check already happens when accepting txs into mempool
+        //therefore, this can only be triggered by using raw transactions on the staker itself
+        return false;
+    }
+    std::vector<QtumTransaction> qtumTransactions = resultConverter.first;
+    dev::u256 txGas = 0;
+    ByteCodeExecResult bceResult;
+    for(QtumTransaction qtumTransaction : qtumTransactions){
+        txGas += qtumTransaction.gas();
+        if(txGas > txGasLimit) {
+            // Limit the tx gas limit by the soft limit if such a limit has been specified.
+            return false;
+        }
+
+        if(bceResult.usedGas + qtumTransaction.gas() > softBlockGasLimit){
+            //if this transaction's gasLimit could cause block gas limit to be exceeded, then don't add it
+            return false;
+        }
+        if(qtumTransaction.gasPrice() < minGasPrice){
+            //if this transaction's gasPrice is less than the current DGP minGasPrice don't add it
+            return false;
+        }
+    }
+    // We need to pass the DGP's block gas limit (not the soft limit) since it is consensus critical.
+    CBlockIndex* bi = mapBlockIndex[chainActive.Tip()->GetBlockHash()];
+    ByteCodeExec exec(*pblock, qtumTransactions, hardBlockGasLimit, chainActive.Tip());
+    if(!exec.performByteCode()){
+        //error, don't add contract
+        globalState->setRoot(oldHashStateRoot);
+        globalState->setRootUTXO(oldHashUTXORoot);
+        return false;
+    }
+
+    ByteCodeExecResult testExecResult;
+    if(!exec.processingResults(testExecResult)){
+        globalState->setRoot(oldHashStateRoot);
+        globalState->setRootUTXO(oldHashUTXORoot);
+        return false;
+    }
+
+    if(bceResult.usedGas + testExecResult.usedGas > softBlockGasLimit){
+        //if this transaction could cause block gas limit to be exceeded, then don't add it
+        globalState->setRoot(oldHashStateRoot);
+        globalState->setRootUTXO(oldHashUTXORoot);
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////globalState->setRootUTXO(oldHashUTXORoot);
+        return false;
+    }
+
+    //apply contractTx costs to local state
+    //nBlockWeight += iter->GetTxWeight();
+    //nBlockSigOpsCost += me.GetSigOpCost();
+    //apply value-transfer txs to local state
+    for (CTransaction &t : testExecResult.valueTransfers) {
+        //nBlockWeight += GetTransactionWeight(t);
+        nBlockSigOpsCost += GetLegacySigOpCount(t);
+    }
+
+    int proofTx = pblock->IsProofOfStake() ? 1 : 0;
+
+    //calculate sigops from new refund/proof tx
+
+    //first, subtract old proof tx
+    nBlockSigOpsCost -= GetLegacySigOpCount(pblock->vtx[proofTx]);
+
+    // manually rebuild refundtx
+    CMutableTransaction contrTx(pblock->vtx[proofTx]);
+    //note, this will need changed for MPoS
+    int i=contrTx.vout.size();
+    contrTx.vout.resize(contrTx.vout.size()+testExecResult.refundOutputs.size());
+    for(CTxOut& vout : testExecResult.refundOutputs){
+        contrTx.vout[i]=vout;
+        i++;
+    }
+    nBlockSigOpsCost += GetLegacySigOpCount(contrTx);
+    //all contract costs now applied to local state
+
+    //Check if block will be too big or too expensive with this contract execution
+    if (nBlockSigOpsCost * WITNESS_SCALE_FACTOR > (uint64_t)dgpMaxBlockSigOps ||
+        nBlockWeight > dgpMaxBlockWeight) {
+        //contract will not be added to block, so revert state to before we tried
+        globalState->setRoot(oldHashStateRoot);
+        globalState->setRootUTXO(oldHashUTXORoot);
+        return false;
+    }
+
+    //block is not too big, so apply the contract execution and it's results to the actual block
+
+    //apply local bytecode to global bytecode state
+    bceResult.usedGas += testExecResult.usedGas;
+    bceResult.refundSender += testExecResult.refundSender;
+    bceResult.refundOutputs.insert(bceResult.refundOutputs.end(), testExecResult.refundOutputs.begin(), testExecResult.refundOutputs.end());
+    bceResult.valueTransfers = std::move(testExecResult.valueTransfers);
+
+    // The constructed block template
+    std::unique_ptr<CBlockTemplate> pblocktemplate;
+
+    pblock->vtx.emplace_back(me.GetTx());
+    auto fee = me.GetFee();
+    //pblocktemplate->vTxFees.push_back(fee);
+    //pblocktemplate->vTxSigOpsCost.push_back(me.GetSigOpCost());
+    //this->nBlockWeight += me.GetTxWeight();
+    //++nBlockTx;
+    //pblock->nBlockSigOpsCost += me.GetSigOpCost();
+    //nFees += me.GetFee();
+    //nBlock.insert(iter);
+
+    for (CTransaction &t : bceResult.valueTransfers) {
+        pblock->vtx.emplace_back(std::move(t));
+        //this->nBlockWeight += GetTransactionWeight(t);
+        //pblock->nBlockSigOpsCost += GetLegacySigOpCount(t);
+        //++nBlockTx;
+    }
+    //calculate sigops from new refund/proof tx
+    //pblock->nBlockSigOpsCost -= GetLegacySigOpCount(pblock->vtx[proofTx]);
+    //RebuildRefundTransaction();
+    //this->nBlockSigOpsCost += GetLegacySigOpCount(pblock->vtx[proofTx]);
+
+    bceResult.valueTransfers.clear();
+
+    return true;
+}
+
 std::pair<int, std::pair<uint256, uint256> > pCheckpointCache;
 CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, bool fProofOfStake)
 {
@@ -127,11 +286,11 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     const int nHeight = pindexPrev->nHeight + 1;
 
     // Make sure to create the correct block version
-    pblock->nVersion = 7;       //!> Removes accumulator checkpoints
+    pblock->nVersion = CBlockHeader::CURRENT_VERSION;
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
     if (Params().MineBlocksOnDemand()) {
-        if (nHeight < Params().Zerocoin_StartHeight()) pblock->nVersion = 3;
+        if (nHeight < Params().Zerocoin_StartHeight()) pblock->nVersion = 8;
         pblock->nVersion = GetArg("-blockversion", pblock->nVersion);
     }
 
@@ -158,7 +317,49 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pblock->nTime = nTxNewTime;
         pblock->vtx[0].vout[0].SetEmpty();
         pblock->vtx.push_back(CTransaction(txCoinStake));
+
+        // Pay rewards for leasing
+        CMutableTransaction txLeasing;
+        if (!pwallet->CreateLeasingRewards(pblock->vtx[1], *pwallet, pindexPrev, pblock->nBits, txLeasing)) {
+            LogPrint("staking", "%s : fail to reward the leasing\n", __func__);
+            return nullptr;
+        }
+
+        if (!txLeasing.vin.empty()) {
+            pblock->vtx.push_back(CTransaction(txLeasing));
+        }
     }
+
+    //////////////////////////////////////////////////////// qtum
+    QtumDGP qtumDGP(globalState.get(), fGettingValuesDGP);
+    globalSealEngine->setQtumSchedule(qtumDGP.getGasSchedule(nHeight));
+    uint32_t blockSizeDGP = qtumDGP.getBlockSize(nHeight);
+
+    minGasPrice = qtumDGP.getMinGasPrice(nHeight);
+
+    /*
+    if(IsArgSet("-staker-min-tx-gas-price")) {
+        CAmount stakerMinGasPrice;
+        if(ParseMoney(GetArg("-staker-min-tx-gas-price", ""), stakerMinGasPrice)) {
+            minGasPrice = std::max(minGasPrice, (uint64_t)stakerMinGasPrice);
+        }
+    }*/
+    hardBlockGasLimit = qtumDGP.getBlockGasLimit(nHeight);
+    softBlockGasLimit = GetArg("-staker-soft-block-gas-limit", hardBlockGasLimit);
+    softBlockGasLimit = std::min(softBlockGasLimit, hardBlockGasLimit);
+    txGasLimit = GetArg("-staker-max-tx-gas-limit", softBlockGasLimit);
+
+    //nBlockMaxWeight = blockSizeDGP ? blockSizeDGP * WITNESS_SCALE_FACTOR : nBlockMaxWeight;
+
+    dev::h256 oldHashStateRoot(globalState->rootHash());
+    dev::h256 oldHashUTXORoot(globalState->rootHashUTXO());
+    int nPackagesSelected = 0;
+    int nDescendantsUpdated = 0;
+    //addPackageTxs(nPackagesSelected, nDescendantsUpdated, minGasPrice);
+    pblock->hashStateRoot = uint256(h256Touint(dev::h256(globalState->rootHash())));
+    pblock->hashUTXORoot = uint256(h256Touint(dev::h256(globalState->rootHashUTXO())));
+    globalState->setRoot(oldHashStateRoot);
+    globalState->setRootUTXO(oldHashUTXORoot);
 
     // Largest block you're willing to create:
     unsigned int nBlockMaxSize = GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE);
@@ -455,6 +656,17 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
                 LogPrintf("%s: Signing new block with UTXO key failed \n", __func__);
                 return nullptr;
             }
+            // Set validator's signature after all verifications for proof-of-stake block
+            if (!ValidatorSignBlock(*pblock)) {
+                LogPrintf("%s: Validator's signing of the new block failed \n", __func__);
+                return nullptr; // TODO: commented just for testing purposes to enable unsigned blocks
+            }
+        }
+
+        for (CTransaction tx: pblock->vtx){
+            if(tx.HasCreateOrCall()){
+                AttemptToAddContractToBlock(mempool.mapTx.begin()->second, tx,pblock,40);
+            }
         }
 
         CValidationState state;
@@ -462,12 +674,6 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             LogPrintf("CreateNewBlock() : TestBlockValidity failed\n");
             mempool.clear();
             return nullptr;
-        }
-    
-        // Set validator's signature after all verifications
-        if (!ValidatorSignBlock(*pblock)) {
-            LogPrintf("%s: Validator's signing of the new block failed \n", __func__);
-//            return nullptr; // TODO: commented only for test purposes (to enable signed and unsigned blocks)
         }
     }
 
@@ -506,7 +712,12 @@ CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, CWallet* pwallet)
     if (!reservekey.GetReservedKey(pubkey))
         return nullptr;
 
-    const int nHeightNext = chainActive.Tip()->nHeight + 1;
+    const int nHeightNext = [&]() -> int {
+        auto tip = chainActive.Tip();
+        if (tip)
+            return tip->nHeight + 1;
+        return 0;
+    }();
     static int nLastPOWBlock = Params().LAST_POW_BLOCK();
 
     // If we're building a late PoW block, don't continue
@@ -599,8 +810,9 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
             // update fStakeableCoins (5 minute check time);
             CheckForCoins(pwallet, 5);
 
-            while (vNodes.empty() || pwallet->IsLocked() || !fStakeableCoins ||
-                    masternodeSync.NotCompleted()) {
+            while (pwallet->IsLocked() || !fStakeableCoins) {
+//            while (vNodes.empty() || pwallet->IsLocked() || !fStakeableCoins ||
+//                    masternodeSync.NotCompleted()) {
                 MilliSleep(5000);
                 // Do a separate 1 minute check here to ensure fStakeableCoins is updated
                 if (!fStakeableCoins) CheckForCoins(pwallet, 1);
@@ -665,9 +877,14 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     LogPrintf("%s:\n", __func__);
                     LogPrintf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex(), hashTarget.GetHex());
-                    ProcessBlockFound(pblock, *pwallet, reservekey);
+    
+                    if (ValidatorSignBlock(*pblock)) {
+                        ProcessBlockFound(pblock, *pwallet, reservekey);
+                    } else {
+                        LogPrintf("%s: Validator's signing of the new block failed \n", __func__);
+                    }
                     SetThreadPriority(THREAD_PRIORITY_LOWEST);
-
+    
                     // In regression test mode, stop mining after a block is found. This
                     // allows developers to controllably generate a block on demand.
                     if (Params().MineBlocksOnDemand())

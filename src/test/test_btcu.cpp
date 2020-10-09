@@ -18,10 +18,9 @@
 #include "wallet/wallet.h"
 #endif
 
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/unit_test.hpp>
 
-CClientUIInterface uiInterface;
-CWallet* pwalletMain;
+extern CWallet* pwalletMain;
 
 uint256 insecure_rand_seed = GetRandHash();
 FastRandomContext insecure_rand_ctx(insecure_rand_seed);
@@ -43,7 +42,7 @@ BasicTestingSetup::~BasicTestingSetup()
         ECC_Stop();
 }
 
-TestingSetup::TestingSetup()
+TestingSetup::TestingSetup() : BasicTestingSetup()
 {
 #ifdef ENABLE_WALLET
         bitdb.MakeMock();
@@ -92,19 +91,4 @@ TestingSetup::~TestingSetup()
         bitdb.Reset();
 #endif
         boost::filesystem::remove_all(pathTemp);
-}
-
-[[noreturn]] void Shutdown(void* parg)
-{
-    std::exit(0);
-}
-
-[[noreturn]] void StartShutdown()
-{
-    std::exit(0);
-}
-
-bool ShutdownRequested()
-{
-  return false;
 }

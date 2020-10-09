@@ -213,12 +213,19 @@ extern UniValue submitblock(const UniValue& params, bool fHelp);
 extern UniValue estimatefee(const UniValue& params, bool fHelp);
 extern UniValue estimatepriority(const UniValue& params, bool fHelp);
 
+extern UniValue genesisstake(const UniValue& params, bool fHelp);
+
 extern UniValue delegatestake(const UniValue& params, bool fHelp); // in rpcwallet.cpp
 extern UniValue rawdelegatestake(const UniValue& params, bool fHelp);
+extern UniValue leasetoaddress(const UniValue& params, bool fHelp);
+extern UniValue rawleasetoaddress(const UniValue& params, bool fHelp);
 extern UniValue delegatoradd(const UniValue& params, bool fHelp);
 extern UniValue delegatorremove(const UniValue& params, bool fHelp);
+extern UniValue leaseeadd(const UniValue& params, bool fHelp);
+extern UniValue leaseeremove(const UniValue& params, bool fHelp);
 extern UniValue getnewaddress(const UniValue& params, bool fHelp);
 extern UniValue getnewstakingaddress(const UniValue& params, bool fHelp);
+extern UniValue getnewleasingaddress(const UniValue& params, bool fHelp);
 extern UniValue getaccountaddress(const UniValue& params, bool fHelp);
 extern UniValue getrawchangeaddress(const UniValue& params, bool fHelp);
 extern UniValue setaccount(const UniValue& params, bool fHelp);
@@ -238,6 +245,7 @@ extern UniValue sendfrom(const UniValue& params, bool fHelp);
 extern UniValue sendmany(const UniValue& params, bool fHelp);
 extern UniValue addmultisigaddress(const UniValue& params, bool fHelp);
 extern UniValue listcoldutxos(const UniValue& params, bool fHelp);
+extern UniValue listleasingutxos(const UniValue& params, bool fHelp);
 extern UniValue listreceivedbyaddress(const UniValue& params, bool fHelp);
 extern UniValue listreceivedbyaccount(const UniValue& params, bool fHelp);
 extern UniValue listtransactions(const UniValue& params, bool fHelp);
@@ -245,6 +253,7 @@ extern UniValue listaddressgroupings(const UniValue& params, bool fHelp);
 extern UniValue listaccounts(const UniValue& params, bool fHelp);
 extern UniValue listdelegators(const UniValue& params, bool fHelp);
 extern UniValue liststakingaddresses(const UniValue& params, bool fHelp);
+extern UniValue listleasingaddresses(const UniValue& params, bool fHelp);
 extern UniValue listsinceblock(const UniValue& params, bool fHelp);
 extern UniValue gettransaction(const UniValue& params, bool fHelp);
 extern UniValue abandontransaction(const UniValue& params, bool fHelp);
@@ -330,6 +339,7 @@ extern UniValue masternodecurrent(const UniValue& params, bool fHelp);
 extern UniValue masternodedebug(const UniValue& params, bool fHelp);
 extern UniValue startmasternode(const UniValue& params, bool fHelp);
 extern UniValue createmasternodekey(const UniValue& params, bool fHelp);
+extern UniValue getpubkey (const UniValue& params, bool fHelp);
 extern UniValue getmasternodeoutputs(const UniValue& params, bool fHelp);
 extern UniValue listmasternodeconf(const UniValue& params, bool fHelp);
 extern UniValue getmasternodestatus(const UniValue& params, bool fHelp);
@@ -355,6 +365,11 @@ extern UniValue createmultisig(const UniValue& params, bool fHelp);
 extern UniValue verifymessage(const UniValue& params, bool fHelp);
 extern UniValue setmocktime(const UniValue& params, bool fHelp);
 extern UniValue getstakingstatus(const UniValue& params, bool fHelp);
+
+extern UniValue createcontract(const UniValue& params, bool fHelp);
+extern UniValue sendtocontract(const UniValue& params, bool fHelp);
+extern UniValue listcontracts(const UniValue& params, bool fHelp);
+extern UniValue callcontract(const UniValue& params, bool fHelp);
 
 extern UniValue mnregvalidator(const UniValue& params, bool fHelp);
 extern UniValue mnregvalidatorlist(const UniValue& params, bool fHelp);

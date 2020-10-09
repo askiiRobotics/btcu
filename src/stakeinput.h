@@ -31,14 +31,14 @@ public:
 
 };
 
-class CPivStake : public CStakeInput
+class CBTCUStake : public CStakeInput
 {
 private:
     CTransaction txFrom;
     unsigned int nPosition;
 
 public:
-    CPivStake(){}
+    CBTCUStake(){}
 
     bool SetInput(CTransaction txPrev, unsigned int n);
 

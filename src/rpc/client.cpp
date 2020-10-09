@@ -8,14 +8,8 @@
 
 #include "rpc/client.h"
 
-#include "rpc/protocol.h"
-#include "guiinterface.h"
-#include "util.h"
-
 #include <set>
-#include <stdint.h>
 
-#include <boost/algorithm/string/case_conv.hpp> // for to_lower()
 #include <univalue.h>
 
 
@@ -109,6 +103,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
         {"importprivkey", 2},
         {"importprivkey", 3},
         {"importaddress", 2},
+        {"importwallet", 1},
         {"verifychain", 0},
         {"verifychain", 1},
         {"keypoolrefill", 0},

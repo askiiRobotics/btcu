@@ -355,13 +355,107 @@ class CTxOut():
                bytes_to_hex_str(self.scriptPubKey))
 
 
+class CValidatorRegister():
+    def __init__(self, vr=None):
+        if vr is None:
+            self.vin = CTxIn()
+            self.pubkey = ""
+            self.nTime = 0
+            self.signature = ""
+        else:
+            self.vin = vr.vin
+            self.pubkey = vr.pubkey
+            self.nTime = vr.nTime
+            self.signature = vr.signature
+
+    def deserialize(self, f):
+        self.vin = self.deserialize(f)
+        self.pubkey = deser_string(self.pubkey)
+        self.nTime = struct.unpack("<I", self.nTime)
+        self.signature = deser_string(self.signature)
+
+    def serialize(self):
+        r = b""
+        r += self.vin.serialize_without_witness()
+        r += ser_string(self.pubkey)
+        r += struct.pack("<I", self.nTime)
+        r += ser_string(self.signature)
+        return r
+
+    def __repr__(self):
+        return "CValidatorRegister(vin=%s pubkey=%s nTime=%i signature=%s)" \
+               % (repr(self.vin), repr(self.pubkey), self.nTime, repr(self.signature))
+
+
+class CMNVote():
+    def __init__(self, mvote=None):
+        if mvote is None:
+            self.vin = CTxIn()
+            self.vote = 0
+        else:
+            self.vin = mvote.vin
+            self.vote = mvote.vote
+
+    def deserialize(self, f):
+        self.vin.deserialize(f)
+        self.vote = struct.unpack("<i", self.vote)
+
+    def serialize(self):
+        r = b""
+        r += self.vin.serialize()
+        r += struct.pack("<i", self.vote)
+        return r
+
+    def __repr__(self):
+        return "CMNVote(vin=%s vote=%i)" % (repr(self.vin), self.vote)
+
+
+class CValidatorVote():
+    def __init__(self, vv=None):
+        if vv is None:
+            self.vin = CTxIn()
+            self.pubkey = ""
+            self.nTime = 0
+            self.votes = []
+            self.signature = ""
+        else:
+            self.vin = vv.vin
+            self.pubkey = vv.pubkey
+            self.nTime = vv.nTime
+            self.votes = copy.deepcopy(vv.votes)
+            self.signature = vv.signature
+
+    def deserialize(self, f):
+        self.vin = self.vin.deserialize(f)
+        self.pubkey = deser_string(self.pubkey)
+        self.nTime = struct.unpack("<I", self.nTime)
+        self.votes = deser_vector(f, CMNVote)
+        self.signature = deser_string(self.signature)
+
+    def serialize(self):
+        r = b""
+        r += self.vin.serialize()
+        r += ser_string(self.pubkey)
+        r += struct.pack("<I", self.nTime)
+        r += ser_vector(self.votes)
+        r += ser_string(self.signature)
+        return r
+
+    def __repr__(self):
+        return "CValidatorVote(vin=%s pubkey=%s nTime=%i votes=%s signature=%s)" \
+               % (repr(self.vin), repr(self.pubkey), self.nTime, repr(self.votes), repr(self.signature))
+
+
 class CTransaction():
     def __init__(self, tx=None):
+        self.BTCU_START_VERSION = 2
         if tx is None:
-            self.nVersion = 1
+            self.nVersion = self.BTCU_START_VERSION
             self.vin = []
             self.vout = []
             self.nLockTime = 0
+            self.validatorRegister = []
+            self.validatorVote = []
             self.sha256 = None
             self.hash = None
         else:
@@ -369,13 +463,14 @@ class CTransaction():
             self.vin = copy.deepcopy(tx.vin)
             self.vout = copy.deepcopy(tx.vout)
             self.nLockTime = tx.nLockTime
+            self.validatorRegister = copy.deepcopy(tx.validatorRegister)
+            self.validatorVote = copy.deepcopy(tx.validatorVote)
             self.sha256 = tx.sha256
             self.hash = tx.hash
 
     def deserialize(self, f):
         self.nVersion = struct.unpack("<i", f.read(4))[0]
         self.vin = deser_vector(f, CTxIn)
-        flags = 0
         if len(self.vin) == 0:
             flags = struct.unpack("<B", f.read(1))[0]
             # Not sure why flags can't be zero, but this
@@ -386,6 +481,9 @@ class CTransaction():
         else:
             self.vout = deser_vector(f, CTxOut)
         self.nLockTime = struct.unpack("<I", f.read(4))[0]
+        if self.nVersion >= self.BTCU_START_VERSION:
+            self.validatorRegister = deser_vector(f, CValidatorRegister)
+            self.validatorVote = deser_vector(f, CValidatorVote)
         self.sha256 = None
         self.hash = None
 
@@ -395,6 +493,9 @@ class CTransaction():
         r += ser_vector(self.vin)
         r += ser_vector(self.vout)
         r += struct.pack("<I", self.nLockTime)
+        if self.nVersion >= self.BTCU_START_VERSION:
+            r += ser_vector(self.validatorRegister)
+            r += ser_vector(self.validatorVote)
         return r
 
     # Regular serialization is with witness -- must explicitly
@@ -444,12 +545,14 @@ class CTransaction():
                     x.prevout.hash == outpoint.hash and x.prevout.n == outpoint.n]) > 0
 
     def __repr__(self):
-        return "CTransaction(nVersion=%i vin=%s vout=%s nLockTime=%i)" \
-            % (self.nVersion, repr(self.vin), repr(self.vout), self.nLockTime)
+        return "CTransaction(nVersion=%i vin=%s vout=%s nLockTime=%i validatorRegister=%s validatorVote=%s)" \
+            % (self.nVersion, repr(self.vin), repr(self.vout), self.nLockTime, repr(self.validatorRegister), repr(self.validatorVote))
 
 
 class CBlockHeader():
     def __init__(self, header=None):
+        self.BTCU_START_VERSION = 8
+        self.CURRENT_VERSION = 4
         if header is None:
             self.set_null()
         else:
@@ -460,18 +563,20 @@ class CBlockHeader():
             self.nBits = header.nBits
             self.nNonce = header.nNonce
             self.nAccumulatorCheckpoint = header.nAccumulatorCheckpoint
+            self.nHashChainstate = header.nHashChainstate
             self.sha256 = header.sha256
             self.hash = header.hash
             self.calc_sha256()
 
     def set_null(self):
-        self.nVersion = 4
+        self.nVersion = self.CURRENT_VERSION
         self.hashPrevBlock = 0
         self.hashMerkleRoot = 0
         self.nTime = 0
         self.nBits = 0
         self.nNonce = 0
         self.nAccumulatorCheckpoint = 0
+        self.nHashChainstate = 0
         self.sha256 = None
         self.hash = None
 
@@ -482,7 +587,10 @@ class CBlockHeader():
         self.nTime = struct.unpack("<I", f.read(4))[0]
         self.nBits = struct.unpack("<I", f.read(4))[0]
         self.nNonce = struct.unpack("<I", f.read(4))[0]
-        self.nAccumulatorCheckpoint = deser_uint256(f)
+        if self.nVersion > 3 and self.nVersion < 7:
+            self.nAccumulatorCheckpoint = deser_uint256(f)
+        if self.nVersion >= self.BTCU_START_VERSION:
+            self.nHashChainstate = deser_uint256(f)
         self.sha256 = None
         self.hash = None
 
@@ -494,19 +602,15 @@ class CBlockHeader():
         r += struct.pack("<I", self.nTime)
         r += struct.pack("<I", self.nBits)
         r += struct.pack("<I", self.nNonce)
-        r += ser_uint256(self.nAccumulatorCheckpoint)
+        if self.nVersion > 3 and self.nVersion < 7:
+            r += ser_uint256(self.nAccumulatorCheckpoint)
+        if self.nVersion >= self.BTCU_START_VERSION:
+            r += ser_uint256(self.nHashChainstate)
         return r
 
     def calc_sha256(self):
         if self.sha256 is None:
-            r = b""
-            r += struct.pack("<i", self.nVersion)
-            r += ser_uint256(self.hashPrevBlock)
-            r += ser_uint256(self.hashMerkleRoot)
-            r += struct.pack("<I", self.nTime)
-            r += struct.pack("<I", self.nBits)
-            r += struct.pack("<I", self.nNonce)
-            r += ser_uint256(self.nAccumulatorCheckpoint)
+            r = super(CBlock, self).serialize()
             self.sha256 = uint256_from_str(hash256(r))
             self.hash = encode(hash256(r)[::-1], 'hex_codec').decode('ascii')
 
@@ -550,21 +654,30 @@ class CBlock(CBlockHeader):
         super(CBlock, self).__init__(header)
         self.vtx = []
         self.sig_key = None     # not serialized / used only to re_sign
+        self.validatorVin = CTxIn()
+        self.vchValidatorSig = b""
 
     def deserialize(self, f):
         super(CBlock, self).deserialize(f)
         self.vtx = deser_vector(f, CTransaction)
         self.sig_key = None
+        if self.nVersion >= self.BTCU_START_VERSION:
+            self.vchBlockSig = deser_string(f)
+            self.vchValidatorVin.deserialize(f)
+            self.vchValidatorSig = deser_string(f)
 
     def serialize(self, with_witness=False):
         r = b""
         r += super(CBlock, self).serialize()
         if with_witness:
-            r += ser_vector(self.vtx, "serialize_with_witness")
+            r += ser_vector(self.vtx, "serialize")
         else:
             r += ser_vector(self.vtx, "serialize_without_witness")
             if hasattr(self, 'vchBlockSig'):
                 r += ser_string(self.vchBlockSig)
+            if self.nVersion >= self.BTCU_START_VERSION:
+                r += self.validatorVin.serialize()
+                r += ser_string(self.vchValidatorSig)
         return r
 
     # Calculate the merkle root given a vector of transaction hashes
@@ -616,14 +729,7 @@ class CBlock(CBlockHeader):
             self.rehash()
 
     def sign_block(self, key, low_s=True):
-        data = b""
-        data += struct.pack("<i", self.nVersion)
-        data += ser_uint256(self.hashPrevBlock)
-        data += ser_uint256(self.hashMerkleRoot)
-        data += struct.pack("<I", self.nTime)
-        data += struct.pack("<I", self.nBits)
-        data += struct.pack("<I", self.nNonce)
-        data += ser_uint256(self.nAccumulatorCheckpoint)
+        data = super(CBlock, self).serialize()
         sha256NoSig = hash256(data)
         self.vchBlockSig = key.sign(sha256NoSig, low_s=low_s)
         self.sig_key = key

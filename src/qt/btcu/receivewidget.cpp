@@ -121,7 +121,7 @@ void ReceiveWidget::refreshView(QString refreshAddress){
     try {
         QString latestAddress = (refreshAddress.isEmpty()) ? this->addressTableModel->getAddressToShow() : refreshAddress;
         if (latestAddress.isEmpty()) { // new default address
-            CBitcoinAddress newAddress;
+            CBTCUAddress newAddress;
             PairResult r = walletModel->getNewAddress(newAddress, "Default");
             // Check for generation errors
             if (!r.result) {
@@ -132,7 +132,7 @@ void ReceiveWidget::refreshView(QString refreshAddress){
             latestAddress = QString::fromStdString(newAddress.ToString());
         }
         ui->labelAddress->setText(latestAddress);
-        int64_t time = walletModel->getKeyCreationTime(CBitcoinAddress(latestAddress.toStdString()));
+        int64_t time = walletModel->getKeyCreationTime(CBTCUAddress(latestAddress.toStdString()));
         ui->labelDate->setText(GUIUtil::dateTimeStr(QDateTime::fromTime_t(static_cast<uint>(time))));
         updateQr(latestAddress);
         updateLabel();
@@ -186,7 +186,7 @@ void ReceiveWidget::onLabelClicked(){
         dialog->setData(info->address, addressTableModel->labelForAddress(info->address));
         if (openDialogWithOpaqueBackgroundY(dialog, window, 3.5, 6)) {
             QString label = dialog->getLabel();
-            const CBitcoinAddress address = CBitcoinAddress(info->address.toUtf8().constData());
+            const CBTCUAddress address = CBTCUAddress(info->address.toUtf8().constData());
             if (!label.isEmpty() && walletModel->updateAddressBookLabels(
                     address.Get(),
                     label.toUtf8().constData(),
@@ -207,7 +207,7 @@ void ReceiveWidget::onLabelClicked(){
 void ReceiveWidget::onNewAddressClicked(){
     try {
         if (!verifyWalletUnlocked()) return;
-        CBitcoinAddress address;
+        CBTCUAddress address;
         PairResult r = walletModel->getNewAddress(address, "");
 
         // Check for validity
@@ -233,17 +233,17 @@ void ReceiveWidget::onCopyClicked(){
 
 
 void ReceiveWidget::onRequestClicked(){
-    showAddressGenerationDialog(true);
+    showAddressGenerationDialog();
 }
 
-void ReceiveWidget::showAddressGenerationDialog(bool isPaymentRequest) {
+void ReceiveWidget::showAddressGenerationDialog() {
     if(walletModel && !isShowingDialog) {
         if (!verifyWalletUnlocked()) return;
         isShowingDialog = true;
         showHideOp(true);
         RequestDialog *dialog = new RequestDialog(window);
         dialog->setWalletModel(walletModel);
-        dialog->setPaymentRequest(isPaymentRequest);
+        dialog->setRequestType(RequestType::Payment);
         openDialogWithOpaqueBackgroundY(dialog, window, 3.5, 12);
         if (dialog->res == 1){
             inform(tr("URI copied to clipboard"));

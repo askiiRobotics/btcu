@@ -92,6 +92,8 @@ BITCOIN_CORE_H = \
   allocators.h \
   amount.h \
   base58.h \
+  bech32.h \
+  btcu_address.h \
   bip38.h \
   bloom.h \
   blocksignature.h \
@@ -183,6 +185,7 @@ BITCOIN_CORE_H = \
   guiinterface.h \
   uint256.h \
   undo.h \
+  util/convert.h \
   util.h \
   utilstrencodings.h \
   utilmoneystr.h \
@@ -192,6 +195,8 @@ BITCOIN_CORE_H = \
   wallet/wallet.h \
   wallet/wallet_ismine.h \
   wallet/walletdb.h \
+  leasing/leasingmanager.h \
+  leasing/leasing_tx_verify.h \
   zbtcuchain.h \
   zbtcu/deterministicmint.h \
   zbtcu/mintpool.h \
@@ -203,7 +208,8 @@ BITCOIN_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h \
   zmq/zmqnotificationinterface.h \
-  zmq/zmqpublishnotifier.h
+  zmq/zmqpublishnotifier.h \
+  qtum/qtumDGP.h
 
 obj/build.h: FORCE
 	@$(MKDIR_P) $(builddir)/obj
@@ -252,6 +258,7 @@ libbitcoin_server_a_SOURCES = \
   txmempool.cpp \
   validationinterface.cpp \
   zbtcuchain.cpp \
+  qtum/qtumDGP.cpp \
   $(BITCOIN_CORE_H)
 
 if ENABLE_ZMQ
@@ -291,6 +298,8 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/wallet_ismine.cpp \
   wallet/wallet_zerocoin.cpp \
   wallet/walletdb.cpp \
+  leasing/leasingmanager.cpp \
+  leasing/leasing_tx_verify.cpp \
   zbtcu/deterministicmint.cpp \
   zbtcu/zerocoin.cpp \
   zbtcu/mintpool.cpp \
@@ -391,6 +400,8 @@ libbitcoin_common_a_SOURCES = \
   allocators.cpp \
   amount.cpp \
   base58.cpp \
+  bech32.cpp \
+  btcu_address.cpp \
   bip38.cpp \
   chainparams.cpp \
   coins.cpp \
@@ -748,7 +759,12 @@ btcu_cli_LDADD = \
   $(LIBBITCOIN_CLI) \
   $(LIBUNIVALUE) \
   $(LIBBITCOIN_UTIL) \
-  $(LIBBITCOIN_CRYPTO)
+  $(LIBBITCOIN_CRYPTO) \
+  $(LIBLEVELDB) \
+  $(LIBLEVELDB_SSE42) \
+  $(LIBMEMENV) \
+  $(LIBCRYPTOPP) \
+  $(LIBSECP256K1)
 
 btcu_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
 #
@@ -770,6 +786,9 @@ btcu_tx_LDADD = \
   $(LIBBITCOIN_ZEROCOIN) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBLEVELDB) \
+  $(LIBLEVELDB_SSE42) \
+  $(LIBMEMENV) \
   $(LIBCRYPTOPP) \
   $(LIBSECP256K1)
 
@@ -821,6 +840,7 @@ CLEANFILES += support/*.gcda support/*.gcno
 CLEANFILES += univalue/*.gcda univalue/*.gcno
 CLEANFILES += wallet/*.gcda wallet/*.gcno
 CLEANFILES += wallet/test/*.gcda wallet/test/*.gcno
+CLEANFILES += leasing/*.gcda leasing/*.gcno
 CLEANFILES += zmq/*.gcda zmq/*.gcno
 CLEANFILES += zbtcu/*.gcda zbtcu/*.gcno
 CLEANFILES += obj/build.h

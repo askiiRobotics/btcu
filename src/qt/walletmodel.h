@@ -56,6 +56,8 @@ public:
     AvailableCoinsType inputType;
     bool useSwiftTX = false;
 
+    // Leasing
+    bool isP2L = false;
     // Cold staking.
     bool isP2CS = false;
     QString ownerAddress;
@@ -148,6 +150,9 @@ public:
     CAmount getMinColdStakingAmount() const;
     /* current staking status from the miner thread **/
     bool isStakingStatusActive() const;
+    /** Whether leasing is enabled or disabled in the network **/
+    bool isLeasingNetworkelyEnabled() const;
+    CAmount getMinLeasingAmount() const;
 
     CAmount getBalance(const CCoinControl* coinControl = NULL) const;
     CAmount getUnconfirmedBalance() const;
@@ -165,6 +170,7 @@ public:
     CAmount getColdStakedBalance() const;
 
     bool isColdStaking() const;
+    bool isLeasing() const;
 
     EncryptionStatus getEncryptionStatus() const;
     bool isWalletUnlocked() const;
@@ -181,6 +187,7 @@ public:
     // Check address for validity
     bool validateAddress(const QString& address);
     bool validateStakingAddress(const QString& address);
+    bool validateLeasingAddress(const QString& address);
 
     // Return status record for SendCoins, contains error id + information
     struct SendCoinsReturn {
@@ -204,14 +211,14 @@ public:
             CWalletTx &wtxNew,
             std::vector<CZerocoinMint> &vMintsSelected,
             CZerocoinSpendReceipt &receipt,
-            std::list<std::pair<CBitcoinAddress*, CAmount>> outputs,
+            std::list<std::pair<CBTCUAddress*, CAmount>> outputs,
             std::string changeAddress = ""
     );
 
     bool sendZbtcu(
             std::vector<CZerocoinMint> &vMintsSelected,
             CZerocoinSpendReceipt &receipt,
-            std::list<std::pair<CBitcoinAddress*, CAmount>> outputs,
+            std::list<std::pair<CBTCUAddress*, CAmount>> outputs,
             std::string changeAddress = ""
     );
 
@@ -265,22 +272,26 @@ public:
     bool getPubKey(const CKeyID& address, CPubKey& vchPubKeyOut) const;
     int64_t getCreationTime() const;
     int64_t getKeyCreationTime(const CPubKey& key);
-    int64_t getKeyCreationTime(const CBitcoinAddress& address);
-    PairResult getNewAddress(CBitcoinAddress& ret, std::string label = "") const;
+    int64_t getKeyCreationTime(const CBTCUAddress& address);
+    PairResult getNewAddress(CBTCUAddress& ret, std::string label = "") const;
     /**
      * Return a new address used to receive for delegated cold stake purpose.
      */
-    PairResult getNewStakingAddress(CBitcoinAddress& ret, std::string label = "") const;
+    PairResult getNewStakingAddress(CBTCUAddress& ret, std::string label = "") const;
+    /**
+     * Return a new address used to receive for lease purpose.
+     */
+    PairResult getNewLeasingAddress(CBTCUAddress& ret, std::string label = "") const;
 
     bool whitelistAddressFromColdStaking(const QString &addressStr);
     bool blacklistAddressFromColdStaking(const QString &address);
     bool updateAddressBookPurpose(const QString &addressStr, const std::string& purpose);
-    std::string getLabelForAddress(const CBitcoinAddress& address);
-    bool getKeyId(const CBitcoinAddress& address, CKeyID& keyID);
+    std::string getLabelForAddress(const CBTCUAddress& address);
+    bool getKeyId(const CBTCUAddress& address, CKeyID& keyID);
 
-    bool isMine(CBitcoinAddress address);
+    bool isMine(CBTCUAddress address);
     bool isMine(const QString& addressStr);
-    bool isUsed(CBitcoinAddress address);
+    bool isUsed(CBTCUAddress address);
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);
     bool isSpent(const COutPoint& outpoint) const;
     void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;

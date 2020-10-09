@@ -181,7 +181,7 @@ void AddressesWidget::onStoreContactClicked(){
             return;
         }
 
-        CBitcoinAddress btcuAdd = CBitcoinAddress(address.toUtf8().constData());
+        CBTCUAddress btcuAdd = CBTCUAddress(address.toUtf8().constData());
         if (walletModel->isMine(btcuAdd)) {
             setCssEditLine(ui->lineEditAddress, false, true);
             inform(tr("Cannot store your own address as contact"));
@@ -222,7 +222,7 @@ void AddressesWidget::onEditClicked(){
     dialog->setData(address, currentLabel);
     if(openDialogWithOpaqueBackground(dialog, window)){
         if(walletModel->updateAddressBookLabels(
-                CBitcoinAddress(address.toStdString()).Get(), dialog->getLabel().toStdString(), addressTablemodel->purposeForAddress(address.toStdString()))){
+                CBTCUAddress(address.toStdString()).Get(), dialog->getLabel().toStdString(), addressTablemodel->purposeForAddress(address.toStdString()))){
             inform(tr("Contact edited"));
         }else{
             inform(tr("Contact edit failed"));

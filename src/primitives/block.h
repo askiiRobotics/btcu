@@ -24,7 +24,8 @@ class CBlockHeader
 {
 public:
     // header
-    static const int32_t CURRENT_VERSION=7;     //!> Version 7 removes nAccumulatorCheckpoint from serialization
+    static const int32_t BTCU_START_VERSION=8;
+    static const int32_t CURRENT_VERSION=BTCU_START_VERSION;     //!> Version 7 removes nAccumulatorCheckpoint from serialization
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
@@ -32,11 +33,16 @@ public:
     uint32_t nBits;
     uint32_t nNonce;
     uint256 nAccumulatorCheckpoint;             // only for version 4, 5 and 6.
+    uint256 hashChainstate;                     // starts in version 8
+    uint256 hashStateRoot; // qtum
+    uint256 hashUTXORoot; // qtum
 
     CBlockHeader()
     {
         SetNull();
     }
+
+    virtual ~CBlockHeader() = default;
 
     ADD_SERIALIZE_METHODS;
 
@@ -53,6 +59,11 @@ public:
         //zerocoin active, header changes to include accumulator checksum
         if(nVersion > 3 && nVersion < 7)
             READWRITE(nAccumulatorCheckpoint);
+        if (nVersion >= BTCU_START_VERSION && nVersion <= CURRENT_VERSION) {
+            READWRITE(hashChainstate);
+            READWRITE(hashStateRoot); // qtum
+            READWRITE(hashUTXORoot); // qtum
+        }
     }
 
     void SetNull()
@@ -63,7 +74,10 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
+        hashStateRoot.SetNull(); // qtum
+        hashUTXORoot.SetNull(); // qtum
         nAccumulatorCheckpoint = 0;
+        hashChainstate = 0;
     }
 
     bool IsNull() const
@@ -79,21 +93,68 @@ public:
     }
 };
 
-
-class CBlock : public CBlockHeader
+/** Is used to generate the BTCU Validator signature
+ */
+class CBTCUValidatorBlockHeader: public CBlockHeader
 {
 public:
     // network and disk
     std::vector<CTransaction> vtx;
-    
+
     // ppcoin: block signature - signed by one of the coin base txout[N]'s owner
     std::vector<unsigned char> vchBlockSig;
-    
-    // btcu: validator's identifier
+
+    // validator's identifier
     CTxIn validatorVin;
+
+    CBTCUValidatorBlockHeader()
+    {
+        SetNull();
+    }
+
+    void SetNull()
+    {
+        CBlockHeader::SetNull();
+        vtx.clear();
+        vchBlockSig.clear();
+        validatorVin = CTxIn();
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+        READWRITE(*(CBlockHeader*)this);
+        READWRITE(vtx);
+        if(IsProofOfStake()) {
+            READWRITE(vchBlockSig);
+            if (this->nVersion >= BTCU_START_VERSION) {
+                READWRITE(validatorVin);
+            }
+        }
+    }
+
+    uint256 GetHashForValidator() const;
+
+    // ppcoin: two types of block: proof-of-work or proof-of-stake
+    bool IsProofOfStake() const
+    {
+        return (vtx.size() > 1 && vtx[1].IsCoinStake());
+    }
+
+    bool IsProofOfWork() const
+    {
+        return !IsProofOfStake();
+    }
+};
+
+
+class CBlock : public CBTCUValidatorBlockHeader
+{
+public:
     // btcu: validator's block signature - signed with validator's VIN key
     std::vector<unsigned char> vchValidatorSig;
-    
+
     // memory only
     mutable CScript payee;
     mutable bool fChecked;
@@ -113,22 +174,17 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(*(CBlockHeader*)this);
-        READWRITE(vtx);
-	if(vtx.size() > 1 && vtx[1].IsCoinStake()){
-        READWRITE(vchBlockSig);
-	}
-        READWRITE(validatorVin);
-        READWRITE(vchValidatorSig);
+        READWRITE(*(CBTCUValidatorBlockHeader*)this);
+	    if(IsProofOfStake() && this->nVersion >= BTCU_START_VERSION) {
+            READWRITE(vchValidatorSig);
+        }
     }
 
     void SetNull()
     {
-        CBlockHeader::SetNull();
-        vtx.clear();
+        CBTCUValidatorBlockHeader::SetNull();
         fChecked = false;
         payee = CScript();
-        vchBlockSig.clear();
     }
 
     CBlockHeader GetBlockHeader() const
@@ -140,19 +196,11 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
+        block.hashStateRoot  = hashStateRoot; // qtum
+        block.hashUTXORoot   = hashUTXORoot; // qtum
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
+        block.hashChainstate = hashChainstate;
         return block;
-    }
-
-    // ppcoin: two types of block: proof-of-work or proof-of-stake
-    bool IsProofOfStake() const
-    {
-        return (vtx.size() > 1 && vtx[1].IsCoinStake());
-    }
-
-    bool IsProofOfWork() const
-    {
-        return !IsProofOfStake();
     }
 
     bool IsZerocoinStake() const;
@@ -162,7 +210,6 @@ public:
         return IsProofOfStake()? std::make_pair(vtx[1].vin[0].prevout, nTime) : std::make_pair(COutPoint(), (unsigned int)0);
     }
     
-    uint256 GetHashForValidator() const;
     std::string ToString() const;
     void print() const;
 };

@@ -131,9 +131,8 @@ public:
     CTxIn vin;
     CService addr;
     CPubKey pubKeyCollateralAddress;
+    CPubKey pubKeyLeasing;
     CPubKey pubKeyMasternode;
-    CPubKey pubKeyCollateralAddress1;
-    CPubKey pubKeyMasternode1;
     int activeState;
     int64_t sigTime; //mnb message time
     int cacheInputAge;
@@ -171,6 +170,7 @@ public:
         swap(first.vin, second.vin);
         swap(first.addr, second.addr);
         swap(first.pubKeyCollateralAddress, second.pubKeyCollateralAddress);
+        swap(first.pubKeyLeasing, second.pubKeyLeasing);
         swap(first.pubKeyMasternode, second.pubKeyMasternode);
         swap(first.activeState, second.activeState);
         swap(first.sigTime, second.sigTime);
@@ -211,6 +211,7 @@ public:
         READWRITE(vin);
         READWRITE(addr);
         READWRITE(pubKeyCollateralAddress);
+        READWRITE(pubKeyLeasing);
         READWRITE(pubKeyMasternode);
         READWRITE(vchSig);
         READWRITE(sigTime);
@@ -306,7 +307,7 @@ class CMasternodeBroadcast : public CMasternode
 {
 public:
     CMasternodeBroadcast();
-    CMasternodeBroadcast(CService newAddr, CTxIn newVin, CPubKey newPubkey, CPubKey newPubkey2, int protocolVersionIn);
+    CMasternodeBroadcast(CService newAddr, CTxIn newVin, CPubKey newPubkey, CPubKey newPubKey2, CPubKey newPubKey3, int protocolVersionIn);
     CMasternodeBroadcast(const CMasternode& mn);
 
     bool CheckAndUpdate(int& nDoS);
@@ -329,6 +330,7 @@ public:
         READWRITE(vin);
         READWRITE(addr);
         READWRITE(pubKeyCollateralAddress);
+        READWRITE(pubKeyLeasing);
         READWRITE(pubKeyMasternode);
         READWRITE(vchSig);
         READWRITE(sigTime);
@@ -340,7 +342,12 @@ public:
     }
 
     /// Create Masternode broadcast, needs to be relayed manually after that
-    static bool Create(CTxIn vin, CService service, CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew, CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew, std::string& strErrorRet, CMasternodeBroadcast& mnbRet);
+    static bool Create(
+        CTxIn vin, CService service,
+        CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew,
+        CKey keyLeasingNew, CPubKey pubKeyLeasing,
+        CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew,
+        std::string& strErrorRet, CMasternodeBroadcast& mnbRet);
     static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast& mnbRet, bool fOffline = false);
     static bool CheckDefaultPort(std::string strService, std::string& strErrorRet, std::string strContext);
 };

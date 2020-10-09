@@ -51,7 +51,7 @@ unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& in
     return nSigOps;
 }
 
-bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fRejectBadUTXO, CValidationState& state, bool fFakeSerialAttack, bool fColdStakingActive)
+bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fRejectBadUTXO, CValidationState& state, bool fFakeSerialAttack, bool fColdStakingActive, bool fLeasingActive)
 {
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
@@ -69,11 +69,12 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
             REJECT_INVALID, "bad-txns-oversize");
 
     const CAmount minColdStakingAmount = Params().GetMinColdStakingAmount();
+    const CAmount minLeasingAmount = Params().GetMinLeasingAmount();
 
     // Check for negative or overflow output values
     CAmount nValueOut = 0;
     for (const CTxOut& txout : tx.vout) {
-        if (txout.IsEmpty() && !tx.IsCoinBase() && !tx.IsCoinStake())
+        if (txout.IsEmpty() && !tx.IsCoinBase() && !tx.IsCoinStake() && !tx.IsLeasingReward())
             return state.DoS(100, error("CheckTransaction(): txout empty for user transaction"));
         if (txout.nValue < 0)
             return state.DoS(100, error("CheckTransaction() : txout.nValue negative"),
@@ -93,6 +94,17 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
                 return state.DoS(100, error("%s: dust amount (%d) not allowed for cold staking. Min amount: %d",
                         __func__, txout.nValue, minColdStakingAmount), REJECT_INVALID, "bad-txns-cold-stake");
         }
+        // check leasing enforcement (for mining) and value out
+        if (txout.scriptPubKey.IsPayToLeasing()) {
+            if (!fLeasingActive)
+                return state.DoS(10, error("%s: leasing not active", __func__), REJECT_INVALID, "bad-txns-leasing");
+            if (txout.nValue < minLeasingAmount)
+                return state.DoS(100, error("%s: dust amount (%d) not allowed for leasing. Min amount: %d",
+                                            __func__, txout.nValue, minLeasingAmount), REJECT_INVALID, "bad-txns-leasing");
+        }
+        if (txout.scriptPubKey.IsLeasingReward())
+            if (!fLeasingActive)
+                return state.DoS(10, error("%s: leasing not active", __func__), REJECT_INVALID, "bad-txns-leasing-reward");
     }
 
     std::set<COutPoint> vInOutPoints;
@@ -135,6 +147,10 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 150)
             return state.DoS(100, error("CheckTransaction() : coinbase script size=%d", tx.vin[0].scriptSig.size()),
                 REJECT_INVALID, "bad-cb-length");
+    } else if (tx.IsLeasingReward()) {
+        if (tx.vin[0].scriptSig.size() > 110 || tx.vin[0].scriptSig.size() < 50)
+            return state.DoS(100, error("CheckTransaction() : leasing reward script size=%d", tx.vin[0].scriptSig.size()),
+                REJECT_INVALID, "bad-lw-length");
     } else if (fZerocoinActive && tx.HasZerocoinSpendInputs()) {
         if (tx.vin.size() < 1)
             return state.DoS(10, error("CheckTransaction() : Zerocoin Spend has less than allowed txin's"), REJECT_INVALID, "bad-zerocoinspend");

@@ -17,6 +17,7 @@
 #include "guiinterface.h"
 #include "util.h"
 #include "utilstrencodings.h"
+#include "btcu_address.h"
 #include <QDateTime>
 #include <QKeyEvent>
 #include <QMessageBox>
@@ -62,7 +63,7 @@ static std::string ScriptToString(const CScript& Script, bool Long = false, bool
         return "unknown";
 
     CTxDestination Dest;
-    CBitcoinAddress Address;
+    CBTCUAddress Address;
     if (ExtractDestination(Script, Dest) && Address.Set(Dest)) {
         if (Highlight)
             return "<span class=\"addr\">" + Address.ToString() + "</span>";
@@ -379,7 +380,7 @@ std::string TxToString(uint256 BlockHash, const CTransaction& tx)
     return Content;
 }
 
-std::string AddressToString(const CBitcoinAddress& Address)
+std::string AddressToString(const CBTCUAddress& Address)
 {
     std::string TxLabels[] =
         {
@@ -519,7 +520,7 @@ bool BlockExplorer::switchTo(const QString& query)
     }
 
     // If the query is not an integer, nor a block hash, nor a transaction hash, assume an address
-    CBitcoinAddress Address;
+    CBTCUAddress Address;
     Address.SetString(query.toUtf8().constData());
     if (Address.IsValid()) {
         std::string Content = AddressToString(Address);

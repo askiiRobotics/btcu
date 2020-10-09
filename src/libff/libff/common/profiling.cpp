@@ -350,7 +350,7 @@ void print_mem(const std::string &s)
 {
 #ifndef NO_PROCPS
     struct proc_t usage;
-    look_up_our_self(&usage);
+    //look_up_our_self(&usage);
     if (s.empty())
     {
         printf("* Peak vsize (physical memory+swap) in mebibytes: %lu\n", usage.vsize >> 20);

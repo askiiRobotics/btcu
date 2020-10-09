@@ -139,3 +139,5 @@ ui_*
 #build*
 #btcud.*
 btcud-new-gui.*
+
+venv/

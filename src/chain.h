@@ -236,7 +236,11 @@ public:
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
+    uint256 hashStateRoot; // qtum
+    uint256 hashUTXORoot; // qtum
+
     uint256 nAccumulatorCheckpoint;
+    uint256 hashChainstate;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
@@ -274,7 +278,10 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
+        hashStateRoot  = uint256(); // qtum
+        hashUTXORoot   = uint256(); // qtum
         nAccumulatorCheckpoint = 0;
+        hashChainstate = 0;
         // Start supply of each denomination with 0s
         for (auto& denom : libzerocoin::zerocoinDenomList) {
             mapZerocoinSupply.insert(std::make_pair(denom, 0));
@@ -296,8 +303,12 @@ public:
         nTime = block.nTime;
         nBits = block.nBits;
         nNonce = block.nNonce;
+        hashStateRoot  = block.hashStateRoot; // qtum
+        hashUTXORoot   = block.hashUTXORoot; // qtum
         if(block.nVersion > 3 && block.nVersion < 7)
             nAccumulatorCheckpoint = block.nAccumulatorCheckpoint;
+        if(block.nVersion >= CBlockHeader::BTCU_START_VERSION)
+            hashChainstate = block.hashChainstate;
 
         if (block.IsProofOfStake()) {
             SetProofOfStake();
@@ -307,7 +318,7 @@ public:
     }
 
 
-    CDiskBlockPos GetBlockPos() const
+       CDiskBlockPos GetBlockPos() const
     {
         CDiskBlockPos ret;
         if (nStatus & BLOCK_HAVE_DATA) {
@@ -337,7 +348,10 @@ public:
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;
+        block.hashStateRoot  = hashStateRoot; // qtum
+        block.hashUTXORoot   = hashUTXORoot; // qtum
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
+        block.hashChainstate = hashChainstate;
         return block;
     }
 
@@ -577,12 +591,17 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+
         if(this->nVersion > 3) {
             READWRITE(nAccumulatorCheckpoint);
             READWRITE(mapZerocoinSupply);
             READWRITE(vMintDenominationsInBlock);
         }
-
+        if(this->nVersion >= CBlockHeader::BTCU_START_VERSION) {
+            READWRITE(hashChainstate);
+            READWRITE(hashStateRoot); // qtum
+            READWRITE(hashUTXORoot); // qtum
+        }
     }
 
     uint256 GetBlockHash() const
@@ -594,7 +613,10 @@ public:
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;
+        block.hashStateRoot   = hashStateRoot; // qtum
+        block.hashUTXORoot    = hashUTXORoot; // qtum
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
+        block.hashChainstate = hashChainstate;
         return block.GetHash();
     }
 

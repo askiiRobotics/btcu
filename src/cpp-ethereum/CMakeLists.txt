@@ -4,14 +4,12 @@
 
 cmake_minimum_required(VERSION 3.9.3)
 
-message(${CMAKE_SOURCE_DIR})
-#if (NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/evmc/.git OR NOT EXISTS ${CMAKE_SOURCE_DIR}/cmake/cable/.git)
+#if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git OR NOT EXISTS ${CMAKE_SOURCE_DIR}/cmake/cable/.git)
 #    message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
 #endif()
 
-
-
-include(cmake/cable/bootstrap.cmake)
+message(${CMAKE_CURRENT_LIST_DIR})
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/cable/bootstrap.cmake)
 include(CableBuildInfo)
 include(CableBuildType)
 include(CableToolchains)
@@ -63,10 +61,10 @@ include(EthExecutableHelper)
 include(EthDependencies)
 include(EthUtils)
 
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_MULTITHREADED ON)
-hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber log)
-find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber log)
+#set(Boost_USE_STATIC_LIBS ON)
+#set(Boost_USE_MULTITHREADED ON)
+#hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber log)
+#find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber log)
 
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)

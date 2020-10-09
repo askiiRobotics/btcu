@@ -340,7 +340,7 @@ void TransactionTableModel::updateTransaction(const QString& hash, int status, b
     priv->updateWallet(updated, status, showTransaction, rec);
 
     if (!rec.isNull())
-        Q_EMIT txArrived(hash, rec.isCoinStake(), rec.isAnyColdStakingType());
+        Q_EMIT txArrived(hash, rec.isCoinStake(), rec.isAnyColdStakingType(), rec.isAnyLeasingType());
 }
 
 void TransactionTableModel::updateConfirmations()
@@ -465,6 +465,15 @@ QString TransactionTableModel::formatTxType(const TransactionRecord* wtx) const
     case TransactionRecord::P2CSDelegationSentOwner:
     case TransactionRecord::P2CSDelegation:
         return tr("Stake delegation");
+    case TransactionRecord::P2LLeasingSent:
+    case TransactionRecord::P2LLeasingSentOwner:
+    case TransactionRecord::P2LLeasing:
+        return tr("Leasing");
+    case TransactionRecord::P2LUnlockLeaser:
+    case TransactionRecord::P2LUnlockOwner:
+        return tr("Leasing spent by");
+    case TransactionRecord::LeasingReward:
+        return tr("Leasing reward");
     case TransactionRecord::P2CSUnlockOwner:
     case TransactionRecord::P2CSUnlockStaker:
         return tr("Stake delegation spent by");
@@ -552,6 +561,12 @@ QString TransactionTableModel::formatTxToAddress(const TransactionRecord* wtx, b
     case TransactionRecord::P2CSUnlockOwner:
     case TransactionRecord::P2CSUnlockStaker:
     case TransactionRecord::StakeDelegated:
+    case TransactionRecord::P2LLeasing:
+    case TransactionRecord::P2LLeasingSent:
+    case TransactionRecord::P2LLeasingSentOwner:
+    case TransactionRecord::P2LUnlockOwner:
+    case TransactionRecord::P2LUnlockLeaser:
+    case TransactionRecord::LeasingReward:
     case TransactionRecord::StakeHot:
     case TransactionRecord::SendToSelf: {
         QString label = walletModel->getAddressTableModel()->labelForAddress(QString::fromStdString(wtx->address));

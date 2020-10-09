@@ -28,6 +28,7 @@
 #include <boost/assign/list_of.hpp>
 
 #include <univalue.h>
+#include <blocksignature.h>
 
 
 /**
@@ -115,6 +116,74 @@ UniValue getgenerate(const UniValue& params, bool fHelp)
     return GetBoolArg("-gen", false);
 }
 
+UniValue genesisstake(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 2)
+        throw std::runtime_error(
+            "genesisstake balance\n"
+            "\nCreate transaction in genesis"
+
+            "\nArguments:\n"
+            "1. balance    (numeric, required) Stake balance in genesis.\n"
+            "2. \"key\"            (string, required) Private key for signing transaction\n"
+            "\nResult\n"
+            "[ trxhashes ]     (array) hashes of generated coins\n"
+
+            "\nExamples:\n"
+            "\nStake 40000.00 BTCU in genesis\n"
+            + HelpExampleCli("genesisstake", "40000")
+        );
+
+//    //Only for tests
+//    UniValue params_(UniValue::VType::VARR);
+//    params_.push_back("L1nBvfDf3mucBPyFXuyhENiEu7B4mjDDYz6LhQRKhKMWzfHx7nfk");
+//    importprivkey(params_, false).get_str();
+
+    const int nValue = std::stoi(params[0].get_str());
+
+    CBTCUAddress address;
+    UniValue params_(UniValue::VType::VARR);
+    params_.push_back(params[1].get_str());
+    params_.push_back("");
+    UniValue ubv;
+    ubv.setBool(false);
+    params_.push_back(ubv);
+
+    if(!address.SetString(importprivkey(params_, false).get_str()))
+       throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
+
+    //pwalletMain->getNewAddress(address, std::string(), std::string(), CChainParams::PUBKEY_ADDRESS);
+
+    CCoinsMap coinsMap;
+    CCoinsCacheEntry coinsEntry;
+
+    coinsEntry.flags = CCoinsCacheEntry::DIRTY | CCoinsCacheEntry::FRESH;
+    coinsEntry.coins.nVersion = CTransaction::BITCOIN_VERSION;
+    coinsEntry.coins.vout.push_back(CTxOut(nValue * COIN, GetScriptForDestination(address.Get())));
+
+    CMutableTransaction trx;
+    trx.nVersion = coinsEntry.coins.nVersion;
+    trx.vout = coinsEntry.coins.vout;
+    trx.nLockTime = rand();
+
+    coinsMap.insert(std::make_pair(trx.GetHash(), coinsEntry));
+
+    pcoinsTip->BatchWrite(coinsMap, 0);
+
+    auto merkleClb = [&](CMerkleTx& wtx){
+        wtx.hashBlock = Params().HashGenesisBlock();
+        wtx.nIndex = 10;
+    };
+
+    pwalletMain->AddToWalletIfInvolvingMe(CTransaction(trx.GetHash(), coinsEntry.coins), nullptr, merkleClb, false);
+
+    UniValue trxHashes(UniValue::VARR);
+
+    trxHashes.push_back(HexStr(trx.GetHash()));
+
+    return trxHashes;
+}
+
 UniValue generate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
@@ -136,7 +205,12 @@ UniValue generate(const UniValue& params, bool fHelp)
 
     if (!Params().MineBlocksOnDemand())
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "This method can only be used on regtest");
-
+    
+    //Only regtest: setting genesis validator private key for validator's signing
+    UniValue params_(UniValue::VType::VARR);
+    params_.push_back("cTQ9SoEvbb41ctdf7Q7UFPogivXGcN88WBkowWQ5L1NWDiF9fahy");
+    importprivkey(params_, false).get_str();
+    
     const int nGenerate = params[0].get_int();
     int nHeightEnd = 0;
     int nHeight = 0;
@@ -176,6 +250,12 @@ UniValue generate(const UniValue& params, bool fHelp)
             }
             if (ShutdownRequested()) break;
             if (pblock->nNonce == std::numeric_limits<uint32_t>::max()) continue;
+    
+            // Set validator's signature after all verifications for proof-of-work block
+            if (!ValidatorSignBlock(*pblock)) {
+                LogPrintf("%s: Validator's signing of the new block failed \n", __func__);
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Validator's signing of the new block failed");  // TODO: commented only for test purposes (to enable signed and unsigned blocks)
+            }
         }
 
         CValidationState state;
@@ -628,7 +708,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (pblock->payee != CScript()) {
         CTxDestination address1;
         ExtractDestination(pblock->payee, address1);
-        CBitcoinAddress address2(address1);
+        CBTCUAddress address2(address1);
         result.push_back(Pair("payee", address2.ToString().c_str()));
         result.push_back(Pair("payee_amount", (int64_t)pblock->vtx[0].vout[1].nValue));
     } else {
@@ -687,6 +767,9 @@ UniValue submitblock(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
     if (block.vtx.empty() || !block.vtx[0].IsCoinBase()) {
+        error("IsCoinBase: %d", int(block.vtx.size()));
+        if (!block.vtx.empty())
+            error("IsCoinBase: %d %d %d %d", block.vtx[0].vin.size(), block.vtx[0].vin[0].prevout.IsNull(), block.vtx[0].ContainsZerocoins(), block.vtx[0].IsLeasingReward());
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
     }
 

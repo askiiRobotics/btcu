@@ -29,6 +29,7 @@ public:
 public Q_SLOTS:
     void selectSettings();
     void onShowHideColdStakingChanged(bool show);
+    void onShowHideLeasingChanged(bool show);
 
 private Q_SLOTS:
     void onSendClicked();
@@ -37,6 +38,7 @@ private Q_SLOTS:
     void onAddressClicked();
     void onMasterNodesClicked();
     void onColdStakingClicked();
+    void onLeasingClicked();
     void onSettingsClicked();
     void onReceiveClicked();
     void updateButtonStyles();

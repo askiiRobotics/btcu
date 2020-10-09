@@ -15,6 +15,15 @@
 #include "primitives/transaction.h"
 #include "sync.h"
 #include "random.h"
+#include "crypto/siphash.h"
+
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
+#include <boost/signals2/signal.hpp>
+#include "sync.h"
+
 
 class CAutoFile;
 
@@ -84,6 +93,21 @@ public:
     bool IsNull() const { return (ptx == NULL && n == (uint32_t)-1); }
 };
 
+struct LockPoints
+{
+    // Will be set to the blockchain height and median time past
+    // values that would be necessary to satisfy all relative locktime
+    // constraints (BIP68) of this tx given our view of block chain history
+    int height;
+    int64_t time;
+    // As long as the current chain descends from the highest height block
+    // containing one of the inputs used in the calculation, then the cached
+    // values are still valid even after a reorg.
+    CBlockIndex* maxInputBlock;
+
+    LockPoints() : height(0), time(0), maxInputBlock(nullptr) { }
+};
+
 /**
  * CTxMemPool stores valid-according-to-the-current-best-chain
  * transactions that may be included in the next block.
@@ -105,6 +129,7 @@ private:
     uint64_t totalTxSize; //! sum of all mempool tx' byte sizes
 
 public:
+
     mutable CCriticalSection cs;
     std::map<uint256, CTxMemPoolEntry> mapTx;
     std::map<COutPoint, CInPoint> mapNextTx;

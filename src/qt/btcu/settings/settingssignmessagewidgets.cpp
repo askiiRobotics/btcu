@@ -167,7 +167,7 @@ void SettingsSignMessageWidgets::onSignMessageButtonSMClicked(){
     /* Clear old signature to ensure users don't get confused on error with an old signature displayed */
     ui->signatureOut_SM->clear();
 
-    CBitcoinAddress addr(ui->addressIn_SM->text().toStdString());
+    CBTCUAddress addr(ui->addressIn_SM->text().toStdString());
     if (!addr.IsValid()) {
         ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_SM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
@@ -222,7 +222,7 @@ void SettingsSignMessageWidgets::onVerifyMessage(){
     ui->statusLabel_SM->setStyleSheet("QLabel { color: transparent; }");
      */
 
-    CBitcoinAddress addr(ui->addressIn_SM->text().toStdString());
+    CBTCUAddress addr(ui->addressIn_SM->text().toStdString());
     if (!addr.IsValid()) {
         ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_SM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
@@ -258,7 +258,7 @@ void SettingsSignMessageWidgets::onVerifyMessage(){
         return;
     }
 
-    if (!(CBitcoinAddress(pubkey.GetID()) == addr)) {
+    if (!(CBTCUAddress(pubkey.GetID()) == addr)) {
         ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_SM->setText(QString("<nobr>") + tr("Message verification failed.") + QString("</nobr>"));
         return;

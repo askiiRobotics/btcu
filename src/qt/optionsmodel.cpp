@@ -71,6 +71,10 @@ void OptionsModel::Init()
         settings.setValue("fShowColdStakingScreen", false);
     showColdStakingScreen = settings.value("fShowColdStakingScreen", false).toBool();
 
+    if (!settings.contains("fShowLeasingScreen"))
+        settings.setValue("fShowLeasingScreen", false);
+    showLeasingScreen = settings.value("fShowLeasingScreen", false).toBool();
+
     if (!settings.contains("fShowMasternodesTab"))
         settings.setValue("fShowMasternodesTab", masternodeConfig.getCount());
 
@@ -276,6 +280,8 @@ QVariant OptionsModel::data(const QModelIndex& index, int role) const
             return fCoinControlFeatures;
         case ShowColdStakingScreen:
             return showColdStakingScreen;
+        case ShowLeasingScreen:
+            return showLeasingScreen;
         case DatabaseCache:
             return settings.value("nDatabaseCache");
         case ThreadsScriptVerif:
@@ -410,6 +416,11 @@ bool OptionsModel::setData(const QModelIndex& index, const QVariant& value, int 
             this->showColdStakingScreen = value.toBool();
             settings.setValue("fShowColdStakingScreen", this->showColdStakingScreen);
             Q_EMIT showHideColdStakingScreen(this->showColdStakingScreen);
+            break;
+        case ShowLeasingScreen:
+            this->showLeasingScreen = value.toBool();
+            settings.setValue("fShowLeasingScreen", this->showLeasingScreen);
+            Q_EMIT showHideLeasingScreen(this->showLeasingScreen);
             break;
         case DatabaseCache:
             if (settings.value("nDatabaseCache") != value) {

@@ -32,7 +32,7 @@ boost::optional<CKey> GetCollateralKey(CMasternode *pmn)
     auto addr = pmn->pubKeyCollateralAddress.GetID(); // public key ID for MN's collateral address
     if (pwalletMain->GetKey(addr, key)) // get key (private and public parts) from wallet
     {
-//        auto addr_str = CBitcoinAddress(key.GetPubKey().GetID()).ToString();
+//        auto addr_str = CBTCUAddress(key.GetPubKey().GetID()).ToString();
         keyOpt.emplace(key);
     }
     return keyOpt;
@@ -62,6 +62,24 @@ boost::optional<std::pair<CTxIn, CKey>> GetVinKey(const std::string &strAlias)
                     break;
                 }
             }
+        }
+    }
+    return vinKeyOpt;
+}
+
+// Tries to get secret key which corresponds to one of genesis validators keys
+boost::optional<std::pair<CTxIn, CKey>> GetGenesisVinKey()
+{
+    boost::optional<std::pair<CTxIn, CKey>> vinKeyOpt;
+    
+    auto genesisValidators = Params().GenesisBlock().vtx[0].validatorRegister;
+    for(auto &gv : genesisValidators)
+    {
+        CKey key;
+        if(pwalletMain->GetKey(gv.pubKey.GetID(), key))
+        {
+            vinKeyOpt.emplace(std::pair<CTxIn, CKey>(gv.vin, key));
+            break;
         }
     }
     return vinKeyOpt;

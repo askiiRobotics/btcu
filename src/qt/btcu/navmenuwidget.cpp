@@ -49,6 +49,10 @@ NavMenuWidget::NavMenuWidget(BTCUGUI *mainWindow, QWidget *parent) :
     ui->btnColdStaking->setText("COLD\r\nSTAKING");
     ui->btnColdStaking->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
+    ui->btnLeasing->setProperty("name", "leasing");
+    ui->btnLeasing->setText("LEASING");
+    ui->btnLeasing->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+
     ui->btnSettings->setProperty("name", "settings");
     ui->btnSettings->setText("SETTINGS\n");
     ui->btnSettings->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
@@ -57,7 +61,7 @@ NavMenuWidget::NavMenuWidget(BTCUGUI *mainWindow, QWidget *parent) :
     ui->btnReceive->setText("RECEIVE\n");
     ui->btnReceive->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
-    btns = {ui->btnDashboard, ui->btnSend, ui->btnReceive, ui->btnAddress, ui->btnPrivacy, ui->btnMaster, ui->btnColdStaking, ui->btnSettings, ui->btnColdStaking};
+    btns = {ui->btnDashboard, ui->btnSend, ui->btnReceive, ui->btnAddress, ui->btnPrivacy, ui->btnMaster, ui->btnColdStaking, ui->btnSettings, ui->btnLeasing};
     onNavSelected(ui->btnDashboard, true);
 
     ui->scrollAreaNav->setWidgetResizable(true);
@@ -76,6 +80,7 @@ NavMenuWidget::NavMenuWidget(BTCUGUI *mainWindow, QWidget *parent) :
 void NavMenuWidget::loadWalletModel() {
     if (walletModel && walletModel->getOptionsModel()) {
         ui->btnColdStaking->setVisible(walletModel->getOptionsModel()->isColdStakingScreenEnabled());
+        ui->btnLeasing->setVisible(walletModel->getOptionsModel()->isLeasingScreenEnabled());
     }
 }
 
@@ -91,6 +96,7 @@ void NavMenuWidget::connectActions() {
     connect(ui->btnSettings,SIGNAL(clicked()),this, SLOT(onSettingsClicked()));
     connect(ui->btnReceive,SIGNAL(clicked()),this, SLOT(onReceiveClicked()));
     connect(ui->btnColdStaking,SIGNAL(clicked()),this, SLOT(onColdStakingClicked()));
+    connect(ui->btnLeasing,SIGNAL(clicked()),this, SLOT(onLeasingClicked()));
 
     ui->btnDashboard->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_1));
     ui->btnSend->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_2));
@@ -99,7 +105,8 @@ void NavMenuWidget::connectActions() {
     ui->btnPrivacy->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_5));
     ui->btnMaster->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_6));
     ui->btnColdStaking->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_7));
-    ui->btnSettings->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_8));
+    ui->btnLeasing->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_8));
+    ui->btnSettings->setShortcut(QKeySequence(SHORT_KEY + Qt::Key_9));
 }
 
 void NavMenuWidget::onSendClicked(){
@@ -131,6 +138,11 @@ void NavMenuWidget::onMasterNodesClicked(){
 void NavMenuWidget::onColdStakingClicked() {
     window->goToColdStaking();
     onNavSelected(ui->btnColdStaking);
+}
+
+void NavMenuWidget::onLeasingClicked() {
+    window->goToLeasing();
+    onNavSelected(ui->btnLeasing);
 }
 
 void NavMenuWidget::onSettingsClicked(){
@@ -165,6 +177,12 @@ void NavMenuWidget::onShowHideColdStakingChanged(bool show) {
         ui->scrollAreaNav->verticalScrollBar()->setValue(ui->btnColdStaking->y());
 }
 
+void NavMenuWidget::onShowHideLeasingChanged(bool show) {
+    ui->btnLeasing->setVisible(show);
+    if (show)
+        ui->scrollAreaNav->verticalScrollBar()->setValue(ui->btnLeasing->y());
+}
+
 void NavMenuWidget::showEvent(QShowEvent *event) {
     if (!init) {
         init = true;
@@ -181,7 +199,8 @@ void NavMenuWidget::updateButtonStyles(){
          ui->btnMaster,
          ui->btnSettings,
          ui->btnReceive,
-         ui->btnColdStaking
+         ui->btnColdStaking,
+         ui->btnLeasing
     });
 }
 

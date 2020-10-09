@@ -12,6 +12,7 @@ set(
     VMOpt.cpp
 )
 add_library(cpp-ethereum-interpreter STATIC ${sources})
+target_include_directories(cpp-ethereum-interpreter PRIVATE "${UTILS_INCLUDE_DIR}" ../ethash/include)
 target_link_libraries(cpp-ethereum-interpreter PRIVATE devcore cpp-ethereum-buildinfo evmc::evmc evmc::instructions)
 
 if(ALETH_INTERPRETER_SHARED)

@@ -16,6 +16,9 @@
 #include "config/btcu-config.h"
 #endif
 
+#define BOOST_VARIANT_USE_RELAXED_GET_BY_DEFAULT
+#define BOOST_LOG_DYN_LINK 1
+
 #include "amount.h"
 #include "chain.h"
 #include "chainparams.h"
@@ -117,6 +120,13 @@ static const bool DEFAULT_BLOCK_SPAM_FILTER = true;
 static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_SIZE = 100;
 /** Default for -blockspamfiltermaxavg, maximum average size of an index occurrence in the block spam filter */
 static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_AVG = 10;
+
+/////////////////////////////////////////qtum
+/** The number of sender stack items in a standard sender signature script */
+static const unsigned int STANDARD_SENDER_STACK_ITEMS = 2;
+/** The maximum size of each sender stack item in a standard sender signature script */
+static const unsigned int MAX_STANDARD_SENDER_STACK_ITEM_SIZE = 80;
+////////////////////////////////////////////
 
 struct BlockHasher {
     size_t operator()(const uint256& hash) const { return hash.GetLow64(); }
@@ -425,6 +435,9 @@ extern CZerocoinDB* zerocoinDB;
 
 /** Global variable that points to the spork database (protected by cs_main) */
 extern CSporkDB* pSporkDB;
+
+/** Hash of initial UTXO db chainstate */
+extern uint256 g_hashChainstate;
 
 #define MN_ALIAS_NAME "MN"
 

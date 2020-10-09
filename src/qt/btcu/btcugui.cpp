@@ -27,6 +27,7 @@
 #include <QShortcut>
 #include <QKeySequence>
 #include <QWindowStateChangeEvent>
+#include <QProgressDialog>
 
 #include "util.h"
 
@@ -132,6 +133,7 @@ BTCUGUI::BTCUGUI(const NetworkStyle* networkStyle, QWidget* parent) :
         privacyWidget = new PrivacyWidget(this);
         masterNodesWidget = new MasterNodesWidget(this);
         coldStakingWidget = new ColdStakingWidget(this);
+        leasingWidget.reset(new LeasingWidget(this));
         settingsWidget = new SettingsWidget(this);
 
         // Add to parent
@@ -142,6 +144,7 @@ BTCUGUI::BTCUGUI(const NetworkStyle* networkStyle, QWidget* parent) :
         stackedContainer->addWidget(privacyWidget);
         stackedContainer->addWidget(masterNodesWidget);
         stackedContainer->addWidget(coldStakingWidget);
+        stackedContainer->addWidget(leasingWidget.get());
         stackedContainer->addWidget(settingsWidget);
         stackedContainer->setCurrentWidget(dashboard);
 
@@ -199,6 +202,7 @@ void BTCUGUI::connectActions() {
     connect(topBar, &TopBar::showHide, this, &BTCUGUI::showHide);
     connect(topBar, &TopBar::themeChanged, this, &BTCUGUI::changeTheme);
     connect(topBar, &TopBar::onShowHideColdStakingChanged, navMenu, &NavMenuWidget::onShowHideColdStakingChanged);
+    connect(topBar, &TopBar::onShowHideLeasingChanged, navMenu, &NavMenuWidget::onShowHideLeasingChanged);
     connect(settingsWidget, &SettingsWidget::showHide, this, &BTCUGUI::showHide);
     connect(sendWidget, &SendWidget::showHide, this, &BTCUGUI::showHide);
     connect(receiveWidget, &ReceiveWidget::showHide, this, &BTCUGUI::showHide);
@@ -208,6 +212,8 @@ void BTCUGUI::connectActions() {
     connect(masterNodesWidget, &MasterNodesWidget::execDialog, this, &BTCUGUI::execDialog);
     connect(coldStakingWidget, &ColdStakingWidget::showHide, this, &BTCUGUI::showHide);
     connect(coldStakingWidget, &ColdStakingWidget::execDialog, this, &BTCUGUI::execDialog);
+    connect(leasingWidget.get(), &LeasingWidget::showHide, this, &BTCUGUI::showHide);
+    connect(leasingWidget.get(), &LeasingWidget::execDialog, this, &BTCUGUI::execDialog);
     connect(settingsWidget, &SettingsWidget::execDialog, this, &BTCUGUI::execDialog);
 }
 
@@ -261,6 +267,7 @@ void BTCUGUI::setClientModel(ClientModel* clientModel) {
         connect(clientModel, SIGNAL(message(QString, QString, unsigned int)), this, SLOT(message(QString, QString, unsigned int)));
         connect(topBar, SIGNAL(walletSynced(bool)), dashboard, SLOT(walletSynced(bool)));
         connect(topBar, SIGNAL(walletSynced(bool)), coldStakingWidget, SLOT(walletSynced(bool)));
+        connect(topBar, SIGNAL(walletSynced(bool)), leasingWidget.get(), SLOT(walletSynced(bool)));
 
         // Get restart command-line parameters and handle restart
         connect(settingsWidget, &SettingsWidget::handleRestart, [this](QStringList arg){handleRestart(arg);});
@@ -493,6 +500,10 @@ void BTCUGUI::goToColdStaking(){
     showTop(coldStakingWidget);
 }
 
+void BTCUGUI::goToLeasing(){
+    showTop(leasingWidget.get());
+}
+
 void BTCUGUI::goToSettings(){
     showTop(settingsWidget);
 }
@@ -590,12 +601,14 @@ bool BTCUGUI::addWallet(const QString& name, WalletModel* walletModel)
     privacyWidget->setWalletModel(walletModel);
     masterNodesWidget->setWalletModel(walletModel);
     coldStakingWidget->setWalletModel(walletModel);
+    leasingWidget->setWalletModel(walletModel);
     settingsWidget->setWalletModel(walletModel);
 
     // Connect actions..
     connect(privacyWidget, &PrivacyWidget::message, this, &BTCUGUI::message);
     connect(masterNodesWidget, &MasterNodesWidget::message, this, &BTCUGUI::message);
     connect(coldStakingWidget, &MasterNodesWidget::message, this, &BTCUGUI::message);
+    connect(leasingWidget.get(), &MasterNodesWidget::message, this, &BTCUGUI::message);
     connect(topBar, &TopBar::message, this, &BTCUGUI::message);
     connect(sendWidget, &SendWidget::message,this, &BTCUGUI::message);
     connect(receiveWidget, &ReceiveWidget::message,this, &BTCUGUI::message);
@@ -657,15 +670,57 @@ static bool ThreadSafeMessageBox(BTCUGUI* gui, const std::string& message, const
     return ret;
 }
 
+#ifdef ENABLE_WALLET
+static void ShowProgress(const std::string& title, int nProgress)
+{
+    static QProgressDialog* pProgressDialog = nullptr;
+
+    if (nProgress == 0) {
+        if (!pProgressDialog) {
+            pProgressDialog = new QProgressDialog(QString(title.c_str()), QString(), 0, 100);
+            pProgressDialog->setWindowModality(Qt::ApplicationModal);
+            pProgressDialog->setMinimumDuration(0);
+            pProgressDialog->setAutoClose(false);
+            pProgressDialog->setValue(0);
+        } else
+            pProgressDialog->setWindowTitle(QString(title.c_str()));
+
+    } else if (nProgress == 100) {
+        if (pProgressDialog) {
+            pProgressDialog->close();
+            pProgressDialog->deleteLater();
+            pProgressDialog = nullptr;
+        }
+    } else if (pProgressDialog) {
+        pProgressDialog->setValue(nProgress);
+    }
+}
+
+static void ConnectWallet(CWallet* pWallet)
+{
+    pWallet->ShowProgress.connect(boost::bind(ShowProgress, _1, _2));
+}
+#endif
+
 
 void BTCUGUI::subscribeToCoreSignals()
 {
     // Connect signals to client
     uiInterface.ThreadSafeMessageBox.connect(boost::bind(ThreadSafeMessageBox, this, _1, _2, _3));
+#ifdef ENABLE_WALLET
+    uiInterface.LoadWallet.connect(boost::bind(ConnectWallet, _1));
+#endif // ENABLE_WALLET
 }
 
 void BTCUGUI::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from client
     uiInterface.ThreadSafeMessageBox.disconnect(boost::bind(ThreadSafeMessageBox, this, _1, _2, _3));
+
+#ifdef ENABLE_WALLET
+    ShowProgress("", 0);
+    if (pwalletMain) {
+        pwalletMain->ShowProgress.disconnect(boost::bind(ShowProgress, _1, _2));
+    }
+#endif //ENABLE_WALLET
 }

@@ -19,19 +19,12 @@ uint256 CBlockHeader::GetHash() const
     if (nVersion < 4)
         return HashQuark(BEGIN(nVersion), END(nNonce));
 
-    if (nVersion < 7)
-        return Hash(BEGIN(nVersion), END(nAccumulatorCheckpoint));
-
-    return Hash(BEGIN(nVersion), END(nNonce));
+    return SerializeHash(*this);
 }
 
-uint256 CBlock::GetHashForValidator() const
+uint256 CBTCUValidatorBlockHeader::GetHashForValidator() const
 {
-    CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-    ss << CBlockHeader::GetHash();
-    ss << vchBlockSig;   // PoS signature
-    ss << validatorVin;  // validator's ID
-    return ss.GetHash(); // output SHA256 hash
+    return SerializeHash(*this);
 }
 
 std::string CBlock::ToString() const
