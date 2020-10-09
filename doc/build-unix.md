@@ -26,6 +26,7 @@ or
 
 Cmake:
 ```bash
+./configure
 mkdir build
 cd build
 cmake ..
