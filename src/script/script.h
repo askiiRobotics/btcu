@@ -194,15 +194,15 @@ enum opcodetype
     // cold staking
     OP_CHECKCOLDSTAKEVERIFY = 0xd1,
 
+    // leasing
+    OP_CHECKLEASEVERIFY = 0xd7,
+    OP_LEASINGREWARD = 0xd8,
+
     // Execute EXT byte code. (qtum sc)
     OP_CREATE = 0xe1,
     OP_CALL = 0xe2,
     OP_SPEND = 0xe3,
     OP_SENDER = 0xe4,
-
-    // leasing
-    OP_CHECKLEASEVERIFY = 0xd7,
-    OP_LEASINGREWARD = 0xd8,
 
     // template matching params
     OP_ADDRESS_TYPE = 0xf2,

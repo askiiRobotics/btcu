@@ -255,12 +255,12 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
                if(0 <= opcode1 && opcode1 <= OP_PUSHDATA4)
                {
                   if(vch1.empty() || vch1.size() > 4 || (vch1.back() & 0x80))
-                     return TX_NONSTANDARD;
+                     break;
 
                   version = VersionVM::fromRaw(CScriptNum::vch_to_uint64(vch1));
                   if(!(version.toRaw() == VersionVM::GetEVMDefault().toRaw() || version.toRaw() == VersionVM::GetNoExec().toRaw())){
                      // only allow standard EVM and no-exec transactions to live in mempool
-                     return TX_NONSTANDARD;
+                     break;
                   }
                }
             }
@@ -270,27 +270,27 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
                   if(contractConsensus) {
                      //consensus rules (this is checked more in depth later using DGP)
                      if (version.rootVM != 0 && val < 1) {
-                        return TX_NONSTANDARD;
+                        break;
                      }
                      if (val > MAX_BLOCK_GAS_LIMIT_DGP) {
                         //do not allow transactions that could use more gas than is in a block
-                        return TX_NONSTANDARD;
+                        break;
                      }
                   }else{
                      //standard mempool rules for contracts
                      //consensus rules for contracts
                      if (version.rootVM != 0 && val < STANDARD_MINIMUM_GAS_LIMIT) {
-                        return TX_NONSTANDARD;
+                        break;
                      }
                      if (val > DEFAULT_BLOCK_GAS_LIMIT_DGP / 2) {
                         //don't allow transactions that use more than 1/2 block of gas to be broadcast on the mempool
-                        return TX_NONSTANDARD;
+                        break;
                      }
 
                   }
                }
                catch (const scriptnum_error &err) {
-                  return TX_NONSTANDARD;
+                  break;
                }
             }
             else if(opcode2 == OP_GAS_PRICE) {
@@ -299,17 +299,17 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
                   if(contractConsensus) {
                      //consensus rules (this is checked more in depth later using DGP)
                      if (version.rootVM != 0 && val < 1) {
-                        return TX_NONSTANDARD;
+                        break;
                      }
                   }else{
                      //standard mempool rules
                      if (version.rootVM != 0 && val < STANDARD_MINIMUM_GAS_PRICE) {
-                        return TX_NONSTANDARD;
+                        break;
                      }
                   }
                }
                catch (const scriptnum_error &err) {
-                  return TX_NONSTANDARD;
+                  break;
                }
             }
             else if(opcode2 == OP_DATA)
@@ -359,7 +359,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
 
                   // Check the max size of the signature script
                   if(vch1.size() > MAX_BASE_SCRIPT_SIZE)
-                     return TX_NONSTANDARD;
+                     break;
 
                   vSolutionsRet.push_back(vch1);
                }

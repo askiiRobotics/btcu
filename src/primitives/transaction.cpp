@@ -158,6 +158,8 @@ CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion
 
 CTransaction::CTransaction(const uint256& coinsHash, const CCoins& coins):
     hash(coinsHash), nVersion(coins.nVersion), vout(coins.vout), nLockTime(0) {
+
+    for (auto& out: vout) if (out.nValue < 0) out.SetEmpty();
 }
 
 CTransaction& CTransaction::operator=(const CTransaction &tx) {

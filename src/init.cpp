@@ -1533,12 +1533,6 @@ bool AppInit2()
                 if (!mapBlockIndex.empty() && mapBlockIndex.count(Params().HashGenesisBlock()) == 0)
                     return InitError(_("Incorrect or no genesis block found. Wrong datadir for network?"));
 
-                {
-                    WaitableLock lock(g_best_block_mutex);
-                    g_best_block = Params().HashGenesisBlock();
-                    g_best_block_cv.notify_all();
-                }
-
                 // Initialize the block index (no-op if non-empty database was already loaded)
                 if (!InitBlockIndex()) {
                     strLoadError = _("Error initializing block database");
@@ -2038,6 +2032,11 @@ bool AppInit2()
 
     SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading"));
+
+    {
+        WaitableLock lock(g_best_block_mutex);
+        g_best_block = pcoinsTip->GetBestBlock();
+    }
 
 #ifdef ENABLE_WALLET
     if (pwalletMain) {

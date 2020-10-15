@@ -360,8 +360,8 @@ public:
         nLastPOWBlock = 0;
         nBtcuBadBlockTime = 1489001494; // Skip nBit validation of Block 259201 per PR #915
         nBtcuBadBlocknBits = 0x1e0a20bd; // Skip nBit validation of Block 201 per PR #915
-        nMaturity = 0;//15;
-        nStakeMinDepth = 0;//100;
+        nMaturity = 15;
+        nStakeMinDepth = 100;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 51197; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nZerocoinStartHeight = 201576;
@@ -487,7 +487,7 @@ public:
         nToCheckBlockUpgradeMajority = 1000;
         nMinerThreads = 1;
         bnProofOfWorkLimit = ~uint256(0) >> 1;
-        nLastPOWBlock = 0;
+        nLastPOWBlock = 250;
         nMaturity = 100;
         nStakeMinAge = 0;
         nStakeMinDepth = 0;
