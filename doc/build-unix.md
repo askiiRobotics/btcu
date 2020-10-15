@@ -15,17 +15,8 @@ the usage of the absolute path.
 To Build
 ---------------------
 
-Autotools:
 ```bash
 ./autogen.sh
-./configure
-make
-make install # optional
-```
-or
-
-Cmake:
-```bash
 ./configure
 mkdir build
 cd build
