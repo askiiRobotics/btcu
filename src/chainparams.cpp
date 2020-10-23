@@ -171,9 +171,9 @@ public:
         nTargetTimespan = 40 * 60;                      // 40 minutes
         nTimeSlotLength = 15;                           // 15 seconds
         nTargetTimespan_V2 = 2 * nTimeSlotLength * 60;  // 30 minutes
-        nMaturity = 100;
+        nMaturity = 9;
         nStakeMinAge = 60 * 60;                         // 1 hour
-        nStakeMinDepth = 600;
+        nStakeMinDepth = 9;
         nFutureTimeDriftPoW = 7200;
         nFutureTimeDriftPoS = 180;
         nMasternodeCountDrift = 20;
@@ -197,7 +197,7 @@ public:
         nBlockDoubleAccumulated = 0;
         nEnforceNewSporkKey = 1583491266; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1583491266 - 1; //!> Fully reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
-        nBlockStakeModifierlV2 = nLastPOWBlock + 1;//1967000;
+        nBlockStakeModifierlV2 = nLastPOWBlock + 1;
         nBIP65ActivationHeight = 0;
         // Activation height for TimeProtocolV2, Blocks V7 and newMessageSignatures
         nBlockTimeProtocolV2 = nLastPOWBlock + 1;
@@ -219,7 +219,7 @@ public:
 
         // Fake Serial Attack
         nFakeSerialBlockheightEnd = 0;
-        nSupplyBeforeFakeSerial = 0;//4131563 * COIN;   // zerocoin supply at block nFakeSerialBlockheightEnd
+        nSupplyBeforeFakeSerial = 0;// zerocoin supply at block nFakeSerialBlockheightEnd
 
         /**
          * Build the genesis block. Note that the output of the genesis coinbase cannot
@@ -293,8 +293,8 @@ public:
         fAllowMinDifficultyBlocks = false;
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
-        fMineBlocksOnDemand = true;//false; for mining pow with 'generate <num_blocks>'
-        fSkipProofOfWorkCheck = true;//false; for mining pow with 'generate <num_blocks>'
+        fMineBlocksOnDemand = true;
+        fSkipProofOfWorkCheck = true;
         fTestnetToBeDeprecatedFieldRPC = false;
         fHeadersFirstSyncingActive = false;
 
@@ -351,7 +351,6 @@ public:
         pchMessageStart[2] = 0x65;
         pchMessageStart[3] = 0xba;
         vAlertPubKey = ParseHex("0424f2affc27906832348adacf23f475a2a758c7d9ed4510d209a05f921653aaa1a6c3bb0683d91964cab3c12d868813e2f5835091f53a3c0a06e1afa057b9530a");
-        //vAlertPubKey = ParseHex("000010e83b2703ccf322f7dbd62dd5855ac7c10bd055814ce121ba32607d573b8810c02c0582aed05b4deb9c4b77b26d92428c61256cd42774babea0a073b2ed0c9");
         nDefaultPort = 13666;
         nEnforceBlockUpgradeMajority = 4320; // 75%
         nRejectBlockOutdatedMajority = 5472; // 95%
@@ -360,8 +359,8 @@ public:
         nLastPOWBlock = 0;
         nBtcuBadBlockTime = 1489001494; // Skip nBit validation of Block 259201 per PR #915
         nBtcuBadBlocknBits = 0x1e0a20bd; // Skip nBit validation of Block 201 per PR #915
-        nMaturity = 15;
-        nStakeMinDepth = 100;
+        nMaturity = 2;
+        nStakeMinDepth = 2;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 51197; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nZerocoinStartHeight = 201576;
@@ -375,7 +374,7 @@ public:
         nBlockZerocoinV2 = 444020; //!> The block that zerocoin v2 becomes active
         nEnforceNewSporkKey = 1566860400; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1569538800; //!> Reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
-        nBlockStakeModifierlV2 = nLastPOWBlock + 1; //1214000;
+        nBlockStakeModifierlV2 = nLastPOWBlock + 1;
         nBIP65ActivationHeight = 851019;
         // Activation height for TimeProtocolV2, Blocks V7 and newMessageSignatures
         nBlockTimeProtocolV2 = 1347000;
@@ -453,7 +452,7 @@ public:
         strSporkPubKey = "026fe3671df2061f611fe7c3048bb33a1ade7a06f56f409a957605d115209a0f25";
         strSporkPubKeyOld = "04A8B319388C0F8588D238B9941DC26B26D3F9465266B368A051C5C100F79306A557780101FE2192FE170D7E6DEFDCBEE4C8D533396389C0DAFFDBC842B002243C";
         strObfuscationPoolDummyAddress = "y57cqfGRkekRyDRNeJiLtYVEbvhXrNbmox";
-        nStartMasternodePayments = 1420837558; //Fri, 09 Jan 2015 21:05:58 GMT
+        nStartMasternodePayments = 1420837558;
         nBudget_Fee_Confirmations = 3; // Number of confirmations for the finalization fee. We have to make this very short
                                        // here because we only have a 8 block finalization window on testnet
 

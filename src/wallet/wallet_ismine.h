@@ -28,7 +28,7 @@ enum isminetype {
     ISMINE_SPENDABLE_DELEGATED = 16,
     //! Indicates that we have the leaser key of a P2L
     ISMINE_LEASING = 32,
-    //! Indicates that we have the leasee key of a P2L
+    //! Indicates that we have the owner spending key of a P2L
     ISMINE_LEASED = 64,
 
     ISMINE_SPENDABLE_ALL = ISMINE_SPENDABLE_DELEGATED | ISMINE_LEASED | ISMINE_SPENDABLE,

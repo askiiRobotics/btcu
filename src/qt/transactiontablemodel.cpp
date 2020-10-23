@@ -466,12 +466,17 @@ QString TransactionTableModel::formatTxType(const TransactionRecord* wtx) const
     case TransactionRecord::P2CSDelegation:
         return tr("Stake delegation");
     case TransactionRecord::P2LLeasingSent:
-    case TransactionRecord::P2LLeasingSentOwner:
-    case TransactionRecord::P2LLeasing:
-        return tr("Leasing");
-    case TransactionRecord::P2LUnlockLeaser:
-    case TransactionRecord::P2LUnlockOwner:
-        return tr("Leasing spent by");
+        return tr("Sent leasing");
+    case TransactionRecord::P2LLeasingSentToSelf:
+        return tr("Sent leasing to self");
+    case TransactionRecord::P2LLeasingRecv:
+        return tr("Receive leasing");
+    case TransactionRecord::P2LUnlockLeasing:
+        return tr("Unlock leasing");
+    case TransactionRecord::P2LUnlockOwnLeasing:
+        return tr("Unlock own leasing");
+    case TransactionRecord::P2LReturnLeasing:
+        return tr("Return leasing");
     case TransactionRecord::LeasingReward:
         return tr("Leasing reward");
     case TransactionRecord::P2CSUnlockOwner:
@@ -561,11 +566,12 @@ QString TransactionTableModel::formatTxToAddress(const TransactionRecord* wtx, b
     case TransactionRecord::P2CSUnlockOwner:
     case TransactionRecord::P2CSUnlockStaker:
     case TransactionRecord::StakeDelegated:
-    case TransactionRecord::P2LLeasing:
     case TransactionRecord::P2LLeasingSent:
-    case TransactionRecord::P2LLeasingSentOwner:
-    case TransactionRecord::P2LUnlockOwner:
-    case TransactionRecord::P2LUnlockLeaser:
+    case TransactionRecord::P2LLeasingSentToSelf:
+    case TransactionRecord::P2LLeasingRecv:
+    case TransactionRecord::P2LUnlockLeasing:
+    case TransactionRecord::P2LUnlockOwnLeasing:
+    case TransactionRecord::P2LReturnLeasing:
     case TransactionRecord::LeasingReward:
     case TransactionRecord::StakeHot:
     case TransactionRecord::SendToSelf: {

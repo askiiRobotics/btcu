@@ -49,7 +49,7 @@ CTxIn::CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nS
 
 bool CTxIn::IsZerocoinSpend() const
 {
-    return prevout.hash == 0 && scriptSig.IsZerocoinSpend();
+    return prevout.IsNull() && scriptSig.IsZerocoinSpend();
 }
 
 bool CTxIn::IsZerocoinPublicSpend() const
@@ -67,6 +67,8 @@ std::string CTxIn::ToString() const
             str += strprintf(", zerocoinspend %s...", HexStr(scriptSig).substr(0, 25));
         else
             str += strprintf(", coinbase %s", HexStr(scriptSig));
+    else if (IsLeasingReward())
+        str += strprintf(", leasingReward %s", HexStr(scriptSig));
     else
         str += strprintf(", scriptSig=%s", scriptSig.ToString().substr(0,24));
     if (nSequence != std::numeric_limits<unsigned int>::max())
@@ -168,6 +170,7 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     *const_cast<std::vector<CTxOut>*>(&vout) = tx.vout;
     *const_cast<unsigned int*>(&nLockTime) = tx.nLockTime;
     *const_cast<uint256*>(&hash) = tx.hash;
+    *const_cast<bool*>(&fSaveHash) = tx.fSaveHash;
     *const_cast<std::vector<CValidatorRegister>*>(&validatorRegister) = tx.validatorRegister;
     *const_cast<std::vector<CValidatorVote>*>(&validatorVote) = tx.validatorVote;
     return *this;
@@ -211,12 +214,15 @@ bool CTransaction::IsCoinStake() const
     if (vin[0].prevout.IsNull() && !fAllowNull)
         return false;
 
-    return (vout.size() >= 2 && vout[0].IsEmpty() && !vout[1].IsLeasingReward());
+    if (vin.size() == 1 && vin[0].IsLeasingReward())
+        return false;
+
+    return (vout.size() >= 2 && vout[0].IsEmpty());
 }
 
 bool CTransaction::IsLeasingReward() const
 {
-    if (1 != vin.size() || !vin[0].prevout.IsNull() || vout.size() < 2 || !vout[0].IsEmpty())
+    if (1 != vin.size() || !vin[0].IsLeasingReward() || vout.size() < 2 || !vout[0].IsEmpty())
         return false;
 
     // Skip first vout - its empty

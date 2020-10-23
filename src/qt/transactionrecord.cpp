@@ -172,6 +172,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
     } else if (wtx.HasP2LInputs()) {
         // Leaasing unlocked
         TransactionRecord sub(hash, nTime, wtx.GetTotalSize());
+        sub.credit = nCredit;
+        sub.debit = -nDebit;
         loadLeasingSpend(wallet, wtx, sub);
         parts.append(sub);
         return parts;
@@ -443,11 +445,14 @@ void TransactionRecord::loadP2L(
         if (txout.scriptPubKey.IsPayToLeasing()) {
             const auto isMine = wallet->IsMine(txout);
             if (isMine == ISMINE_SPENDABLE_LEASING) {
-                record.type = TransactionRecord::P2LLeasingSentOwner;
+                record.type = TransactionRecord::P2LLeasingSentToSelf;
+                record.credit -= wtx.GetCredit(ISMINE_LEASED);
             } else if (isMine == ISMINE_LEASED) {
                 record.type = TransactionRecord::P2LLeasingSent;
+                record.debit -= wtx.GetCredit(ISMINE_LEASED);
             } else if (isMine == ISMINE_LEASING){
-                record.type = TransactionRecord::P2LLeasing;
+                record.type = TransactionRecord::P2LLeasingRecv;
+                record.debit = -record.debit + wtx.GetCredit(ISMINE_LEASED);
             } else {
                 continue;
             }
@@ -465,23 +470,21 @@ void TransactionRecord::loadLeasingSpend(
 {
     record.involvesWatchAddress = false;
 
-    // Get the p2cs
+    // Get the p2l
     for (const auto &input : wtx.vin) {
         const CWalletTx* tx = wallet->GetWalletTx(input.prevout.hash);
         if (tx && tx->vout[input.prevout.n].scriptPubKey.IsPayToLeasing()) {
             auto& p2lScript = tx->vout[input.prevout.n].scriptPubKey;
-            auto isSpendable = wallet->IsMine(input) & ISMINE_SPENDABLE_ALL;
+            const auto isMine = wallet->IsMine(tx->vout[input.prevout.n]);
 
-            if (isSpendable) {
-                // owner unlocked the cold stake
-                record.type = TransactionRecord::P2LUnlockOwner;
-                record.debit = -(wtx.GetLeasedDebit());
-                record.credit = wtx.GetCredit(ISMINE_ALL);
+            if (isMine == ISMINE_SPENDABLE_LEASING) {
+                record.type = TransactionRecord::P2LUnlockOwnLeasing;
+            } else if (isMine == ISMINE_LEASED) {
+                record.type = TransactionRecord::P2LUnlockLeasing;
+            } else if (isMine == ISMINE_LEASING){
+                record.type = TransactionRecord::P2LReturnLeasing;
             } else {
-                // hot node watching the unlock
-                record.type = TransactionRecord::P2LUnlockLeaser;
-                record.debit = -(wtx.GetLeasedCredit());
-                record.credit = -(wtx.GetColdStakingCredit());
+                continue;
             }
 
             ExtractAddress(p2lScript, false, false, record.address);
@@ -647,9 +650,9 @@ bool TransactionRecord::isAnyColdStakingType() const
 
 bool TransactionRecord::isAnyLeasingType() const
 {
-    return (type == TransactionRecord::P2LLeasing || type == TransactionRecord::P2LLeasingSent || type == TransactionRecord::P2LLeasingSentOwner
+    return (type == TransactionRecord::P2LLeasingRecv || type == TransactionRecord::P2LLeasingSent || type == TransactionRecord::P2LLeasingSentToSelf
             || type == TransactionRecord::LeasingReward
-            || type == TransactionRecord::P2LUnlockOwner || type == TransactionRecord::P2LUnlockLeaser);
+            || type == TransactionRecord::P2LUnlockLeasing || type == TransactionRecord::P2LUnlockOwnLeasing || type == TransactionRecord::P2LReturnLeasing);
 }
 
 bool TransactionRecord::isNull() const

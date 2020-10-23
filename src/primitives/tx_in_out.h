@@ -36,6 +36,9 @@ public:
     void SetNull() { hash.SetNull(); n = (uint32_t) -1; }
     bool IsNull() const { return (hash.IsNull() && n == (uint32_t) -1); }
     bool IsMasternodeReward(const CTransaction* tx) const;
+
+    void SetLeasingReward(const uint32_t nHeight) { hash.SetNull(); n = nHeight; }
+    bool IsLeasingReward() const { return (hash.IsNull() && n > 0); }
     
     friend bool operator<(const COutPoint& a, const COutPoint& b)
     {
@@ -95,6 +98,7 @@ public:
     
     bool IsZerocoinSpend() const;
     bool IsZerocoinPublicSpend() const;
+    bool IsLeasingReward() const { return prevout.IsLeasingReward(); }
     
     friend bool operator==(const CTxIn& a, const CTxIn& b)
     {

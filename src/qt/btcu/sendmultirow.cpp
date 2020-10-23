@@ -95,7 +95,7 @@ bool SendMultiRow::addressChanged(const QString& str){
         else if (this->onlyLeasingAddressAccepted)
             valid = walletModel->validateLeasingAddress(trimmedStr);
         else
-            walletModel->validateAddress(trimmedStr);
+            valid = walletModel->validateAddress(trimmedStr);
         if (!valid) {
             // check URI
             SendCoinsRecipient rcp;

@@ -104,10 +104,11 @@ void TxRow::setType(bool isLightTheme, int type, bool isConfirmed){
             css = "text-list-amount-unconfirmed";
             break;
         case TransactionRecord::P2LLeasingSent:
-        case TransactionRecord::P2LLeasingSentOwner:
-        case TransactionRecord::P2LLeasing:
-        case TransactionRecord::P2LUnlockOwner:
-        case TransactionRecord::P2LUnlockLeaser:
+        case TransactionRecord::P2LLeasingSentToSelf:
+        case TransactionRecord::P2LLeasingRecv:
+        case TransactionRecord::P2LUnlockOwnLeasing:
+        case TransactionRecord::P2LUnlockLeasing:
+        case TransactionRecord::P2LReturnLeasing:
             path = "://ic-transaction-cs-contract";
             css = "text-list-amount-send";
             break;

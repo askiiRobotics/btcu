@@ -34,6 +34,9 @@ private:
     const uint256 hash;
     void UpdateHash() const;
 
+protected:
+    const bool fSaveHash = false;
+
 public:
     static const int32_t BITCOIN_VERSION=1;
     static const int32_t BTCU_START_VERSION=2;
@@ -87,7 +90,9 @@ public:
             READWRITE(*const_cast<std::vector<CValidatorRegister>*>(&validatorRegister));
             READWRITE(*const_cast<std::vector<CValidatorVote>*>(&validatorVote));
         }
-        if (ser_action.ForRead())
+        if (fSaveHash && this->nVersion == CTransaction::BITCOIN_VERSION)
+            READWRITE(*const_cast<uint256*>(&hash));
+        else if (ser_action.ForRead())
             UpdateHash();
     };
     
@@ -142,7 +147,7 @@ public:
 
     bool IsCoinBase() const
     {
-        return (vin.size() == 1 && vin[0].prevout.IsNull() && !ContainsZerocoins() && !IsLeasingReward());
+        return (vin.size() == 1 && vin[0].prevout.IsNull() && !ContainsZerocoins());
     }
 
     bool IsCoinStake() const;

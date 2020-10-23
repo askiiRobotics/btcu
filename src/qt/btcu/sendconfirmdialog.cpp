@@ -102,7 +102,14 @@ void TxDetailDialog::setData(WalletModel *model, const QModelIndex &index){
             ui->textSend->setText(QString::number(tx->vout.size()) + " recipients");
         }
 
-        ui->textInputs->setText(QString::number(tx->vin.size()));
+        if (tx->IsLeasingReward()) {
+            int cnt = 0;
+            for (const CTxOut &out : tx->vout) {
+                if (model->isMine(out.scriptPubKey)) ++cnt;
+            }
+            ui->textInputs->setText(QString::number(cnt));
+        } else
+            ui->textInputs->setText(QString::number(tx->vin.size()));
         ui->textConfirmations->setText(QString::number(rec->status.depth));
         ui->textDate->setText(GUIUtil::dateTimeStrWithSeconds(date));
         ui->textStatus->setText(QString::fromStdString(rec->statusToString()));
@@ -153,19 +160,33 @@ void TxDetailDialog::onInputsClicked() {
             inputsLoaded = true;
             const CWalletTx* tx = (this->tx) ? this->tx->getTransaction() : model->getTx(this->txHash);
             if(tx) {
-                ui->gridInputs->setMinimumHeight(50 + (50 * tx->vin.size()));
                 int i = 1;
-                for (const CTxIn &in : tx->vin) {
-                    QString hash = QString::fromStdString(in.prevout.hash.GetHex());
+
+                auto fillOut = [&](const uint256& txHash, const uint32_t n) {
+                    QString hash = QString::fromStdString(txHash.GetHex());
                     QLabel *label = new QLabel(hash.left(18) + "..." + hash.right(18));
-                    QLabel *label1 = new QLabel(QString::number(in.prevout.n));
+                    QLabel *label1 = new QLabel(QString::number(n));
                     label1->setAlignment(Qt::AlignCenter);
                     setCssProperty({label, label1}, "text-body2-dialog");
 
                     ui->gridLayoutInput->addWidget(label,i,0);
                     ui->gridLayoutInput->addWidget(label1,i,1, Qt::AlignCenter);
                     i++;
+                };
+
+                if (tx->IsLeasingReward()) for (const CTxOut &out : tx->vout) {
+                    if (!model->isMine(out.scriptPubKey)) continue;
+
+                    std::vector<valtype> vSolutions;
+                    txnouttype whichType;
+                    if (Solver(out.scriptPubKey, whichType, vSolutions) && TX_LEASINGREWARD == whichType)
+                        fillOut(uint256(vSolutions[0]), CScriptNum(vSolutions[1], true).getint());
+
+                } else for (const CTxIn &in : tx->vin) {
+                    fillOut(in.prevout.hash, in.prevout.n);
                 }
+
+                ui->gridInputs->setMinimumHeight(50 + (50 * (i - 1)));
             }
         }
     }

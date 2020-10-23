@@ -266,6 +266,9 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
             }
             else if(opcode2 == OP_GAS_LIMIT) {
                try {
+                  if (vch1.size() > 8) break;
+                  if (!vch1.empty() && vch1.back() & 0x80) break;
+
                   uint64_t val = CScriptNum::vch_to_uint64(vch1);
                   if(contractConsensus) {
                      //consensus rules (this is checked more in depth later using DGP)
@@ -295,6 +298,9 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
             }
             else if(opcode2 == OP_GAS_PRICE) {
                try {
+                  if (vch1.size() > 8) break;
+                  if (!vch1.empty() && vch1.back() & 0x80) break;
+
                   uint64_t val = CScriptNum::vch_to_uint64(vch1);
                   if(contractConsensus) {
                      //consensus rules (this is checked more in depth later using DGP)
@@ -323,6 +329,9 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
             else if(opcode2 == OP_ADDRESS_TYPE)
             {
                try {
+                  if (vch1.size() > 8) break;
+                  if (!vch1.empty() && vch1.back() & 0x80) break;
+
                   uint64_t val = CScriptNum::vch_to_uint64(vch1);
                   if(val < addresstype::PUBKEYHASH || val > addresstype::NONSTANDARD)
                      break;

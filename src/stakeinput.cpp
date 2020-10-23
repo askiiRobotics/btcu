@@ -111,3 +111,52 @@ CBlockIndex* CBTCUStake::GetIndexFrom()
 
     return pindexFrom;
 }
+
+//////////
+////////// Genesis stake data ////////////////
+/////////
+
+bool CGenesisStake::SetInput(CTransaction txPrev, unsigned int n)
+{
+    this->txFrom = txPrev;
+    this->nPosition = n;
+    return true;
+}
+
+CBlockIndex* CGenesisStake::GetIndexFrom() {
+    if (pindexFrom)
+        return pindexFrom;
+
+    uint256 hashBlock = Params().HashGenesisBlock();
+    // If the index is in the chain, then set it as the "index from"
+    if (mapBlockIndex.count(hashBlock)) {
+        CBlockIndex* pindex = mapBlockIndex.at(hashBlock);
+        if (chainActive.Contains(pindex))
+            pindexFrom = pindex;
+    }
+
+    return pindexFrom;
+}
+
+CDataStream CGenesisStake::GetUniqueness() const {
+    //The unique identifier for a BTCU stake is the outpoint
+    CDataStream ss(SER_NETWORK, 0);
+    ss << nPosition << txFrom.GetHash();
+    return ss;
+}
+
+bool CGenesisStake::GetTxFrom(CTransaction& tx) const {
+    throw std::runtime_error("Wrong usage of CGenesisStake::GetTxFrom()");
+}
+
+CAmount CGenesisStake::GetValue() const {
+    throw std::runtime_error("Wrong usage of CGenesisStake::GetValue()");
+}
+
+bool CGenesisStake::CreateTxIn(CWallet*, CTxIn&, uint256) {
+    throw std::runtime_error("Wrong usage of CGenesisStake::CreateTxIn()");
+}
+
+bool CGenesisStake::CreateTxOuts(CWallet*, std::vector<CTxOut>&, CAmount) {
+    throw std::runtime_error("Wrong usage of CGenesisStake::CreateTxOuts()");
+}

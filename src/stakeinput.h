@@ -35,7 +35,7 @@ class CBTCUStake : public CStakeInput
 {
 private:
     CTransaction txFrom;
-    unsigned int nPosition;
+    unsigned int nPosition = 0;
 
 public:
     CBTCUStake(){}
@@ -51,5 +51,25 @@ public:
     bool IsZBTCU() const override { return false; }
 };
 
+
+class CGenesisStake: public CStakeInput
+{
+private:
+    CTransaction txFrom;
+    unsigned int nPosition = 0;
+
+public:
+    CGenesisStake(){}
+
+    bool SetInput(CTransaction txPrev, unsigned int n);
+
+    CBlockIndex* GetIndexFrom() override;
+    bool GetTxFrom(CTransaction& tx) const override;
+    CAmount GetValue() const override;
+    CDataStream GetUniqueness() const override;
+    bool CreateTxIn(CWallet*, CTxIn&, uint256 hashTxOut = 0) override;
+    bool CreateTxOuts(CWallet*, std::vector<CTxOut>&, CAmount) override;
+    bool IsZBTCU() const override { return false; }
+};
 
 #endif //BTCU_STAKEINPUT_H

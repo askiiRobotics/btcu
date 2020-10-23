@@ -103,12 +103,13 @@ public:
         P2CSDelegationSentOwner, // Spendable P2CS delegated utxo. (coin-owner)
         P2CSUnlockOwner, // Coin-owner spent the delegated utxo
         P2CSUnlockStaker, // Staker watching the owner spent the delegated utxo,
-        P2LLeasing,
         P2LLeasingSent,
-        P2LLeasingSentOwner,
+        P2LLeasingSentToSelf,
+        P2LLeasingRecv,
         LeasingReward,
-        P2LUnlockOwner,
-        P2LUnlockLeaser
+        P2LUnlockLeasing,
+        P2LUnlockOwnLeasing,
+        P2LReturnLeasing
     };
 
     /** Number of confirmation recommended for accepting a transaction */

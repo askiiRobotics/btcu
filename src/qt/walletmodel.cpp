@@ -80,7 +80,7 @@ CAmount WalletModel::getBalance(const CCoinControl* coinControl) const
     if (coinControl) {
         CAmount nBalance = 0;
         std::vector<COutput> vCoins;
-        wallet->AvailableCoins(&vCoins, true, coinControl, false, ALL_COINS, false, 1, false, true, false, true, true);
+        wallet->AvailableCoins(&vCoins, true, coinControl, false, ALL_COINS, false, 1, false, true, true, false, true);
         for (const COutput& out : vCoins)
             if (out.fSpendable)
                 nBalance += out.tx->vout[out.i].nValue;
@@ -497,6 +497,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                                                   recipients[0].inputType,
                                                   recipients[0].useSwiftTX,
                                                   0,
+                                                  true,
                                                   true);
         transaction.setTransactionFee(nFeeRequired);
 
@@ -1040,7 +1041,7 @@ bool WalletModel::isSpent(const COutPoint& outpoint) const
 void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const
 {
     std::vector<COutput> vCoins;
-    wallet->AvailableCoins(&vCoins);
+    wallet->AvailableCoins(&vCoins, true, nullptr, false, ALL_COINS, false, 1, false, true, false, true, true);
 
     LOCK2(cs_main, wallet->cs_wallet); // ListLockedCoins, mapWallet
     std::vector<COutPoint> vLockedCoins;
@@ -1131,6 +1132,11 @@ bool WalletModel::saveReceiveRequest(const std::string& sAddress, const int64_t 
 bool WalletModel::isMine(CBTCUAddress address)
 {
     return IsMine(*wallet, address.Get());
+}
+
+bool WalletModel::isMine(const CScript& script)
+{
+    return IsMine(*wallet, script);
 }
 
 bool WalletModel::isMine(const QString& addressStr)

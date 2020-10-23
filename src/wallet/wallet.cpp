@@ -516,7 +516,7 @@ void CWallet::AddToSpends(const uint256& wtxid)
 {
     assert(mapWallet.count(wtxid));
     CWalletTx& thisTx = mapWallet[wtxid];
-    if (thisTx.IsCoinBase()) // Coinbases don't spend anything!
+    if (thisTx.IsCoinBase() || thisTx.IsLeasingReward()) // Coinbases and LeasingReward don't spend anything!
         return;
 
     for (const CTxIn& txin : thisTx.vin)
@@ -2194,7 +2194,17 @@ bool CWallet::AvailableCoins(
                 }
                 if (!found) continue;
 
-                if (nCoinType == STAKEABLE_COINS && pcoin->vout[i].IsZerocoinMint()) continue;
+                if (nCoinType == STAKEABLE_COINS) {
+                    if (pcoin->vout[i].IsZerocoinMint()) continue;
+
+                    std::vector<valtype> vSolutions;
+                    txnouttype whichType;
+                    CScript scriptPubKeyKernel = pcoin->vout[i].scriptPubKey;
+
+                    if (!Solver(scriptPubKeyKernel, whichType, vSolutions)) continue;
+                    if (whichType != TX_PUBKEY && whichType != TX_PUBKEYHASH && whichType != TX_COLDSTAKE) continue;
+                }
+
                 if (IsSpent(wtxid, i)) continue;
 
                 isminetype mine = IsMine(pcoin->vout[i]);
@@ -2471,11 +2481,11 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int
     return true;
 }
 
-bool CWallet::SelectCoins(const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, bool fIncludeColdStaking, bool fIncludeDelegated) const
+bool CWallet::SelectCoins(const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, bool fIncludeColdStaking, bool fIncludeDelegated, bool fIncludeLeased) const
 {
     // Note: this function should never be used for "always free" tx types like dstx
     std::vector<COutput> vCoins;
-    AvailableCoins(&vCoins, true, coinControl, false, coin_type, useIX, 1, fIncludeColdStaking, fIncludeDelegated);
+    AvailableCoins(&vCoins, true, coinControl, false, coin_type, useIX, 1, fIncludeColdStaking, fIncludeDelegated, false, fIncludeLeased);
 
     // coin control -> return all selected outputs (we want all selected to go into the transaction for sure)
     if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs) {
@@ -2557,6 +2567,7 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript,
     bool useIX,
     CAmount nFeePay,
     bool fIncludeDelegated,
+    bool fIncludeLeased,
     bool sign,
     const CTxDestination& signSenderAddress,
     const std::vector<CValidatorRegister> &validatorRegister,
@@ -2637,7 +2648,7 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript,
                 std::set<std::pair<const CWalletTx*, unsigned int> > setCoins;
                 CAmount nValueIn = 0;
 
-                if (!SelectCoins(nTotalValue, setCoins, nValueIn, coinControl, coin_type, useIX, false, fIncludeDelegated)) {
+                if (!SelectCoins(nTotalValue, setCoins, nValueIn, coinControl, coin_type, useIX, false, fIncludeDelegated, fIncludeLeased)) {
                     if (coin_type == ALL_COINS) {
                         strFailReason = _("Insufficient funds.");
                     } else if (coin_type == ONLY_NOT10000IFMN) {
@@ -2831,12 +2842,12 @@ bool CWallet::CreateTransaction(const std::vector<std::pair<CScript,
 
 //bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, CAmount nFeePay, bool fIncludeDelegated,bool sign,
 //                                const CTxDestination& signSenderAddress)
-bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, CAmount nFeePay, bool fIncludeDelegated, bool sign, const CTxDestination& signSenderAddress, const std::vector<CValidatorRegister> &validatorRegister, const std::vector<CValidatorVote> &validatorVote)
+bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl, AvailableCoinsType coin_type, bool useIX, CAmount nFeePay, bool fIncludeDelegated, bool fIncludeLeased, bool sign, const CTxDestination& signSenderAddress, const std::vector<CValidatorRegister> &validatorRegister, const std::vector<CValidatorVote> &validatorVote)
 {
     std::vector<std::pair<CScript, CAmount> > vecSend;
     vecSend.push_back(std::make_pair(scriptPubKey, nValue));
     //return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, coinControl, coin_type, useIX, nFeePay, fIncludeDelegated, sign, signSenderAddress);
-    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, coinControl, coin_type, useIX, nFeePay, fIncludeDelegated, sign, signSenderAddress, validatorRegister, validatorVote);
+    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, coinControl, coin_type, useIX, nFeePay, fIncludeDelegated, fIncludeLeased, sign, signSenderAddress, validatorRegister, validatorVote);
 }
 
 // ppcoin: create coin stake transaction
@@ -3009,6 +3020,7 @@ bool CWallet::CreateLeasingRewards(
 #ifdef ENABLE_LEASING_MANAGER
     tx.vin.clear();
     tx.vin.emplace_back();
+    tx.vin.back().prevout.SetLeasingReward(pindexPrev->nHeight + 1);
 
     tx.vout.clear();
     tx.vout.emplace_back();
@@ -4450,6 +4462,8 @@ void CWalletTx::Init(const CWallet* pwalletIn)
     nLeasedCreditCached = 0;
     nChangeCached = 0;
     nOrderPos = -1;
+
+    *const_cast<bool*>(&this->fSaveHash) = true;
 }
 
 bool CWalletTx::IsTrusted() const

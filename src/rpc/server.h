@@ -213,7 +213,6 @@ extern UniValue submitblock(const UniValue& params, bool fHelp);
 extern UniValue estimatefee(const UniValue& params, bool fHelp);
 extern UniValue estimatepriority(const UniValue& params, bool fHelp);
 
-extern UniValue genesisstake(const UniValue& params, bool fHelp);
 
 extern UniValue delegatestake(const UniValue& params, bool fHelp); // in rpcwallet.cpp
 extern UniValue rawdelegatestake(const UniValue& params, bool fHelp);

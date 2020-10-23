@@ -810,9 +810,8 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
             // update fStakeableCoins (5 minute check time);
             CheckForCoins(pwallet, 5);
 
-            while (pwallet->IsLocked() || !fStakeableCoins || vNodes.empty()) {
-//            while (vNodes.empty() || pwallet->IsLocked() || !fStakeableCoins ||
-//                    masternodeSync.NotCompleted()) {
+            while (vNodes.empty() || pwallet->IsLocked() || !fStakeableCoins ||
+                    masternodeSync.NotCompleted()) {
                 MilliSleep(5000);
                 // Do a separate 1 minute check here to ensure fStakeableCoins is updated
                 if (!fStakeableCoins) CheckForCoins(pwallet, 1);
@@ -840,7 +839,10 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
         std::unique_ptr<CBlockTemplate> pblocktemplate((fProofOfStake ?
                                                         CreateNewBlock(CScript(), pwallet, fProofOfStake) :
                                                         CreateNewBlockWithKey(reservekey, pwallet)));
-        if (!pblocktemplate.get()) continue;
+        if (!pblocktemplate.get()) {
+            fStakeableCoins = pwallet->StakeableCoins();
+            continue;
+        }
         CBlock* pblock = &pblocktemplate->block;
 
         // POS - block found: process it

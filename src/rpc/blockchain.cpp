@@ -154,8 +154,22 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
         uint256 hashProofOfStakeRet;
         std::unique_ptr <CStakeInput> stake;
         // Initialize the stake object (we should look for this in some other place and not initialize it every time..)
-        if (!initStakeInput(block, stake, blockindex->nHeight - 1))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot initialize stake input");
+        if (!initStakeInput(block, stake, blockindex->nHeight - 1)) {
+            const CTransaction tx = block.vtx[1];
+            if (!tx.IsCoinStake())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot initialize stake input");
+
+            const CTxIn& txin = tx.vin[0];
+            CCoins coins;
+            coins.nHeight = 0;
+            coins.nVersion = CTransaction::BITCOIN_VERSION;
+            coins.vout.resize(txin.prevout.n);
+            CTransaction txPrev(txin.prevout.hash, coins);
+
+            CGenesisStake* genesisInput = new CGenesisStake();
+            genesisInput->SetInput(txPrev, txin.prevout.n);
+            stake = std::unique_ptr<CStakeInput>(genesisInput);
+        }
 
         unsigned int nTxTime = block.nTime;
         // todo: Add the debug as param..

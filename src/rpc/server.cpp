@@ -336,7 +336,6 @@ static const CRPCCommand vRPCCommands[] =
         {"generating", "setgenerate", &setgenerate, true, true, false},
         {"generating", "generate", &generate, true, true, false},
 
-        {"generating", "genesisstake", &genesisstake, true, true, false},
 #endif
 
         /* Raw transactions */

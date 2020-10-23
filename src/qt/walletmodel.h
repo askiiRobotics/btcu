@@ -290,6 +290,7 @@ public:
     bool getKeyId(const CBTCUAddress& address, CKeyID& keyID);
 
     bool isMine(CBTCUAddress address);
+    bool isMine(const CScript& script);
     bool isMine(const QString& addressStr);
     bool isUsed(CBTCUAddress address);
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);

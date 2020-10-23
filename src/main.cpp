@@ -2596,7 +2596,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                 const COutPoint& out = tx.vin[j].prevout;
                 const CTxInUndo& undo = txundo.vprevout[j];
                 CCoinsModifier coins = view.ModifyCoins(out.hash);
-                if (undo.nHeight != 0) {
+                if (undo.nHeight != 0 || undo.nVersion == CTransaction::BITCOIN_VERSION) {
                     // undo data contains height: this is the last output of the prevout tx being spent
                     if (!coins->IsPruned())
                         fClean = fClean && error("DisconnectBlock() : undo data overwriting existing transaction");
@@ -2605,9 +2605,8 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                     coins->nHeight = undo.nHeight;
                     coins->nVersion = undo.nVersion;
                 } else {
-// Its for BTCU
-//                    if (coins->IsPruned())
-//                        fClean = fClean && error("DisconnectBlock() : undo data adding output to missing transaction");
+                    if (coins->IsPruned())
+                        fClean = fClean && error("DisconnectBlock() : undo data adding output to missing transaction");
                 }
                 if (coins->IsAvailable(out.n))
                     fClean = fClean && error("DisconnectBlock() : undo data overwriting existing output");
@@ -2959,7 +2958,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         //for the first block check hash of chainstate db
         if(block.hashChainstate != g_hashChainstate)
            LogPrintf("%s: block.hashChainstate=%s HashDir=%s\n", __func__, block.hashChainstate.GetHex(), g_hashChainstate.GetHex());
-        //assert(block.hashChainstate == g_hashChainstate);
+        assert(block.hashChainstate == g_hashChainstate);
 
         view.SetBestBlock(pindex->GetBlockHash());
         return true;

@@ -115,8 +115,10 @@ DashboardWidget::DashboardWidget(BTCUGUI* parent) :
     ui->comboBoxSortType->addItem(tr("Hot stakes"), TransactionFilterProxy::TYPE(TransactionRecord::StakeHot));
     ui->comboBoxSortType->addItem(tr("Delegated"), TransactionFilterProxy::TYPE(TransactionRecord::P2CSDelegationSent) | TransactionFilterProxy::TYPE(TransactionRecord::P2CSDelegationSentOwner));
     ui->comboBoxSortType->addItem(tr("Delegations"), TransactionFilterProxy::TYPE(TransactionRecord::P2CSDelegation));
-    ui->comboBoxSortType->addItem(tr("Leased"), TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasingSent) | TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasingSentOwner));
-    ui->comboBoxSortType->addItem(tr("Leasings"), TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasing));
+    ui->comboBoxSortType->addItem(tr("Leased"), TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasingSent) | TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasingSentToSelf));
+    ui->comboBoxSortType->addItem(tr("Leasings"), TransactionFilterProxy::TYPE(TransactionRecord::P2LLeasingRecv));
+    ui->comboBoxSortType->addItem(tr("Leasing rewards"), TransactionFilterProxy::TYPE(TransactionRecord::LeasingReward));
+    ui->comboBoxSortType->addItem(tr("Unlock leasings"), TransactionFilterProxy::TYPE(TransactionRecord::P2LUnlockLeasing) | TransactionFilterProxy::TYPE(TransactionRecord::P2LUnlockOwnLeasing) | TransactionFilterProxy::TYPE(TransactionRecord::P2LReturnLeasing));
     ui->comboBoxSortType->setCurrentIndex(0);
     connect(ui->comboBoxSortType, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onSortTypeChanged(const QString&)));
 

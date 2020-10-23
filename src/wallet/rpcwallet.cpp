@@ -376,7 +376,7 @@ UniValue createcontract(const UniValue& params, bool fHelp){
     // make our change address
     CReserveKey reservekey(pwalletMain);
     CWalletTx wtx;
-    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtx, reservekey, nFeeRequired, strError, coinControl.get(), ALL_COINS, true, nGasFee, true, true, signSenderAddress)) {
+    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtx, reservekey, nFeeRequired, strError, coinControl.get(), ALL_COINS, true, nGasFee, false, false, true, signSenderAddress)) {
         if (nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -653,7 +653,7 @@ UniValue sendtocontract(const UniValue& params, bool fHelp){
     //CTransactionRef tx;
     CWalletTx wtx;
     CReserveKey reservekey(pwalletMain);
-    if (!pwalletMain->CreateTransaction(scriptPubKey, 50000, wtx, reservekey, nFeeRequired, strError, &coinControl, ALL_COINS, true, nGasFee, true)) {
+    if (!pwalletMain->CreateTransaction(scriptPubKey, 50000, wtx, reservekey, nFeeRequired, strError, &coinControl, ALL_COINS, true, nGasFee)) {
         if (nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -1371,7 +1371,7 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
-    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, NULL, ALL_COINS, fUseIX, (CAmount)0, false, false, CNoDestination(),validatorRegister, validatorVote)) {
+    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, NULL, ALL_COINS, fUseIX, (CAmount)0, false, false, false, CNoDestination(),validatorRegister, validatorVote)) {
         if (nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         LogPrintf("SendMoney() : %s\n", strError);
@@ -2824,6 +2824,7 @@ UniValue listleasingutxos(const UniValue& params, bool fHelp)
             "    \"confirmations\" : n,          (numeric) The number of confirmations of the P2L utxo\n"
             "    \"coin-leaser\" : n,            (string) The cold-leaser address of the P2L utxo\n"
             "    \"coin-owner\" : n,             (string) The coin-owner address of the P2L utxo\n"
+            "    \"owner\" : \"true\",           (boolean) \"true\" if I'm owner\n"
             "    \"whitelisted\" : n             (string) \"true\"/\"false\" coin-owner in leasee whitelist\n"
             "  }\n"
             "  ,...\n"
@@ -2870,6 +2871,7 @@ UniValue listleasingutxos(const UniValue& params, bool fHelp)
             entry.push_back(Pair("confirmations", pcoin->GetDepthInMainChain(false)));
             entry.push_back(Pair("coin-leaser", CBTCUAddress(addresses[0], CChainParams::LEASING_ADDRESS).ToString()));
             entry.push_back(Pair("coin-owner", CBTCUAddress(addresses[1]).ToString()));
+            entry.push_back(Pair("owner", bool(mine & ISMINE_LEASING)));
             entry.push_back(Pair("whitelisted", fWhitelisted ? "true" : "false"));
             results.push_back(entry);
         }
