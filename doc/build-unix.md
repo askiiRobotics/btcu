@@ -44,7 +44,7 @@ Optional dependencies:
  Library     | Purpose          | Description
  ------------|------------------|----------------------
  miniupnpc   | UPnP Support     | Firewall-jumping support
- libdb4.8    | Berkeley DB      | Wallet storage (only needed when wallet enabled)
+ libdb18.1    | Berkeley DB      | Wallet storage (only needed when wallet enabled)
  qt          | GUI              | GUI toolkit (only needed when GUI enabled)
  protobuf    | Payments in GUI  | Data interchange format used for payment protocol (only needed when GUI enabled)
  univalue    | Utility          | JSON parsing and encoding (bundled version will be used unless --with-system-univalue passed to configure)
@@ -112,20 +112,22 @@ or
     user@user:~$ ./b2
     user@user:~$ sudo ./b2 install
 
-BerkeleyDB is required for the wallet.
+BerkeleyDB is required for the wallet. Install:
 
- **For Ubuntu only:** db4.8 packages are available [here](https://launchpad.net/~btcu/+archive/btcu).
- You can add the repository using the following command:
+    wget http://download.oracle.com/berkeley-db/db-18.1.40.tar.gz
+    tar zxvf db-18.1.40.tar.gz
+    cd  db-18.1.40/build_unix
+    ../dist/configure --enable-cxx --disable-shared --disable-replication --with-pic --prefix=/opt
+    make
+    sudo make install
+    
+Some errors of 'cp'  command may occur after make install, but it's okay.
 
-    sudo apt-get install software-properties-common
-    sudo add-apt-repository ppa:pivx/pivx
-    sudo apt-get update
-    sudo apt-get install libdb4.8-dev libdb4.8++-dev
+Run btcu project configure:
+    
+    ./configure BDB_LIBS="-L/opt/lib -ldb_cxx-18.1" BDB_CFLAGS="-I/opt/include"
 
-Ubuntu and Debian have their own libdb-dev and libdb++-dev packages, but these will install
-BerkeleyDB 5.1 or later. This will break binary wallet compatibility with the distributed executables, which
-are based on BerkeleyDB 4.8. If you do not care about wallet compatibility,
-pass `--with-incompatible-bdb` to configure.
+If you do not care about wallet compatibility, pass `--with-incompatible-bdb` to configure.
 
 Otherwise, you can build from self-compiled `depends` (see above).
 

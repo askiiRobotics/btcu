@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Install libdb4.8 (Berkeley DB).
+# Install libdb18.1 (Berkeley DB).
 
 export LC_ALL=C
 set -e
@@ -8,7 +8,7 @@ set -e
 if [ -z "${1}" ]; then
   echo "Usage: $0 <base-dir> [<extra-bdb-configure-flag> ...]"
   echo
-  echo "Must specify a single argument: the directory in which db4 will be built."
+  echo "Must specify a single argument: the directory in which db18 will be built."
   echo "This is probably \`pwd\` if you're at the root of the btcu repository."
   exit 1
 fi
@@ -17,9 +17,9 @@ expand_path() {
   echo "$(cd "${1}" && pwd -P)"
 }
 
-BDB_PREFIX="$(expand_path ${1})/db4"; shift;
-BDB_VERSION='db-4.8.30.NC'
-BDB_HASH='12edc0df75bf9abd7f82f821795bcee50f42cb2e5f76a6a281b85732798364ef'
+BDB_PREFIX="$(expand_path ${1})/db18"; shift;
+BDB_VERSION='db-18.1.40'
+BDB_HASH='0cecb2ef0c67b166de93732769abdeba0555086d51de1090df325e18ee8da9c8'
 BDB_URL="https://download.oracle.com/berkeley-db/${BDB_VERSION}.tar.gz"
 
 check_exists() {
@@ -93,7 +93,7 @@ cd build_unix/
 make install
 
 echo
-echo "db4 build complete."
+echo "db18 build complete."
 echo
 echo 'When compiling btcud, run `./configure` in the following way:'
 echo
