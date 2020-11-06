@@ -2958,7 +2958,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         //for the first block check hash of chainstate db
         if(block.hashChainstate != g_hashChainstate)
            LogPrintf("%s: block.hashChainstate=%s HashDir=%s\n", __func__, block.hashChainstate.GetHex(), g_hashChainstate.GetHex());
-        assert(block.hashChainstate == g_hashChainstate);
+        //This check commented until official bitcoin chainstate fork day
+        //assert(block.hashChainstate == g_hashChainstate);
 
         view.SetBestBlock(pindex->GetBlockHash());
         return true;

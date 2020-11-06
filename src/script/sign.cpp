@@ -104,14 +104,10 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
     case TX_SCRIPTHASH:
         return keystore.GetCScript(uint160(vSolutions[0]), scriptSigRet);
 
-    case TX_WITNESS_V0_KEYHASH: {
-        keyID = CKeyID(uint160(vSolutions[0]));
-        CPubKey vch;
-        if (!keystore.GetPubKey(keyID, vch))
-            return error("%s : Unable to get public key from keyID", __func__);
-        scriptSigRet << ToByteVector(vch);
+    case TX_WITNESS_V0_KEYHASH:
+        scriptSigRet = CScript(vSolutions[0].begin(), vSolutions[0].end());
         return true;
-    }
+
     case TX_WITNESS_V0_SCRIPTHASH: {
         uint160 h160;
         CRIPEMD160().Write(&vSolutions[0][0], vSolutions[0].size()).Finalize(h160.begin());
@@ -210,11 +206,51 @@ bool SignSignature(const CKeyStore &keystore, const CScript& fromPubKey, CMutabl
         uint256 hash2 = SignatureHash(subscript, txTo, nIn, nHashType);
 
         txnouttype subType;
-        bool fSolved =
-            Solver(keystore, subscript, hash2, nHashType, txin.scriptSig, subType) && subType != TX_SCRIPTHASH;
+        bool fSolved = Solver(keystore, subscript, hash2, nHashType, txin.scriptSig, subType)
+            && subType != TX_SCRIPTHASH;
+
         // Append serialized subscript whether or not it is completely signed:
         txin.scriptSig << static_cast<valtype>(subscript);
         if (!fSolved) return false;
+    }
+
+    if (whichType == TX_WITNESS_V0_KEYHASH)
+    {
+        CKeyID keyID(uint160(txin.scriptSig));
+
+        CScript subscript;
+        subscript << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
+
+        // Recompute txn hash using subscript in place of scriptPubKey:
+        uint256 hash2 = SignatureHash(subscript, txTo, nIn, nHashType);
+
+        txnouttype subType;
+        bool fSolved = Solver(keystore, subscript, hash2, nHashType, txin.scriptSig, subType);
+
+        // Append serialized subscript whether or not it is completely signed:
+        txin.scriptSig << static_cast<valtype>(subscript);
+        if (!fSolved) return false;
+    }
+    else if (whichType == TX_WITNESS_V0_SCRIPTHASH)
+    {
+        CScript subscript = txin.scriptSig;
+
+        // Recompute txn hash using subscript in place of scriptPubKey:
+        uint256 hash2 = SignatureHash(subscript, txTo, nIn, nHashType);
+
+        txnouttype subType;
+        bool fSolved = Solver(keystore, subscript, hash2, nHashType, txin.scriptSig, subType)
+            && subType != TX_SCRIPTHASH
+            && subType != TX_WITNESS_V0_SCRIPTHASH
+            && subType != TX_WITNESS_V0_KEYHASH;
+
+        // Append serialized subscript whether or not it is completely signed:
+        txin.scriptSig << static_cast<valtype>(subscript);
+        if (!fSolved) return false;
+
+    } else if (whichType == TX_WITNESS_UNKNOWN) {
+        // This is for the future soft forks of Bitcoin
+        return false;
     }
 
     // Test solution
