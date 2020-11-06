@@ -54,7 +54,9 @@ TEST_EXIT_SKIPPED = 77
 
 BASE_SCRIPTS= [
     # Scripts that are run by the travis build process.
-
+    'btcu_createcontract.py',
+    'btcu_callcontract.py',
+    'btcu_sendtocontract.py',
     # Longest test should go first, to favor running tests in parallel
     'wallet_basic.py',                          # ~ 1155 sec
     'wallet_backup.py',                         # ~ 459 sec
@@ -286,8 +288,8 @@ def run_tests(test_list, src_dir, build_dir, exeext, tmpdir, jobs=1, enable_cove
 
     #Set env vars
     if "BITCOIND" not in os.environ:
-        os.environ["BITCOIND"] = build_dir + '/src/btcud' + exeext
-        os.environ["BITCOINCLI"] = build_dir + '/src/btcu-cli' + exeext
+        os.environ["BITCOIND"] = build_dir + '/cmake-build-debug/btcud' + exeext
+        os.environ["BITCOINCLI"] = build_dir + '/cmake-build-debug/btcu-cli' + exeext
 
     tests_dir = src_dir + '/test/functional/'
 

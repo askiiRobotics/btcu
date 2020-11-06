@@ -27,7 +27,7 @@
 #include <mutex>
 #include <numeric>
 #include <condition_variable>
-
+#include "contract.h"
 
 struct CUpdatedBlock
 {
@@ -185,7 +185,68 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
 
     return result;
 }
+UniValue getaccountinfo(const UniValue& params, bool fHelp)
+{
+    /*
+    RPCHelpMan{"getaccountinfo",
+               "\nGet contract details including balance, storage data and code.\n",
+               {
+                       {"address", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "The contract address"},
+               },
+               RPCResult{
+                       "{\n"
+                       "  \"address\": \"contract address\",    (string)  address of the contract\n"
+                       "  \"balance\": n,                     (numeric) balance of the contract\n"
+                       "  \"storage\": {...},                 (object)  storage data of the contract\n"
+                       "  \"code\": \"bytecode\"                (string)  bytecode of the contract\n"
+                       "}\n"
+               },
+               RPCExamples{
+                       HelpExampleCli("getaccountinfo", "eb23c0b3e6042821da281a2e2364feb22dd543e3")
+                       + HelpExampleRpc("getaccountinfo", "eb23c0b3e6042821da281a2e2364feb22dd543e3")
+               },
+    }.Check(request);
+    */
+    LOCK(cs_main);
 
+    std::string strAddr = params[0].get_str();
+    if(strAddr.size() != 40 || !CheckHex(strAddr))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect address");
+
+    dev::Address addrAccount(strAddr);
+    if(!globalState->addressInUse(addrAccount))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not exist");
+
+    UniValue result(UniValue::VOBJ);
+
+    result.pushKV("address", strAddr);
+    result.pushKV("balance", CAmount(globalState->balance(addrAccount)));
+    std::vector<uint8_t> code(globalState->code(addrAccount));
+    auto storage(globalState->storage(addrAccount));
+
+    UniValue storageUV(UniValue::VOBJ);
+    for (auto j: storage)
+    {
+        UniValue e(UniValue::VOBJ);
+        e.pushKV(dev::toHex(dev::h256(j.second.first)), dev::toHex(dev::h256(j.second.second)));
+        storageUV.pushKV(j.first.hex(), e);
+    }
+
+    result.pushKV("storage", storageUV);
+
+    result.pushKV("code", HexStr(code.begin(), code.end()));
+
+    std::unordered_map<dev::Address, Vin> vins = globalState->vins();
+    if(vins.count(addrAccount)){
+        UniValue vin(UniValue::VOBJ);
+        valtype vchHash(vins[addrAccount].hash.asBytes());
+        vin.pushKV("hash", HexStr(vchHash.rbegin(), vchHash.rend()));
+        vin.pushKV("nVout", uint64_t(vins[addrAccount].nVout));
+        vin.pushKV("value", uint64_t(vins[addrAccount].value));
+        result.pushKV("vin", vin);
+    }
+    return result;
+}
 UniValue getblockcount(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
