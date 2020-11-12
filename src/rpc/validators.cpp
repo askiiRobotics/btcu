@@ -57,14 +57,71 @@ boost::optional<std::pair<CTxIn, CKey>> GetVinKey(const std::string &strAlias)
                     auto keyOpt = GetCollateralKey(pmn);
                     if(keyOpt.is_initialized())
                     {
-                        vinKeyOpt.emplace(std::pair<CTxIn, CKey>(pmn->vin, keyOpt.value()));
+                       vinKeyOpt.emplace(std::pair<CTxIn, CKey>(pmn->vin, keyOpt.value()));
+                       break;
                     }
-                    break;
                 }
             }
         }
     }
     return vinKeyOpt;
+}
+
+// Tries to get secret key which corresponds to one of registered validators keys
+boost::optional<std::pair<CTxIn, CKey>> GetValidatorVinKey()
+{
+   boost::optional<std::pair<CTxIn, CKey>> vinKeyOpt;
+
+   for (CMasternodeConfig::CMasternodeEntry &mne : masternodeConfig.getEntries())
+   {
+      CKey keyMasternode;
+      CPubKey pubKeyMasternode;
+      if(CMessageSigner::GetKeysFromSecret(mne.getPrivKey(), keyMasternode, pubKeyMasternode))
+         {
+            CMasternode *pmn = mnodeman.Find(pubKeyMasternode);
+            if(pmn != nullptr)
+            {
+               auto keyOpt = GetCollateralKey(pmn);
+               if(keyOpt.is_initialized())
+               {
+                  for(auto &validator: g_ValidatorsState.get_validators())
+                  {
+                     if(validator.pubKey == keyOpt.value().GetPubKey())
+                     {
+                        vinKeyOpt.emplace(std::pair<CTxIn, CKey>(pmn->vin, keyOpt.value()));
+                        return vinKeyOpt;
+                     }
+                  }
+               }
+            }
+         }
+   }
+   return vinKeyOpt;
+}
+
+// Tries to get secret key which corresponds to one of registered validators keys
+std::string GetMNAliasFromVin(CTxIn mnVin)
+{
+   std::string strAlias;
+
+   for (CMasternodeConfig::CMasternodeEntry &mne : masternodeConfig.getEntries())
+   {
+      CKey keyMasternode;
+      CPubKey pubKeyMasternode;
+      if(CMessageSigner::GetKeysFromSecret(mne.getPrivKey(), keyMasternode, pubKeyMasternode))
+      {
+         CMasternode *pmn = mnodeman.Find(pubKeyMasternode);
+         if(pmn != nullptr)
+         {
+            if(pmn->vin == mnVin)
+            {
+               strAlias = mne.getAlias();
+               break;
+            }
+         }
+      }
+   }
+   return strAlias;
 }
 
 // Tries to get secret key which corresponds to one of genesis validators keys
@@ -103,11 +160,11 @@ boost::optional<CValidatorRegister> CreateValidatorReg(const std::string &strAli
     return valRegOpt;
 }
 
-boost::optional<CValidatorVote> CreateValidatorVote(const std::string &strAlias, const std::vector<MNVote> &votes)
+boost::optional<CValidatorVote> CreateValidatorVote(const std::vector<MNVote> &votes)
 {
     boost::optional<CValidatorVote> valVoteOpt;
     
-    auto keyOpt = GetVinKey(strAlias);
+    auto keyOpt = GetValidatorVinKey();
     if(keyOpt.is_initialized())
     {
         auto vinKey = keyOpt.value();
@@ -171,26 +228,47 @@ UniValue CreateAndSendTransaction(const boost::optional<CValidatorRegister> &val
 // TODO: This is a simplified version for testing purposes. The input parameters parsing and signing process should be implemented similarly to the 'mnbudgetvote'
 UniValue mnregvalidator(const UniValue& params, bool fHelp)
 {
-    // Here we create transaction that contains CValidatorRegister and sends minimal amount of btcu to MN's own address.
-    // This is needed to pay transaction fee to miner.
+
+   // Here we create transaction that contains CValidatorRegister and sends minimal amount of btcu to MN's own address.
+   // This is needed to pay transaction fee to miner.
+   if (fHelp || params.size() != 1)
+      throw std::runtime_error(
+      "mnregvalidator ( \"account-name\" )\n"
+      "\nApply to register a validator\n"
+
+      "\nArguments:\n"
+      "1. \"account-name\"    (string, required) Masternode account name\n"
+
+      "\nResult:\n"
+      "[\n"
+      "  {\n"
+      "    \"<Block number>\" blocks until start of the registration phase\n"
+      "  }\n"
+      "  ,...\n"
+      "]\n"
+
+      "\nExamples:\n" +
+      HelpExampleCli("mnregvalidator", "MN") + HelpExampleRpc("mnregvalidator", "MN"));
+
+   std::string strAlias = params[0].get_str();
+
+   UniValue ret(UniValue::VOBJ);
+   int currentPositionInVotingPeriod = (chainActive.Height() + 1) % VALIDATORS_VOTING_PERIOD_LENGTH;  // +1 due to current transaction should be included at least into the next block
     
-    UniValue ret(UniValue::VOBJ);
-    int currentPositionInVotingPeriod = (chainActive.Height() + 1) % VALIDATORS_VOTING_PERIOD_LENGTH;  // +1 due to current transaction should be included at least into the next block
-    
-    // Checking that it is corresponding phase in the current voting period
-    if((currentPositionInVotingPeriod >= VALIDATORS_REGISTER_START) &&
-       (currentPositionInVotingPeriod <= VALIDATORS_REGISTER_END))
+   // Checking that it is corresponding phase in the current voting period
+   if((currentPositionInVotingPeriod >= VALIDATORS_REGISTER_START) &&
+   (currentPositionInVotingPeriod <= VALIDATORS_REGISTER_END))
     {
-        boost::optional<CValidatorRegister> valRegOpt = CreateValidatorReg("MN");
+        boost::optional<CValidatorRegister> valRegOpt = CreateValidatorReg(strAlias);
         if (valRegOpt.is_initialized()){
             ret = CreateAndSendTransaction(valRegOpt, boost::optional<CValidatorVote>());
         } else {
             ret = "CreateValidatorReg failed";
         }
     } else {
-        ret = std::to_string(VALIDATORS_VOTING_PERIOD_LENGTH - currentPositionInVotingPeriod) + " blocks until start of the registration phase";
-    }
-    return ret;
+      ret = std::to_string(VALIDATORS_VOTING_PERIOD_LENGTH - currentPositionInVotingPeriod) + " blocks until start of the registration phase";
+   }
+   return ret;
 }
 
 // TODO: This is a simplified version for testing purposes. The input parameters parsing and signing process should be implemented similarly to the 'mnbudgetvote'
@@ -210,7 +288,7 @@ UniValue mnvotevalidator(const UniValue& params, bool fHelp)
         auto votes = SetVotes();
         
         if(!votes.empty()){
-            boost::optional<CValidatorVote> valVoteOpt = CreateValidatorVote(MN_ALIAS_NAME, votes);
+            boost::optional<CValidatorVote> valVoteOpt = CreateValidatorVote(votes);
             if (valVoteOpt.is_initialized()){
                 ret = CreateAndSendTransaction(boost::optional<CValidatorRegister>(), valVoteOpt);
             } else {
@@ -244,7 +322,7 @@ UniValue mnvotevalidatorlist(const UniValue& params, bool fHelp)
     std::string valVoteStr;
     for(auto &valVote : validatorsVotesList)
     {
-        valVoteStr += (valVote.vin.ToString() + "\n");
+        valVoteStr += "ALIAS: " + GetMNAliasFromVin(valVote.vin) + " VIN:" + (valVote.vin.ToString() + "\n");
     }
     return UniValue(valVoteStr);
 }
