@@ -112,7 +112,12 @@ or
     user@user:~$ ./b2
     user@user:~$ sudo ./b2 install
 
-BerkeleyDB is required for the wallet. Install:
+BerkeleyDB is required for the wallet. 
+If exists previous version like 4.8 (Bitcoin default) then remove:
+    
+    sudo apt-get purge libdb4.8-dev libdb4.8++-dev
+        
+Install:
 
     wget http://download.oracle.com/berkeley-db/db-18.1.40.tar.gz
     tar zxvf db-18.1.40.tar.gz
