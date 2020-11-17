@@ -176,6 +176,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
         {"sendtocontract", 4},
         {"sendtocontract", 6},
         {"sendtocontract", 7},
+        {"mnvotevalidator", 0},
     };
 
 class CRPCConvertTable

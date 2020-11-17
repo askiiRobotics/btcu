@@ -35,7 +35,7 @@ bool GetKeyIDFromUTXO(const CTxOut& txout, CKeyID& keyID)
 
 boost::optional<std::pair<CTxIn, CKey>> GetVinKey(const std::string &strAlias);
 boost::optional<std::pair<CTxIn, CKey>> GetGenesisVinKey();
-boost::optional<std::pair<CTxIn, CKey>> GetValidatorVinKey();
+boost::optional<std::pair<CTxIn, CKey>> GetRegisteredValidatorVinKey();
 
 bool ValidatorSignBlock(CBlock& block)
 {
@@ -52,7 +52,7 @@ bool ValidatorSignBlock(CBlock& block)
     }
     else
     {
-        auto vinKeyOpt = GetValidatorVinKey();
+        auto vinKeyOpt = GetRegisteredValidatorVinKey();
         if(vinKeyOpt.is_initialized() &&                                // check if current node is registered as a masternode
            GetValidatorInfo(vinKeyOpt.value().first).is_initialized())  // check if current masternode is among validators for a current epoch
         {
