@@ -228,36 +228,58 @@ std::vector<MNVote> SetVotes()
 
 UniValue CreateAndSendTransaction(const boost::optional<CValidatorRegister> &valRegOpt, const boost::optional<CValidatorVote> &valVoteOpt)
 {
-    if(valRegOpt.is_initialized() && valVoteOpt.is_initialized())
-    {
-        return UniValue("transaction can't be for registration and for voting at the same time");
-    }
-    
-    std::vector<CValidatorRegister> valReg;
-    std::vector<CValidatorVote> valVote;
-    
-    if(valRegOpt.is_initialized()){
-        valReg.push_back(valRegOpt.value());
-    }
-    else if(valVoteOpt.is_initialized()){
-        valVote.push_back(valVoteOpt.value());
-    }
-    
-    // Get own address from wallet to send btcu to
-    CReserveKey reservekey(pwalletMain);
-    CPubKey vchPubKey;
-    assert(reservekey.GetReservedKey(vchPubKey));
-    CTxDestination myAddress = vchPubKey.GetID();
-    
-    CAmount nAmount = AmountFromValue(UniValue((double)38/COIN)); // send 38 satoshi (min tx fee per kb is 100 satoshi)
-    CWalletTx wtx;
-    
-    EnsureWalletIsUnlocked();
-    // Create and send transaction
-    SendMoney(myAddress, nAmount, wtx, false, valReg, valVote);
-    
-    // Get hash of the created transaction
-    return UniValue(wtx.GetHash().GetHex());
+   CCoinsView viewDummy;
+   CCoinsViewCache view(&viewDummy);
+   {
+      LOCK(mempool.cs);
+      CCoinsViewMemPool viewMempool(pcoinsTip, mempool);
+      view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
+
+      if (valRegOpt.is_initialized() && valVoteOpt.is_initialized())
+      {
+         return UniValue("transaction can't be for registration and for voting at the same time");
+      }
+
+      std::vector<CValidatorRegister> valReg;
+      std::vector<CValidatorVote> valVote;
+
+      CTxIn vin;
+      if (valRegOpt.is_initialized())
+      {
+         valReg.push_back(valRegOpt.value());
+         vin = valRegOpt.value().vin;
+      }
+      else if (valVoteOpt.is_initialized())
+      {
+         valVote.push_back(valVoteOpt.value());
+         vin = valVoteOpt.value().vin;
+      }
+
+      //Check minimum age of mn vin
+      const CCoins* unspentCoins = view.AccessCoins(vin.prevout.hash);
+      int age = GetCoinsAge(unspentCoins);
+      if (age < MASTERNODE_MIN_CONFIRMATIONS)
+         return UniValue("Masternode vin minimum confirmation is:" + std::to_string(MASTERNODE_MIN_CONFIRMATIONS) +
+                         ", but now vin age = " + std::to_string(age));
+
+
+      // Get own address from wallet to send btcu to
+      CReserveKey reservekey(pwalletMain);
+      CPubKey vchPubKey;
+      assert(reservekey.GetReservedKey(vchPubKey));
+      CTxDestination myAddress = vchPubKey.GetID();
+
+      CAmount nAmount = AmountFromValue(
+      UniValue((double) 38 / COIN)); // send 38 satoshi (min tx fee per kb is 100 satoshi)
+      CWalletTx wtx;
+
+      EnsureWalletIsUnlocked();
+      // Create and send transaction
+      SendMoney(myAddress, nAmount, wtx, false, valReg, valVote);
+
+      // Get hash of the created transaction
+      return UniValue(wtx.GetHash().GetHex());
+   }
 }
 
 UniValue mnregvalidator(const UniValue& params, bool fHelp)

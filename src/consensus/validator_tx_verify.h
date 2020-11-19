@@ -26,4 +26,7 @@ bool CheckValidatorTransaction(
         const CCoinsViewCache &view,
         int nHeight,
         std::vector<CTransaction> &validatorTransactionsInCurrentBlock);
+
+int GetCoinsAge(const CCoins *coins);
+
 #endif //BTCU_VALIDATOR_TX_VERIFY_H
