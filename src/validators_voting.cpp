@@ -3,6 +3,7 @@
 #include <consensus/validator_tx_verify.h>
 #include "blocksignature.h"
 #include "main.h"
+#include "spork.h"
 
 std::vector<std::pair<int, CTxIn>> CountVotes()
 {
@@ -45,15 +46,19 @@ std::vector<CValidatorInfo> ComposeValidatorsList(std::vector<std::pair<int, CTx
         // here vin should always be existing, due to all calculations are initially based on the g_ValidatorsRegistrationList
         return valRegIter->pubKey;
     };
-    
-    // get validators with highest score (first MAX_VALIDATORS from the sorted by score list)
+
+     //get spork value max validators count
+     int nMaxValidators = sporkManager.GetSporkValue(SPORK_1018_MAX_VALIDATORS);
+     nMaxValidators = nMaxValidators > 0 ? nMaxValidators: MAX_VALIDATORS_DEFAULT;
+
+    // get validators with highest score (first nMaxValidators from the sorted by score list)
     std::vector<CValidatorInfo> validators;
     for(auto &c : count)
     {
         auto vin = c.second;
         validators.emplace_back(vin, registeredPubKey(vin));
         
-        if(validators.size() == MAX_VALIDATORS){ // if the list is full
+        if(validators.size() == nMaxValidators){ // if the list is full
             break;
         }
     }

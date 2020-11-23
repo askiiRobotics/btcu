@@ -82,7 +82,7 @@ public:
     }
 };
 
-#define MAX_VALIDATORS 20
+#define MAX_VALIDATORS_DEFAULT 10
 
 #define VoteAbstain 0
 #define VoteYes 1

@@ -26,6 +26,7 @@ enum SporkId : int32_t {
     SPORK_17_COLDSTAKING_ENFORCEMENT            = 10017,
     SPORK_18_ZEROCOIN_PUBLICSPEND_V4            = 10018,
     SPORK_1017_LEASING_ENFORCEMENT              = 11017, // BTCU
+    SPORK_1018_MAX_VALIDATORS                   = 11018, // BTCU
 
     SPORK_INVALID                               = -1
 };
