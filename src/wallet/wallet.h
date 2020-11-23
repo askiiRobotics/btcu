@@ -85,9 +85,9 @@ enum WalletFeature {
 enum AvailableCoinsType {
     ALL_COINS = 1,
     ONLY_DENOMINATED = 2,
-    ONLY_NOT10000IFMN = 3,
-    ONLY_NONDENOMINATED_NOT10000IFMN = 4,           // ONLY_NONDENOMINATED and not 10000 BTCU at the same time
-    ONLY_10000 = 5,                                 // find masternode outputs including locked ones (use with caution)
+    ONLY_NOT1000IFMN = 3,
+    ONLY_NONDENOMINATED_NOT1000IFMN = 4,           // ONLY_NONDENOMINATED and not 1000 BTCU at the same time
+    ONLY_1000 = 5,                                 // find masternode outputs including locked ones (use with caution)
     STAKEABLE_COINS = 6                             // UTXO's that are valid for staking
 };
 
@@ -296,7 +296,7 @@ public:
     std::map<CBTCUAddress, std::vector<COutput> > AvailableCoinsByAddress(bool fConfirmed = true, CAmount maxCoinValue = 0);
     bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*, unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
 
-    /// Get 10000 BTCU output and keys which can be used for the Masternode
+    /// Get 1000 BTCU output and keys which can be used for the Masternode
     bool GetMasternodeVinAndKeys(CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet, CPubKey& pubKeyLeasing, CKey& keyLeasing, std::string strTxHash = "", std::string strOutputIndex = "");
     /// Extract txin information and keys from output
     bool GetVinAndKeysFromOutput(COutput out, CTxIn& txinRet, CPubKey& pubKeyRet, CKey& keyRet, bool fColdStake = false, bool fLease = false);

@@ -20,6 +20,9 @@
 #include <univalue.h>
 #include <consensus/validator_tx_verify.h>
 #include <boost/assign/list_of.hpp>
+#include <leasing/leasing_tx_verify.h>
+
+#include "leasing/leasingmanager.h"
 
 void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew, bool fUseIX = false,
         const std::vector<CValidatorRegister> &validatorRegister = std::vector<CValidatorRegister>(),
@@ -246,6 +249,21 @@ UniValue CreateAndSendTransaction(const boost::optional<CValidatorRegister> &val
       CTxIn vin;
       if (valRegOpt.is_initialized())
       {
+         //check leased to candidate coins
+#ifdef ENABLE_LEASING_MANAGER
+         assert(pwalletMain != NULL);
+         LOCK2(cs_main, pwalletMain->cs_wallet);
+         if(pwalletMain->pLeasingManager)
+         {
+            CAmount amount;
+            CPubKey pubkey = valRegOpt.value().pubKey;
+            pwalletMain->pLeasingManager->GetAllAmountsLeasedTo(pubkey, amount);
+
+            if(amount < LEASED_TO_VALIDATOR_MIN_AMOUNT)
+               return UniValue("Not enough leased to validator candidate coins, min=" + std::to_string(LEASED_TO_VALIDATOR_MIN_AMOUNT) +
+               ", current=" + std::to_string(amount) + ", validator pubkey=" + HexStr(pubkey));
+         }
+#endif
          valReg.push_back(valRegOpt.value());
          vin = valRegOpt.value().vin;
       }

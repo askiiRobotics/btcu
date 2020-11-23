@@ -428,7 +428,7 @@ void MasterNodesWidget::onDeleteMNClicked(){
 
 void MasterNodesWidget::onCreateMNClicked(){
     if(verifyWalletUnlocked()) {
-        if(walletModel->getBalance() <= (COIN * 10000)){
+        if(walletModel->getBalance() <= (COIN * MN_DEPOSIT_SIZE)){
             inform(tr("Not enough balance to create a masternode, 10,000 BTCU required."));
             return;
         }

@@ -1701,8 +1701,8 @@ Are you sure?</source>
         <translation>Masternode conf file existerar inte</translation>
     </message>
     <message>
-        <source>Not enough balance to create a masternode, 10,000 BTCU required.</source>
-        <translation>Inte nog på saldot för att skapa en Masternode, 10000 BTCU behövs.</translation>
+        <source>Not enough balance to create a masternode, 1,000 BTCU required.</source>
+        <translation>Inte nog på saldot för att skapa en Masternode, 1000 BTCU behövs.</translation>
     </message>
     <message>
         <source>Error creating masternode</source>
@@ -4460,12 +4460,12 @@ Var vänlig kontrollera adressen och försök igen.</translation>
         <translation>Kan ej lokalisera tillräckligt Fördunklingsdenominationerade pengar för denna transaktion.</translation>
     </message>
     <message>
-        <source>Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 10000 BTCU.</source>
-        <translation>Kan ej lokalisera tillräckligt Fördunkling icke-denominationerade pengar för denna transaktion som inte är 10000 BTCU.</translation>
+        <source>Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 1000 BTCU.</source>
+        <translation>Kan ej lokalisera tillräckligt Fördunkling icke-denominationerade pengar för denna transaktion som inte är 1000 BTCU.</translation>
     </message>
     <message>
-        <source>Unable to locate enough funds for this transaction that are not equal 10000 BTCU.</source>
-        <translation>Kan inte hitta tillräckligt med pengar för denna transaktion som inte är 10000 BTCU.</translation>
+        <source>Unable to locate enough funds for this transaction that are not equal 1000 BTCU.</source>
+        <translation>Kan inte hitta tillräckligt med pengar för denna transaktion som inte är 1000 BTCU.</translation>
     </message>
     <message>
         <source>Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)</source>

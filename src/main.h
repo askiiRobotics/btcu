@@ -128,6 +128,9 @@ static const unsigned int STANDARD_SENDER_STACK_ITEMS = 2;
 static const unsigned int MAX_STANDARD_SENDER_STACK_ITEM_SIZE = 80;
 ////////////////////////////////////////////
 
+/**Masternode deposit size*/
+#define MN_DEPOSIT_SIZE 1000
+
 struct BlockHasher {
     size_t operator()(const uint256& hash) const { return hash.GetLow64(); }
 };

@@ -8,7 +8,6 @@
 #include "main.h"
 #include "validator_tx_verify.h"
 
-#define MN_DEPOSIT_SIZE 10000
 
 bool IsUtxoDestination(const CPubKey &pubKey, const CTxOut &vout)
 {

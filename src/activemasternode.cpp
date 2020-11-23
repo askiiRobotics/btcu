@@ -15,7 +15,7 @@
 #include "spork.h"
 
 //
-// Bootup the Masternode, look for a 10000 BTCU input and register on the network
+// Bootup the Masternode, look for a 1000 BTCU input and register on the network
 //
 void CActiveMasternode::ManageStatus()
 {
@@ -497,7 +497,7 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
 
     // Filter
     for (const COutput& out : vCoins) {
-        if (out.tx->vout[out.i].nValue == 10000 * COIN) { //exactly
+        if (out.tx->vout[out.i].nValue == MN_DEPOSIT_SIZE * COIN) { //exactly
             filteredCoins.push_back(out);
         }
     }

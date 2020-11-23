@@ -6394,7 +6394,7 @@ BTCU核心钱包</translation>
         <translation>无法为这笔交易找到足够的模糊基金。</translation>
     </message>
     <message>
-        <source>Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 10000 BTCU.</source>
+        <source>Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 1000 BTCU.</source>
         <translation>无法找到不等于10000 BTCU的模糊非计价基金来进行这笔交易。</translation>
     </message>
     <message>
