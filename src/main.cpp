@@ -3135,6 +3135,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             }
             // Saving validators-related transactions for a further state update, if block will pass all subsequent checks
             if(tx.IsValidatorRegister() || tx.IsValidatorVote()){
+               //check leased to validator candidate
+#ifdef ENABLE_LEASING_MANAGER
+               if (pleasingManagerMain && !CheckLeasedToValidatorTransaction(tx, state, *pleasingManagerMain))
+                  return false;
+#endif //ENABLE_LEASING_MANAGER
                 validatorTransactions.push_back(tx);
             }
         }

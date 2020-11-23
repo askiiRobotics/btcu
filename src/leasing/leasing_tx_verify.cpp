@@ -13,6 +13,7 @@
 #include "chain.h"
 
 #include "consensus/validation.h"
+#include "utilstrencodings.h"
 
 bool ExtractLeasingPoint(const CTxOut& txOut, COutPoint& point, CKeyID& keyID) {
     std::vector<valtype> vSolutions;
@@ -46,5 +47,28 @@ bool CheckLeasingRewardTransaction(const CTransaction& tx, CValidationState& sta
 
     return true;
 }
+
+bool CheckLeasedToValidatorTransaction(const CTransaction& tx, CValidationState& state, const CLeasingManager& leasingManager) {
+   if (tx.IsValidatorRegister())
+   {
+      for(auto v: tx.validatorRegister)
+      {
+         CAmount amount;
+         leasingManager.GetAllAmountsLeasedTo(v.pubKey, amount);
+         if(amount < LEASED_TO_VALIDATOR_MIN_AMOUNT)
+            return state.DoS(10, error("%s: not enough leased to validator candidate coins, min=%d, current=%d, validator pubkey %s, tx %s",
+                                       __func__,
+                                       LEASED_TO_VALIDATOR_MIN_AMOUNT,
+                                       amount,
+                                       HexStr(v.pubKey),
+                                       tx.GetHash().GetHex()),
+                             REJECT_INVALID,
+                             "bad-txns-not-enought-leased-to-validator");
+      }
+   }
+
+   return true;
+}
+
 
 #endif // ENABLE_LEASING_MANAGER

@@ -11,11 +11,14 @@
 
 #ifdef ENABLE_LEASING_MANAGER
 
+#define LEASED_TO_VALIDATOR_MIN_AMOUNT 10000
+
 class CTransaction;
 class CLeasingManager;
 class CValidationState;
 
 bool CheckLeasingRewardTransaction(const CTransaction& tx, CValidationState& state, const CLeasingManager& leasingManager);
+bool CheckLeasedToValidatorTransaction(const CTransaction& tx, CValidationState& state, const CLeasingManager& leasingManager);
 
 #endif // ENABLE_LEASING_MANAGER
 

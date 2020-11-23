@@ -32,6 +32,7 @@ public:
 
     bool GetLeasingRewards(const LeaserType type, const CKeyID& leaserID, const size_t nLimit, std::vector<CTxOut>& vRewards) const;
     CTxOut CalcLeasingReward(const COutPoint& point, const CKeyID& keyID) const;
+    void GetAllAmountsLeasedTo(CPubKey &pubKey, CAmount &amount) const;
 
 protected:
     void UpdatedBlockTip(const CBlockIndex*)  override;
