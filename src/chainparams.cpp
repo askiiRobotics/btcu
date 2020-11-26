@@ -171,9 +171,9 @@ public:
         nTargetTimespan = 40 * 60;                      // 40 minutes
         nTimeSlotLength = 15;                           // 15 seconds
         nTargetTimespan_V2 = 2 * nTimeSlotLength * 60;  // 30 minutes
-        nMaturity = 9;
+        nMaturity = 9;//for activating POS, there are 10 utxo's in the bitcoin chainstate, one for each validator.
         nStakeMinAge = 60 * 60;                         // 1 hour
-        nStakeMinDepth = 9;
+        nStakeMinDepth = 9; //same as nMaturity
         nFutureTimeDriftPoW = 7200;
         nFutureTimeDriftPoS = 180;
         nMasternodeCountDrift = 20;
@@ -185,10 +185,10 @@ public:
         nBtcuBadBlockTime = 0; // Skip nBit validation of Block 259201 per PR #915
         nBtcuBadBlocknBits = 0; // Skip nBit validation of Block 259201 per PR #915
         nModifierUpdateBlock = 0;
-        nZerocoinStartHeight = 0;
+        nZerocoinStartHeight = 1;
         nZerocoinStartTime = 1583491266 - 1;
         nBlockEnforceSerialRange = 0; //Enforce serial range starting this block
-        nBlockRecalculateAccumulators = 908000; //Trigger a recalculation of accumulators
+        nBlockRecalculateAccumulators = 1; //Trigger a recalculation of accumulators
         nBlockFirstFraudulent = 0; //First block that bad serials emerged
         nBlockLastGoodCheckpoint = 0; //Last valid accumulator checkpoint
         nBlockEnforceInvalidUTXO = 0; //Start enforcing the invalid UTXO's
@@ -197,7 +197,7 @@ public:
         nBlockDoubleAccumulated = 0;
         nEnforceNewSporkKey = 1583491266; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1583491266 - 1; //!> Fully reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
-        nBlockStakeModifierlV2 = nLastPOWBlock + 1;
+        nBlockStakeModifierlV2 = nLastPOWBlock + 1;//1967000;
         nBIP65ActivationHeight = 0;
         // Activation height for TimeProtocolV2, Blocks V7 and newMessageSignatures
         nBlockTimeProtocolV2 = nLastPOWBlock + 1;
@@ -239,18 +239,19 @@ public:
         txNew.vout[0].nValue = 250 * COIN;
         txNew.vout[0].scriptPubKey = CScript() << ParseHex("04c10e83b2703ccf322f7dbd62dd5855ac7c10bd055814ce121ba32607d573b8810c02c0582aed05b4deb9c4b77b26d92428c61256cd42774babea0a073b2ed0c9") << OP_CHECKSIG;
 
+
         std::vector<std::string> validatorsPubkeys = {
-        "02bd4cfb6a038d3d45062801c5403c72e66cc4850d2b829be1ea1b639d9aebddb8",
-        "02220c4f9e4c6816c52da0dcf499cd5571b77f8a23510488654fe826de20114902",
-        "0314dbe798ac0b868410e10e5bf16cfd3f2e0da54c92f8047c87c257b6fa9d6cbc",
-        "0310c1a136132f75758dc9679f0f46f2b007a084a54bdd61a4c37346e93de55d98",
-        "023c2fd749dece1c44d39b0f9f5e7e815ff7f81c63ca3a439938117c310260747e",
-        "03dc70130dbfbdb3fc89439764ff63729f1da180a52b16d4398c21d73925d0ef56",
-        "0323eee7f2e7f1f855cf3840ae12eae1ed4fdb0cf4d8eabb902d9e04aca8535252",
-        "03ab16633a1fc0db07c1a590f35911ee4f4b5febda3409a1d74ad3dfb89f7fbd6e",
-        "0267a75772764f497fabb403d69d641e0a22b5220f73a026113df4a9b44f062d0f",
-        "0323fee216ca8230b2dd341f9847457ff1e6af3561070510f73d7eb95e2ec7876c"
-        };
+         "035a3bd03cc490f708b7f2b6f59e8bdfd6710e3062fe3f463010209d5a88051949",
+         "035f34d50ab22176a1cf77fddd6fd8899580a2b3ea494a46af9561f1ad50f8e292",
+         "02f62678b04d51346456e8729d06de164e2ea51942d36032f8aab109abeb232b02",
+         "0216d358a5884b30dfafced60db969704d684d8d9f2fac11bafb1c232878f8aceb",
+         "032eb0a80fcf000ba5cb0bac4c4ebf20db392e413c647171293b1972f165122887",
+         "02d85311e86ec25d2e14609a3dd68eb8efd2447c421e54d284ba09c7598639f892",
+         "031240ccf07831d70e4e473b861e6811843cfd709a2b417ab2a25df876b25e226f",
+         "020cb70524c81d14d669160cb4014317c4e897ba1458e6db1387f60980db990098",
+         "02a61b8dfde0cfa01196e8793382d417f8f772e2e6c2baf456432212dce63defe2",
+         "033a799fd8496643269b9fa259e8b9edff36754945db5173262469a6f89563ab80"
+         };
 
 
         for(int i = 0; i < validatorsPubkeys.size(); i++)
@@ -269,15 +270,15 @@ public:
         genesis.nVersion = 8;
         genesis.nTime = 1583491266;
         genesis.nBits = 0x1e0ffff0;
-        genesis.nNonce = 3330931;
+        genesis.nNonce = 4860171;
         genesis.hashChainstate = uint256("0x12ecf5df211cbae201ceafcfc46392b39539409b0e6a89a3f7498af0e6ebd320");
         genesis.hashStateRoot = uint256(h256Touint(dev::h256("e965ffd002cd6ad0e2dc402b8044de833e06b23127ea8c3d80aec91410771495"))); // qtum
         genesis.hashUTXORoot = uint256(h256Touint(dev::sha3(dev::rlp("")))); // qtum
 
         hashGenesisBlock = genesis.GetHash();
 
-        assert(hashGenesisBlock == uint256("0x00000a61c88be85bdcc17653c50124b70747940b2f00f0a272ecb2223caf1877"));
-        assert(genesis.hashMerkleRoot == uint256("0x49ddd2514c86f1c4b54581e6a8de85167bdefa565da5f0e274f15dcd6be12239"));
+        assert(hashGenesisBlock == uint256("0x000004ea22f3e20f9ee1b90d2a684fbad997fa19d852ab74c39634b74f49f91f"));
+        assert(genesis.hashMerkleRoot == uint256("0x858d38eb69842a10816427748c0cd8f60211113a5f62f669891aae88b0c85884"));
         
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
@@ -300,7 +301,7 @@ public:
 
         nPoolMaxTransactions = 3;
         nBudgetCycleBlocks = 43200; //!< Amount of blocks in a months period of time (using 1 minutes per) = (60*24*30)
-        strSporkPubKey = "02489bf4580a1968d27937a89675150db9e82534e30166fe89da3dcee00b08dac2 ";
+        strSporkPubKey = "02efe39918448c329ff03367c8e6ba55d8c868f5edc0fee3c4ea63dd7b92c12ee5";
         strSporkPubKeyOld = "0499A7AF4806FC6DE640D23BC5936C29B77ADF2174B4F45492727F897AE63CF8D27B2F05040606E0D14B547916379FA10716E344E745F880EDC037307186AA25B7";
         strObfuscationPoolDummyAddress = "D87q2gC9j6nNrnzCsg4aY6bHMLsT9nUhEw";
         nStartMasternodePayments = 1403728576; //Wed, 25 Jun 2014 20:36:16 GMT
@@ -315,11 +316,11 @@ public:
         nMaxZerocoinSpendsPerTransaction = 7; // Assume about 20kb each
         nMaxZerocoinPublicSpendsPerTransaction = 637; // Assume about 220 bytes each input
         nMinZerocoinMintFee = 1 * CENT; //high fee required for zerocoin mints
-        nMintRequiredConfirmations = 20; //the maximum amount of confirmations until accumulated in 19
+        nMintRequiredConfirmations = 1;
         nRequiredAccumulation = 1;
         nDefaultSecurityLevel = 100; //full security level for accumulators
         nZerocoinHeaderVersion = 4; //Block headers must be this version once zerocoin is active
-        nZerocoinRequiredStakeDepth = 200; //The required confirmations for a zbtcu to be stakable
+        nZerocoinRequiredStakeDepth = 999999999; //The required confirmations for a zbtcu to be stakable
 
         nBudget_Fee_Confirmations = 6; // Number of confirmations for the finalization fee
         nProposalEstablishmentTime = 60 * 60 * 24; // Proposals must be at least a day old to make it into a budget
@@ -359,14 +360,14 @@ public:
         nLastPOWBlock = 0;
         nBtcuBadBlockTime = 1489001494; // Skip nBit validation of Block 259201 per PR #915
         nBtcuBadBlocknBits = 0x1e0a20bd; // Skip nBit validation of Block 201 per PR #915
-        nMaturity = 2;
+        nMaturity = 2; // 3 validators in testnet, for  activatin pos must be one more
         nStakeMinDepth = 2;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 51197; //approx Mon, 17 Apr 2017 04:00:00 GMT
-        nZerocoinStartHeight = 201576;
+        nZerocoinStartHeight = 1;
         nZerocoinStartTime = 1501776000;
         nBlockEnforceSerialRange = 1; //Enforce serial range starting this block
-        nBlockRecalculateAccumulators = 9908000; //Trigger a recalculation of accumulators
+        nBlockRecalculateAccumulators = 1; //Trigger a recalculation of accumulators
         nBlockFirstFraudulent = 9891737; //First block that bad serials emerged
         nBlockLastGoodCheckpoint = 9891730; //Last valid accumulator checkpoint
         nBlockEnforceInvalidUTXO = 9902850; //Start enforcing the invalid UTXO's
@@ -380,7 +381,7 @@ public:
         nBlockTimeProtocolV2 = 1347000;
 
         // Public coin spend enforcement
-        nPublicZCSpends = 1106100;
+        nPublicZCSpends = 0;
 
         // New P2P messages signatures
         nBlockEnforceNewMessageSignatures = nBlockTimeProtocolV2;
@@ -487,22 +488,22 @@ public:
         nMinerThreads = 1;
         bnProofOfWorkLimit = ~uint256(0) >> 1;
         nLastPOWBlock = 250;
-        nMaturity = 100;
+        nMaturity = 10;
         nStakeMinAge = 0;
-        nStakeMinDepth = 0;
+        nStakeMinDepth = 10;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 0;
-        nZerocoinStartHeight = 300;
+        nZerocoinStartHeight = 1;
         nBlockZerocoinV2 = 300;
         nZerocoinStartTime = 1501776000;
         nBlockEnforceSerialRange = 1;               // Enforce serial range starting this block
-        nBlockRecalculateAccumulators = 999999999;  // Trigger a recalculation of accumulators
+        nBlockRecalculateAccumulators = 1;          // Trigger a recalculation of accumulators
         nBlockFirstFraudulent = 999999999;          // First block that bad serials emerged
         nBlockLastGoodCheckpoint = 999999999;       // Last valid accumulator checkpoint
         nBlockStakeModifierlV2 = nLastPOWBlock + 1; // start with modifier V2 on regtest
         nBlockTimeProtocolV2 = 999999999;
 
-        nMintRequiredConfirmations = 10;
+        nMintRequiredConfirmations = 1;
         nZerocoinRequiredStakeDepth = nMintRequiredConfirmations;
 
         // Public coin spend enforcement
