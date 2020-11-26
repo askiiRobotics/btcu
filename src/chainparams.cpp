@@ -360,8 +360,8 @@ public:
         nLastPOWBlock = 0;
         nBtcuBadBlockTime = 1489001494; // Skip nBit validation of Block 259201 per PR #915
         nBtcuBadBlocknBits = 0x1e0a20bd; // Skip nBit validation of Block 201 per PR #915
-        nMaturity = 2; // 3 validators in testnet, for  activatin pos must be one more
-        nStakeMinDepth = 2;
+        nMaturity = 5; // 3 validators in testnet, for  activatin pos must be one more
+        nStakeMinDepth = 20;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 51197; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nZerocoinStartHeight = 1;
