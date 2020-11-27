@@ -42,7 +42,7 @@ bool CheckLeasingRewardTransaction(const CTransaction& tx, CValidationState& sta
         auto calcTxOut = leasingManager.CalcLeasingReward(point, keyID);
 
         if (calcTxOut != txOut)
-            return state.DoS(10, error("CheckLeasingRewardTransaction(): wrong leasing reward value"), REJECT_INVALID, "bad-txns-leasing-reward-value");
+            return state.DoS(10, error("CheckLeasingRewardTransaction(): wrong leasing reward value: calcTxOut=%s, txOut=%s", calcTxOut.ToString(), txOut.ToString()), REJECT_INVALID, "bad-txns-leasing-reward-value");
     }
 
     return true;
