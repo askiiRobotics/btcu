@@ -10,7 +10,7 @@ The main goal is to make a hybrid of LPoS mining algorithm and PoA to make a rea
 
 Setup
 ---------------------
-[BTCU Core](https://github.com/bitcoin-ultimatum/btcu/releases) is the original BTCU client and it builds the backbone of the network. However, it downloads and stores the entire history of BTCU transactions; depending on the speed of your computer and network connection, the synchronization process can take anywhere from a few hours to a day or more. Thankfully you only have to do this once.
+[BTCU Core](https://github.com/bitcoin-ultimatum/btcu) is the original BTCU client and it builds the backbone of the network. However, it downloads and stores the entire history of BTCU transactions; depending on the speed of your computer and network connection, the synchronization process can take anywhere from a few hours to a day or more. Thankfully you only have to do this once.
 
 Running
 ---------------------
@@ -36,7 +36,7 @@ Download from [Releases](https://github.com/bitcoin-ultimatum/btcu/releases) lat
 
 ### Need Help?
 
-* See the documentation at the [BTCU Wiki](https://github.com/BTCU-Project/BTCU/wiki)
+* See the documentation at the [BTCU Wiki](https://github.com/bitcoin-ultimatum/btcu/wiki)
 for help and more information.
 
 Building
