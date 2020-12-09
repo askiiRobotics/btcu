@@ -135,8 +135,7 @@ bool CBTCUAddress::IsValidBase58Version(const CChainParams& params) const
     return
         base58.vchVersion == params.Base58Prefix(CChainParams::PUBKEY_ADDRESS) ||
         base58.vchVersion == params.Base58Prefix(CChainParams::SCRIPT_ADDRESS) ||
-        base58.vchVersion == params.Base58Prefix(CChainParams::STAKING_ADDRESS) ||
-        base58.vchVersion == params.Base58Prefix(CChainParams::LEASING_ADDRESS);
+        base58.vchVersion == params.Base58Prefix(CChainParams::STAKING_ADDRESS);
 }
 
 bool CBTCUAddress::IsValidBase58Size() const
@@ -183,8 +182,7 @@ CTxDestination CBTCUAddress::Get() const
         memcpy(&id, &base58.vchData[0], 20);
 
         if (base58.vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS) ||
-            base58.vchVersion == Params().Base58Prefix(CChainParams::STAKING_ADDRESS) ||
-            base58.vchVersion == Params().Base58Prefix(CChainParams::LEASING_ADDRESS)) {
+            base58.vchVersion == Params().Base58Prefix(CChainParams::STAKING_ADDRESS)) {
             return CKeyID(id);
         } else if (base58.vchVersion == Params().Base58Prefix(CChainParams::SCRIPT_ADDRESS)) {
             return CScriptID(id);
@@ -225,8 +223,7 @@ bool CBTCUAddress::GetKeyID(CKeyID& keyID) const
     }
 
     if (base58.vchVersion != Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS) &&
-        base58.vchVersion != Params().Base58Prefix(CChainParams::STAKING_ADDRESS) &&
-        base58.vchVersion != Params().Base58Prefix(CChainParams::LEASING_ADDRESS)) {
+        base58.vchVersion != Params().Base58Prefix(CChainParams::STAKING_ADDRESS)) {
         return false;
     }
 
@@ -260,7 +257,7 @@ bool CBTCUAddress::IsLeasingAddress() const
         return false;
     }
 
-    return base58.vchVersion == Params().Base58Prefix(CChainParams::LEASING_ADDRESS);
+    return base58.vchVersion == Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS);
 }
 
 int CBTCUAddress::CompareTo(const CBTCUAddress& ba) const

@@ -64,7 +64,7 @@ struct LeasingModel::Impl {
             return error("%s : Error extracting P2L destinations for utxo: %s-%d", __func__, utxo.tx->GetHash().GetHex(), utxo.i);
 
         leasing.leaserKeyID = boost::get<CKeyID>(addresses[0]);
-        leasing.leaserAddress = QString::fromStdString(CBTCUAddress(leasing.leaserKeyID, CChainParams::LEASING_ADDRESS).ToString());
+        leasing.leaserAddress = QString::fromStdString(CBTCUAddress(leasing.leaserKeyID, CChainParams::PUBKEY_ADDRESS).ToString());
         leasing.isLeaser = pwalletMain->HaveKey(leasing.leaserKeyID);
 
         leasing.ownerKeyID = boost::get<CKeyID>(addresses[1]);

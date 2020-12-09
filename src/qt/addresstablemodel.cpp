@@ -122,7 +122,7 @@ public:
                     if (AddressBook::IsColdStakingPurpose(item.second.purpose)) {
                         return CChainParams::STAKING_ADDRESS;
                     } else if (AddressBook::IsLeasingPurpose(item.second.purpose)) {
-                        return CChainParams::LEASING_ADDRESS;
+                        return CChainParams::PUBKEY_ADDRESS;
                     }
                     return CChainParams::PUBKEY_ADDRESS;
                 }();
@@ -557,7 +557,7 @@ bool AddressTableModel::removeRows(int row, int count, const QModelIndex& parent
         if (rec->type == AddressTableEntry::ColdStakingSend) {
             return CChainParams::STAKING_ADDRESS;
         } else if (rec->type == AddressTableEntry::LeasingSend) {
-            return CChainParams::LEASING_ADDRESS;
+            return CChainParams::PUBKEY_ADDRESS;
         }
         return CChainParams::PUBKEY_ADDRESS;
     }();

@@ -86,7 +86,7 @@ void ScriptPubKeyToUniv(const CScript& scriptPubKey,
         a.push_back(CBTCUAddress(addresses[0], CChainParams::STAKING_ADDRESS).ToString());
         a.push_back(CBTCUAddress(addresses[1], CChainParams::PUBKEY_ADDRESS).ToString());
     } else if (type == TX_LEASE && addresses.size() == 2) {
-        a.push_back(CBTCUAddress(addresses[0], CChainParams::LEASING_ADDRESS).ToString());
+        a.push_back(CBTCUAddress(addresses[0], CChainParams::PUBKEY_ADDRESS).ToString());
         a.push_back(CBTCUAddress(addresses[1], CChainParams::PUBKEY_ADDRESS).ToString());
     } else {
         for (const CTxDestination& addr : addresses)

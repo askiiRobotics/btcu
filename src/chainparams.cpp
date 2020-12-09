@@ -284,7 +284,6 @@ public:
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
         base58Prefixes[STAKING_ADDRESS] = std::vector<unsigned char>(1,66);
-        base58Prefixes[LEASING_ADDRESS] = std::vector<unsigned char>(1, 67);
 
         bech32_hrp = "bc";
 
@@ -434,7 +433,6 @@ public:
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 111); // (Bitcoin defaults)
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 196); // (Bitcoin defaults)
         base58Prefixes[STAKING_ADDRESS] = std::vector<unsigned char>(1,53);  // starting with 'N'
-        base58Prefixes[LEASING_ADDRESS] = std::vector<unsigned char>(1,54);
         base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);     // Testnet private keys start with '9' or 'c' (Bitcoin defaults)
 
         bech32_hrp = "tb";

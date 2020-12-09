@@ -95,7 +95,7 @@ PairResult CWallet::getNewStakingAddress(CBTCUAddress& ret, std::string label){
 }
 
 PairResult CWallet::getNewLeasingAddress(CBTCUAddress& ret, std::string label){
-    return getNewAddress(ret, label, AddressBook::AddressBookPurpose::LEASING, CChainParams::Base58Type::LEASING_ADDRESS);
+    return getNewAddress(ret, label, AddressBook::AddressBookPurpose::LEASING, CChainParams::Base58Type::PUBKEY_ADDRESS);
 }
 
 PairResult CWallet::getNewAddress(CBTCUAddress& ret, const std::string addressLabel, const std::string purpose,
@@ -2273,7 +2273,7 @@ std::map<CBTCUAddress, std::vector<COutput> > CWallet::AvailableCoinsByAddress(b
                      !ExtractDestination(out.tx->vout[out.i].scriptPubKey, address, false, true) ) {
                     continue;
                 } else {
-                    addr_type = CChainParams::LEASING_ADDRESS;
+                    addr_type = CChainParams::PUBKEY_ADDRESS;
                 }
             } else {
                 addr_type = CChainParams::STAKING_ADDRESS;
@@ -3195,7 +3195,7 @@ CBTCUAddress CWallet::ParseIntoAddress(const CTxDestination& dest, const std::st
         if (AddressBook::IsColdStakingPurpose(purpose)) {
             return CChainParams::STAKING_ADDRESS;
         } else if (AddressBook::IsLeasingPurpose(purpose)) {
-            return CChainParams::LEASING_ADDRESS;
+            return CChainParams::PUBKEY_ADDRESS;
         }
         return CChainParams::PUBKEY_ADDRESS;
     }();

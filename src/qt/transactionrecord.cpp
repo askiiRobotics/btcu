@@ -520,7 +520,7 @@ bool TransactionRecord::ExtractAddress(const CScript& scriptPubKey, bool fColdSt
     } else {
         addressStr = CBTCUAddress(
                 address,
-                (fColdStake ? CChainParams::STAKING_ADDRESS : (fLease ? CChainParams::LEASING_ADDRESS : CChainParams::PUBKEY_ADDRESS))
+                (fColdStake ? CChainParams::STAKING_ADDRESS : CChainParams::PUBKEY_ADDRESS)
         ).ToString();
         return true;
     }

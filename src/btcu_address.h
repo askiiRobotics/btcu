@@ -63,7 +63,7 @@ public:
     }
 
     static const CBTCUAddress newLInstance(const CTxDestination& dest) {
-        return CBTCUAddress(dest, CChainParams::LEASING_ADDRESS);
+        return CBTCUAddress(dest, CChainParams::PUBKEY_ADDRESS);
     }
 
     static const CBTCUAddress newInstance(const CTxDestination& dest) {

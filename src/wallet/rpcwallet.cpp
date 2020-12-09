@@ -908,7 +908,7 @@ UniValue getnewleasingaddress(const UniValue& params, bool fHelp)
             "\nExamples:\n" +
             HelpExampleCli("getnewleasingaddress", "") + HelpExampleRpc("getnewleasingaddress", ""));
 
-    return GetNewAddressFromAccount(AddressBook::AddressBookPurpose::LEASING, params, CChainParams::LEASING_ADDRESS).ToString();
+    return GetNewAddressFromAccount(AddressBook::AddressBookPurpose::LEASING, params, CChainParams::PUBKEY_ADDRESS).ToString();
 }
 
 UniValue delegatoradd(const UniValue& params, bool fHelp)
@@ -991,7 +991,7 @@ UniValue ListaddressesForPurpose(const std::string strPurpose)
         if (AddressBook::IsColdStakingPurpose(strPurpose)) {
             return CChainParams::STAKING_ADDRESS;
         } else if (AddressBook::IsLeasingPurpose(strPurpose)) {
-            return CChainParams::LEASING_ADDRESS;
+            return CChainParams::PUBKEY_ADDRESS;
         }
         return CChainParams::PUBKEY_ADDRESS;
     }();
@@ -2838,7 +2838,7 @@ UniValue listleasingutxos(const UniValue& params, bool fHelp)
             entry.push_back(Pair("txidn", (int)i));
             entry.push_back(Pair("amount", ValueFromAmount(out.nValue)));
             entry.push_back(Pair("confirmations", pcoin->GetDepthInMainChain(false)));
-            entry.push_back(Pair("coin-leaser", CBTCUAddress(addresses[0], CChainParams::LEASING_ADDRESS).ToString()));
+            entry.push_back(Pair("coin-leaser", CBTCUAddress(addresses[0], CChainParams::PUBKEY_ADDRESS).ToString()));
             entry.push_back(Pair("coin-owner", CBTCUAddress(addresses[1]).ToString()));
             entry.push_back(Pair("whitelisted", fWhitelisted ? "true" : "false"));
             results.push_back(entry);
