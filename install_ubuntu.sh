@@ -40,9 +40,14 @@ else
 sudo apt-get install libboost-all-dev
 
 sudo apt-get purge libdb4.8-dev libdb4.8++-dev
-wget http://download.oracle.com/berkeley-db/db-18.1.40.tar.gz
-tar zxvf db-18.1.40.tar.gz
-cd  db-18.1.40/build_unix
+
+# Since as of 5th March 2020 the Oracle moved Barkeley DB 
+# to login-protected tarball for 18.1.32 version 
+# we added the dependency as a static file included in the repository.
+# You can check the details in depends/packages/static/berkeley-db-18.1.32/README.MD
+
+tar zxvf depends/packages/static/berkeley-db-18.1.32/berkeley-db-18.1.32.tar.gz -C ./
+cd  db-18.1.32/build_unix
 ../dist/configure --enable-cxx --disable-shared --disable-replication --with-pic --prefix=/opt
 make
 
