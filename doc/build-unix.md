@@ -117,16 +117,15 @@ If exists previous version like 4.8 (Bitcoin default) then remove:
     
     sudo apt-get purge libdb4.8-dev libdb4.8++-dev
         
+Since as of 5th March 2020 the Oracle moved Barkeley DB to login-protected tarball for 18.1.32 version we added the dependency as a static file included in the repository.
+
 Install:
 
-    wget http://download.oracle.com/berkeley-db/db-18.1.40.tar.gz
-    tar zxvf db-18.1.40.tar.gz
-    cd  db-18.1.40/build_unix
+    tar zxvf depends/packages/static/berkeley-db-18.1.32/berkeley-db-18.1.32.tar.gz -C ./
+    cd  db-18.1.32/build_unix
     ../dist/configure --enable-cxx --disable-shared --disable-replication --with-pic --prefix=/opt
     make
     sudo make install
-    
-Some errors of 'cp'  command may occur after make install, but it's okay.
 
 Run btcu project configure:
     
@@ -315,7 +314,7 @@ disable-wallet mode with:
 
     ./configure --disable-wallet
 
-In this case there is no dependency on Berkeley DB 4.8.
+In this case there is no dependency on Berkeley DB 18.1.
 
 
 Additional Configure Flags
