@@ -26,7 +26,7 @@
 #include <libevm/VMFactory.h>
 
 #ifndef QTUM_BUILD
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 #endif
 #include <boost/timer.hpp>
 
