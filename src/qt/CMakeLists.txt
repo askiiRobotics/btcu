@@ -231,7 +231,12 @@ target_link_libraries(btcu-qt
         Threads::Threads
         )
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    target_link_libraries(btcu-qt "-framework Cocoa")
+    target_link_libraries(btcu-qt 
+        "-framework Cocoa"
+		"-framework Foundation"
+		"-framework ApplicationServices"
+		"-framework AppKit"
+    )
 endif()
 if(GMP_FOUND)
     target_link_libraries(btcu-qt ${GMP_LIBRARY})
@@ -296,6 +301,15 @@ target_link_libraries(test_btcu-qt PUBLIC
         ${QRCODE_LIB}
         Qt5::Gui Qt5::Core Qt5::Widgets Qt5::Network Qt5::Svg Qt5::Test ${QT_LIBRARIES}
     )
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    target_link_libraries(test_btcu-qt PUBLIC
+        "-framework Cocoa"
+		"-framework Foundation"
+		"-framework ApplicationServices"
+		"-framework AppKit"
+    )
+endif()
 
 if(GMP_FOUND)
     target_link_libraries(test_btcu-qt PUBLIC ${GMP_LIBRARY})
