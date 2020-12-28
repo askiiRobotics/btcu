@@ -246,7 +246,7 @@ if (BUILD_STATIC)
 	endif()
 
 	if (NOT CMAKE_VERSION VERSION_LESS 2.8.12)
-		target_include_directories(cryptopp-static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:include/cryptopp>)
+		target_include_directories(cryptopp-static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 	endif()
 endif()
 
@@ -258,7 +258,7 @@ if (BUILD_SHARED)
 	endif()
 
 	if (NOT CMAKE_VERSION VERSION_LESS 2.8.12)
-		target_include_directories(cryptopp-shared PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:include/cryptopp>)
+		target_include_directories(cryptopp-shared PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 	endif()
 endif()
 
@@ -393,7 +393,7 @@ endif()
 if (BUILD_STATIC)
 	install(TARGETS cryptopp-static EXPORT ${export_name} DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
-install(FILES ${cryptopp_HEADERS} DESTINATION include/cryptopp)
+install(FILES ${cryptopp_HEADERS} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
 # CMake Package
 if(NOT CMAKE_VERSION VERSION_LESS 2.8.8)	# CMakePackageConfigHelpers is supported from 2.8.8
