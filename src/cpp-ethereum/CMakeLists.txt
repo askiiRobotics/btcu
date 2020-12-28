@@ -24,26 +24,29 @@ list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
 set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release)
 set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release)
 
-set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Hunter configuration types")
-set(HUNTER_JOBS_NUMBER 4 CACHE STRING "Hunter jobs number")
-set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache" CACHE STRING "Hunter cache servers")
-set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake CACHE STRING "Hunter password path")
 
-# In CI builds upload the binaries if the GITHUB_USER_PASSWORD was decrypted
-# (only for branches and internal PRs).
-if("$ENV{CI}" AND NOT "$ENV{GITHUB_USER_PASSWORD}" STREQUAL "")
-    set(run_upload YES)
-else()
-    set(run_upload NO)
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Hunter configuration types")
+    set(HUNTER_JOBS_NUMBER 4 CACHE STRING "Hunter jobs number")
+    set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache" CACHE STRING "Hunter cache servers")
+    set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake CACHE STRING "Hunter password path")
+
+    # In CI builds upload the binaries if the GITHUB_USER_PASSWORD was decrypted
+    # (only for branches and internal PRs).
+    if("$ENV{CI}" AND NOT "$ENV{GITHUB_USER_PASSWORD}" STREQUAL "")
+        set(run_upload YES)
+    else()
+        set(run_upload NO)
+    endif()
+    option(HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload})
+
+    include(HunterGate)
+    HunterGate(
+        URL "https://github.com/ruslo/hunter/archive/v0.23.44.tar.gz"
+        SHA1 "c4cfcc0cd39fdae8de08f6205b7f34cab4a7ba79"
+        LOCAL
+    )
 endif()
-option(HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload})
-
-include(HunterGate)
-HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.23.44.tar.gz"
-    SHA1 "c4cfcc0cd39fdae8de08f6205b7f34cab4a7ba79"
-    LOCAL
-)
 
 project(cpp-ethereum)
 set(PROJECT_VERSION 1.6.0-alpha.1)
@@ -66,23 +69,39 @@ include(EthUtils)
 #hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber log)
 #find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber log)
 
-hunter_add_package(jsoncpp)
-find_package(jsoncpp CONFIG REQUIRED)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(CMAKE_CXX_STANDARD 11)
 
-hunter_add_package(Snappy)
-find_package(Snappy CONFIG REQUIRED)
+    find_package(jsoncpp CONFIG REQUIRED)
 
-hunter_add_package(cryptopp)
-find_package(cryptopp CONFIG REQUIRED)
+    find_package(Snappy CONFIG REQUIRED)
 
-hunter_add_package(libjson-rpc-cpp)
-find_package(libjson-rpc-cpp CONFIG REQUIRED)
+    find_package(cryptopp CONFIG REQUIRED)
 
-hunter_add_package(libscrypt)
-find_package(libscrypt CONFIG REQUIRED)
+    find_package(libjson-rpc-cpp CONFIG REQUIRED)
 
-hunter_add_package(ethash)
-find_package(ethash CONFIG REQUIRED)
+    find_package(libscrypt CONFIG REQUIRED)
+
+    find_package(ethash CONFIG REQUIRED)
+else()
+    hunter_add_package(jsoncpp)
+    find_package(jsoncpp CONFIG REQUIRED)
+
+    hunter_add_package(Snappy)
+    find_package(Snappy CONFIG REQUIRED)
+
+    hunter_add_package(cryptopp)
+    find_package(cryptopp CONFIG REQUIRED)
+
+    hunter_add_package(libjson-rpc-cpp)
+    find_package(libjson-rpc-cpp CONFIG REQUIRED)
+
+    hunter_add_package(libscrypt)
+    find_package(libscrypt CONFIG REQUIRED)
+
+    hunter_add_package(ethash)
+    find_package(ethash CONFIG REQUIRED)
+endif()
 
 include(ProjectSecp256k1)
 include(ProjectLibFF)

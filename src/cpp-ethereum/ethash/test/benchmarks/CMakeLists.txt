@@ -2,7 +2,9 @@
 # Copyright 2018 Pawel Bylica.
 # Licensed under the Apache License, Version 2.0. See the LICENSE file.
 
-hunter_add_package(benchmark)
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    hunter_add_package(benchmark)
+endif()
 find_package(benchmark CONFIG REQUIRED)
 
 add_executable(ethash-bench
