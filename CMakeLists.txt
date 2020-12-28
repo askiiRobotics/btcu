@@ -3,62 +3,54 @@ cmake_minimum_required(VERSION 3.10)
 set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
 list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
 
-set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Hunter configuration types")
-set(HUNTER_JOBS_NUMBER 4 CACHE STRING "Hunter jobs number")
-set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache" CACHE STRING "Hunter cache servers")
-set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake CACHE STRING "Hunter password path")
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Hunter configuration types")
+    set(HUNTER_JOBS_NUMBER 4 CACHE STRING "Hunter jobs number")
+    set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache" CACHE STRING "Hunter cache servers")
+    set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake CACHE STRING "Hunter password path")
+    # In CI builds upload the binaries if the GITHUB_USER_PASSWORD was decrypted
+    # (only for branches and internal PRs).
+    if("$ENV{CI}" AND NOT "$ENV{GITHUB_USER_PASSWORD}" STREQUAL "")
+        set(run_upload YES)
+    else()
+        set(run_upload NO)
+    endif()
+    option(HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload})
 
-# In CI builds upload the binaries if the GITHUB_USER_PASSWORD was decrypted
-# (only for branches and internal PRs).
-if("$ENV{CI}" AND NOT "$ENV{GITHUB_USER_PASSWORD}" STREQUAL "")
-    set(run_upload YES)
-else()
-    set(run_upload NO)
+    include(HunterGate)
+    HunterGate(
+            URL "https://github.com/ruslo/hunter/archive/v0.23.44.tar.gz"
+            SHA1 "c4cfcc0cd39fdae8de08f6205b7f34cab4a7ba79"
+            LOCAL
+    )
 endif()
-option(HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload})
-
-include(HunterGate)
-HunterGate(
-        URL "https://github.com/ruslo/hunter/archive/v0.23.44.tar.gz"
-        SHA1 "c4cfcc0cd39fdae8de08f6205b7f34cab4a7ba79"
-        LOCAL
-)
 
 project(BTCU)
 
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost COMPONENTS program_options filesystem system thread context fiber chrono log REQUIRED)
-# add_definitions(-DBOOST_LOG_DYN_LINK)
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    message(STATUS "Compiling on macOS")
+    set(ENV{target} "Mac")
+
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/boost)
+
+    set(Boost_USE_STATIC_LIBS OFF)
+    set(Boost_NO_BOOST_CMAKE ON)
+    set( BOOST_ROOT "/usr/local/opt/boost" CACHE PATH "Boost library path" )
+    set( Boost_NO_SYSTEM_PATHS on CACHE BOOL "Do not search system for Boost" )
+    add_definitions(-DBOOST_LOG_DYN_LINK=1)
+endif()
+
+find_package(Boost COMPONENTS program_options filesystem system thread context fiber chrono log log_setup REQUIRED)
 add_definitions(-DETH_FATDB=1)
 
 message(STATUS Boost_LIBRARIES:)
 message (STATUS ${Boost_LIBRARIES})
-message(STATUS BOOST_INCLUDEDIR:)
-message(STATUS ${BOOST_INCLUDEDIR})
 
-hunter_add_package(jsoncpp)
-find_package(jsoncpp CONFIG REQUIRED)
-
-hunter_add_package(cryptopp)
-find_package(cryptopp CONFIG REQUIRED)
-
-hunter_add_package(libjson-rpc-cpp)
-find_package(libjson-rpc-cpp CONFIG REQUIRED)
-
-hunter_add_package(libscrypt)
-find_package(libscrypt CONFIG REQUIRED)
-
-hunter_add_package(ethash)
-find_package(ethash CONFIG REQUIRED)
-
-hunter_add_package(Snappy)
-find_package(Snappy CONFIG REQUIRED)
-
-find_library(ROCKSDB_LIBRARY rocksdb)
-
-    set(BDB_VER "18.1.32")
+set(BDB_VER "18.1.32")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/contrib/cmake")
 set(CMAKE_CXX_STANDARD 11)
 include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
@@ -69,17 +61,26 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    message(STATUS "Compiling on macOS")
-    set(ENV{target} "Mac")
+    find_package(PkgConfig REQUIRED) 
+
+    list(APPEND CMAKE_PREFIX_PATH ./src/osx-extr)
+
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/qt5)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/openssl)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/Cellar/berkeley-db@4)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/berkeley-db)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/rocksdb)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/jsoncpp)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libjson-rpc-cpp)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/snappy)
+    list(APPEND CMAKE_PREFIX_PATH ./src/libscrypt)
+    list(APPEND CMAKE_PREFIX_PATH ./src/cryptopp)
+    list(APPEND CMAKE_PREFIX_PATH ./src/cpp-ethereum/ethash)
+
     set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl/")
-    set(ENV{CPPFLAGS} "-I${OPENSSL_ROOT_DIR}/include")
+    set(ENV{CPPFLAGS} "-I${OPENSSL_ROOT_DIR}/include -DOBJC_OLD_DISPATCH_PROTOTYPES=0")
     set(ENV{LDFLAGS} "-L${OPENSSL_ROOT_DIR}/lib")
-    set(BerkeleyDB_ROOT_DIR "/usr/local/Cellar/berkeley-db@4/${BDB_VER}/")
-    set(Boost_USE_MULTITHREADED ON)
-    set(Boost_NO_BOOST_CMAKE ON)
+    set(BerkeleyDB_ROOT_DIR "/usr/local/opt/berkeley-db")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(ENV{target} "Linux")
     file(READ "/proc/version" _SYS_VERSION)
@@ -100,6 +101,42 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         message(STATUS "Found endian.h: ${ENDIAN_INCLUDES}")
     endif()
     #add_definitions("-D__BYTE_ORDER -D__LITTLE_ENDIAN -D__GLIBC__ -DHAVE_DECL_BSWAP_16=0 -DHAVE_DECL_BSWAP_32=0 -DHAVE_DECL_BSWAP_64=0")
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    find_package(jsoncpp CONFIG REQUIRED)
+
+    find_package(cryptopp CONFIG REQUIRED)
+
+    find_package(libjson-rpc-cpp CONFIG REQUIRED)
+
+    find_package(libscrypt CONFIG REQUIRED)
+
+    find_package(ethash CONFIG REQUIRED)
+
+    find_package(Snappy CONFIG REQUIRED)
+
+    find_library(ROCKSDB_LIBRARY rocksdb)
+else()
+    hunter_add_package(jsoncpp)
+    find_package(jsoncpp CONFIG REQUIRED)
+
+    hunter_add_package(cryptopp)
+    find_package(cryptopp CONFIG REQUIRED)
+
+    hunter_add_package(libjson-rpc-cpp)
+    find_package(libjson-rpc-cpp CONFIG REQUIRED)
+
+    hunter_add_package(libscrypt)
+    find_package(libscrypt CONFIG REQUIRED)
+
+    hunter_add_package(ethash)
+    find_package(ethash CONFIG REQUIRED)
+
+    hunter_add_package(Snappy)
+    find_package(Snappy CONFIG REQUIRED)
+
+    find_library(ROCKSDB_LIBRARY rocksdb)
 endif()
 
 # Find Dependencies
@@ -685,7 +722,7 @@ target_link_libraries(btcu-cli
         UTIL_A
         BITCOIN_CRYPTO_A
         ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${LIBEVENT_LIB}
-	Threads::Threads
+        Threads::Threads
         )
 if($ENV{target} MATCHES "Windows")
     target_link_libraries(btcu-cli ${WINDOWS_LDADD})
@@ -716,7 +753,7 @@ endif()
 
 link_directories(${CMAKE_BINARY_DIR})
 
-set(btcud_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcud.cpp)
+set(btcud_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcud.cpp ${Boost_LOG_LIBRARY} ${Boost_LOG_SETUP_LIBRARY})
 if($ENV{target} MATCHES "Windows")
     list(APPEND btcud_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcud-res.rc)
 endif()
@@ -726,6 +763,7 @@ target_include_directories(btcud PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/helpers/memenv
+        ${btcud_SOURCES}
         ${LIBEVENT_INCLUDE_DIR})
 target_link_libraries(btcud
         Threads::Threads
@@ -740,7 +778,13 @@ target_link_libraries(btcud
         ${CMAKE_BINARY_DIR}/libleveldb_sse42.a
         ${CMAKE_BINARY_DIR}/libmemenv.a
         secp256k1
-        ${BerkeleyDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} ${LIBEVENT_LIB}
+        ${BerkeleyDB_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${Boost_LIBRARIES}
+        ${Boost_THREAD_LIBRARY}
+        ${Boost_LOG_LIBRARY}
+        ${Boost_LOG_SETUP_LIBRARY}
+        ${LIBEVENT_LIB}
         )
 
 if($ENV{target} MATCHES "Windows")
@@ -874,43 +918,45 @@ endforeach(BTCU_RAW_FILE)
 list(GET BTCU_HEX_TEST_FILES 0 BTCU_HEX_DEST_FILE)
 get_filename_component(BTCU_HEX_DESTDIR ${BTCU_HEX_DEST_FILE} DIRECTORY)
 get_filename_component(BTCU_HEX_DESTDIR ${BTCU_HEX_DESTDIR} DIRECTORY)
-add_custom_target(test_btcu_hex ALL DEPENDS ${BTCU_HEX_TEST_FILES})
 
-add_executable(test_btcu ${BTCU_TEST_SOURCES})
-target_compile_definitions(test_btcu PUBLIC -DBOOST_TEST_DYN_LINK)
-add_dependencies(test_btcu test_btcu_hex libunivalue libsecp256k1 leveldb leveldb_sse42 memenv)
-target_include_directories(test_btcu PUBLIC ${BTCU_HEX_DESTDIR} ./src/test)
+    add_custom_target(test_btcu_hex ALL DEPENDS ${BTCU_HEX_TEST_FILES})
 
-target_link_libraries(test_btcu
-        SERVER_A
-        WALLET_A
-        univalue
-        COMMON_A
-        ZEROCOIN_A
-        UTIL_A
-        CLI_A
-        BITCOIN_CRYPTO_A
-        ${CMAKE_BINARY_DIR}/libleveldb.a
-        ${CMAKE_BINARY_DIR}/libleveldb_sse42.a
-        ${CMAKE_BINARY_DIR}/libmemenv.a
-        secp256k1
-        ${BerkeleyDB_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${Boost_LIBRARIES}
-        ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-        ${LIBEVENT_LIB}
-    )
+    add_executable(test_btcu ${BTCU_TEST_SOURCES})
+    target_compile_definitions(test_btcu PUBLIC -DBOOST_TEST_DYN_LINK)
+    add_dependencies(test_btcu test_btcu_hex libunivalue libsecp256k1 leveldb leveldb_sse42 memenv)
+    target_include_directories(test_btcu PUBLIC ${BTCU_HEX_DESTDIR} ./src/test)
 
-if(GMP_FOUND)
-    target_link_libraries(test_btcu ${GMP_LIBRARY})
-    target_include_directories(test_btcu PUBLIC ${GMP_INCLUDE_DIR})
-endif()
-if(ZMQ_FOUND)
-    target_include_directories(test_btcu PUBLIC ${ZMQ_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/)
-    target_link_libraries(test_btcu ZMQ_A ${ZMQ_LIB})
-endif()
-if(MINIUPNP_FOUND)
-    target_compile_definitions(test_btcu PUBLIC "-DSTATICLIB -DMINIUPNP_STATICLIB")
-    target_link_libraries(test_btcu ${MINIUPNP_LIBRARY})
-    target_include_directories(test_btcu PUBLIC ${MINIUPNP_INCLUDE_DIR})
-endif()
+    target_link_libraries(test_btcu
+            SERVER_A
+            WALLET_A
+            univalue
+            COMMON_A
+            ZEROCOIN_A
+            UTIL_A
+            CLI_A
+            BITCOIN_CRYPTO_A
+            ${CMAKE_BINARY_DIR}/libleveldb.a
+            ${CMAKE_BINARY_DIR}/libleveldb_sse42.a
+            ${CMAKE_BINARY_DIR}/libmemenv.a
+            secp256k1
+            ${BerkeleyDB_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${Boost_LIBRARIES}
+            ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+            ${LIBEVENT_LIB}
+        )
+
+    if(GMP_FOUND)
+        target_link_libraries(test_btcu ${GMP_LIBRARY})
+        target_include_directories(test_btcu PUBLIC ${GMP_INCLUDE_DIR})
+    endif()
+    if(ZMQ_FOUND)
+        target_include_directories(test_btcu PUBLIC ${ZMQ_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/)
+        target_link_libraries(test_btcu ZMQ_A ${ZMQ_LIB})
+    endif()
+    if(MINIUPNP_FOUND)
+        target_compile_definitions(test_btcu PUBLIC "-DSTATICLIB -DMINIUPNP_STATICLIB")
+        target_link_libraries(test_btcu ${MINIUPNP_LIBRARY})
+        target_include_directories(test_btcu PUBLIC ${MINIUPNP_INCLUDE_DIR})
+    endif()
+    
