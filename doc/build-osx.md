@@ -1,33 +1,147 @@
-macOS Build Instructions and Notes
-====================================
-The commands in this guide should be executed in a Terminal application.
-The built-in one is located in `/Applications/Utilities/Terminal.app`.
+# macOS Build Instructions and Notes
 
-Preparation
------------
+The commands in this guide should be executed in a Terminal application.
+The built-in one is located in
+```
+/Applications/Utilities/Terminal.app
+```
+
+## Prerequisites
+In order to build BTCU on Mac it is required to have a MacOS computer, with at least 3GB of free disk space (some of the dependencies will require more space, but you may have these installed already) without the database.
+
+## Preparation
+The next step is required only if you don't have an already instaled XCode. Otherwise you may skip it.
 Install the macOS command line tools:
 
-`xcode-select --install`
+```shell
+xcode-select --install
+```
 
 When the popup appears, click `Install`.
+You can check the [detailed installation guide](https://www.ics.uci.edu/~pattis/common/handouts/macmingweclipse/allexperimental/macxcodecommandlinetools.html) for a proper explanation.
 
-Then install [Homebrew](https://brew.sh).
+Then you will need to install the [Homebrew](https://brew.sh). If you already have it on a computer you may skip it.
 
-Dependencies
-----------------------
+To check it you can run the followed command:
 
-    brew install autoconf automake berkeley-db4 libtool boost miniupnpc openssl pkg-config protobuf python3 qt5 zmq libevent qrencode gmp
+```shell
+brew --version
+```
+
+If it throws an error, you don't have homebrew. In that case, install homebrew using the following command.
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/ install.sh)"
+```
+
+It is important:  Even if you had homebrew installed beforehand, update your version of homebrew and upgrade all the packages it installed by running the following command.
+```shell
+brew update && brew upgrade
+```
+
+If you run into issues, please check [Homebrew's Troubleshooting page](https://docs.brew.sh/Troubleshooting).
+
+## Dependencies
+```shell
+brew install automake libtool miniupnpc pkg-config python qt libevent qrencode jsoncpp protobuf rocksdb snappy zeromq openssl libjson-rpc-cpp google-benchmark googletest
+# libscrypt from local since we need a version with cmake support but you still can get it via brew
+
+# since brew has been removed the required version of the boost
+curl https://raw.githubusercontent.com/Homebrew/homebrew-core/8d748e26ccc9afc8ea0d0201ae234fda35de721e/Formula/boost.rb -o boost.rb
+brew install ./boost.rb
+
+brew uninstall --ignore-dependencies icu4c
+curl https://raw.githubusercontent.com/Homebrew/homebrew-core/a806a621ed3722fb580a58000fb274a2f2d86a6d/Formula/icu4c.rb -o icu4c.rb
+brew install ./icu4c.rb
+```
+
+OpenSSL has it's uniq way to organize a folder structure so we have to try this command at first:
+```shell
+brew link openssl --force
+```
+If you'll get a refuse result such as "Warning: Refusing to link macOS provided/shadowed software: openssl", you'll have to call this command instead:
+```shell
+( brew --prefix openssl && echo '/include/openssl'; ) | tr -d "[:space:]" | xargs -I '{}' ln -s {} /usr/local/include
+```
+
+Also it may be usefull to add openssl bin folder to PATH as it recommended by result of the command "brew link openssl --force".
 
 See [dependencies.md](dependencies.md) for a complete overview.
 
 If you want to build the disk image with `make deploy` (.dmg / optional), you need RSVG:
+```shell
+brew install librsvg
 
-    brew install librsvg
+curl https://raw.githubusercontent.com/Homebrew/homebrew-core/a806a621ed3722fb580a58000fb274a2f2d86a6d/Formula/icu4c.rb -o icu4c.rb
+brew install ./icu4c.rb
+```
 
-Berkeley DB
------------
-It is recommended to use Berkeley DB 4.8. If you have to build it yourself,
-you can use [the installation script included in contrib/](/contrib/install_db4.sh)
+The wallet support requires one or both of the dependencies ([*SQLite*](#sqlite) and [*Berkeley DB*](#berkeley-db)) in the sections below.
+To build BTCU without wallet, see [*Disable-wallet mode*](#disable-wallet-mode).
+
+### Libscrypt
+As a prerequisite it is also required to make libscrypt.a file. In order to do this you have to run followed commands:
+
+```shell
+cd src/libscrypt
+cmake .
+make
+```
+
+### Ethash
+As an another prerequisite it is required to make libethash.a file. In order to do this you have to run followed commands:
+
+```shell
+cd src/cpp-ethereum/ethash
+cmake .
+make
+```
+
+### Cryptopp
+And an another prerequisite that is also required is a libcryptopp.a file. In order to do this you have to run followed commands:
+
+```shell
+cd src/cryptopp
+cmake .
+make
+```
+
+### Secp256k1
+And for a libunivalue.a file:
+
+```shell
+cd src/secp256k1
+make
+```
+
+### Univalue
+And for a libsecp256k1.a file:
+
+```shell
+cd src/univalue
+make
+```
+
+#### SQLite
+
+Usually, macOS installation already has a suitable SQLite installation.
+In order to check is there an installed SQLite you may run a command:
+
+```shell
+sqlite3 --version
+```
+
+If you haven't SQLite installed it can be solved by the Homebrew package:
+
+```shell
+brew install sqlite
+```
+
+In that case the Homebrew package will prevail.
+
+#### Berkeley DB
+
+It is recommended to use Berkeley DB 18.1.32. If you have to build it yourself,
+you can use [this](/contrib/install_db4.sh) script to install it
 like so:
 
 ```shell
@@ -36,175 +150,99 @@ like so:
 
 from the root of the repository.
 
-**Note**: You only need Berkeley DB if the wallet is enabled (see [*Disable-wallet mode*](/doc/build-osx.md#disable-wallet-mode)).
+Also, the Homebrew package could be installed:
 
-Build BTCU Core
-------------------------
+```shell
+brew install berkeley-db@18
+```
 
-1. Clone the BTCU Core source code:
+The project is configured with the dependency Berkeley DB v18.1.32. In order to check the version you can run:
+```shell
+brew info berkeley-db 
+```
 
-        git clone https://github.com/btcu-project/btcu
-        cd btcu
+If the brew installed a different version run the followed command:
+```shell
+# since brew switch is depreceted it is required to use workaround
+brew uninstall berkeley-db@18
+# since brew prohibited to use Git commits urls in install command
+curl https://raw.githubusercontent.com/Homebrew/homebrew-core/f325e0637fbf513819129744dc107382de028fc5/Formula/berkeley-db.rb -o berkeley-db.rb
+brew install ./berkeley-db.rb
+```
 
+## Build BTCU
+
+1. Clone the BTCU source code:
+    ```shell
+    git clone https://github.com/btcu-ultimatum/btcu
+    cd btcu
+    ```
 2.  Make the Homebrew OpenSSL headers visible to the configure script  (do ```brew info openssl``` to find out why this is necessary, or if you use Homebrew with installation folders different from the default).
 
-        export LDFLAGS+=-L/usr/local/opt/openssl/lib
-        export CPPFLAGS+=-I/usr/local/opt/openssl/include
+        export LDFLAGS="$LDFLAGS -L/usr/local/opt/openssl/lib"
+        export CPPFLAGS="$CPPFLAGS -I/usr/local/opt/openssl/include"
 
-3.  Build BTCU Core:
+    Same applied for jsoncpp but with a slight difference: the result of a command ```brew  --prefix jsoncpp ``` will be placed to LDFLAGS with '/lib' prefix and to CPPFLAGS with '/include' prefix. The common result will be like that:
 
-        ./autogen.sh
-        ./configure
-        make
+        export LDFLAGS="$LDFLAGS -L/usr/local/opt/jsoncpp/lib"
+        export CPPFLAGS="$CPPFLAGS -I/usr/local/opt/jsoncpp/include"
+
+3.  Build BTCU
+
+    Configure and build the headless BTCU binaries as well as the GUI (if Qt is found).
+
+    You can disable the GUI build by passing `--without-gui` to configure.
+    ```shell
+    ./autogen.sh
+    ./configure
+    cmake .
+    make
+    ```
 
 4.  It is recommended to build and run the unit tests:
+    ```shell
+    make check
+    ```
 
-        make check
+## Disable-wallet mode
+When the intention is to run only a P2P node without a wallet, BTCU may be
+compiled in disable-wallet mode with:
+```shell
+./configure --disable-wallet
+```
 
-5.  You can also create a .dmg that contains the .app bundle (optional):
+In this case there is no dependency on [*Berkeley DB*](#berkeley-db) and [*SQLite*](#sqlite).
 
-        make deploy
+Mining is also possible in disable-wallet mode using the `getblocktemplate` RPC call.
 
-Disable-wallet mode
---------------------
-**Note:** This functionality is not yet completely implemented, and compilation using the below option will currently fail.
-
-When the intention is to run only a P2P node without a wallet, BTCU Core may be compiled in
-disable-wallet mode with:
-
-    ./configure --disable-wallet
-
-In this case there is no dependency on Berkeley DB 4.8.
-
-Running
--------
-
-BTCU Core is now available at `./src/btcud`
+## Running
+BTCU is now available at `./btcud`
 
 Before running, you may create an empty configuration file:
+```shell
+mkdir -p "/Users/${USER}/Library/Application Support/BTCU"
 
-    mkdir -p "/Users/${USER}/Library/Application Support/BTCU"
+touch "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
 
-    touch "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
+chmod 600 "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
+```
 
-    chmod 600 "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
-
-The first time you run btcud, it will start downloading the blockchain. This process could take many hours, or even days on slower than average systems.
+The first time you run btcud, it will start downloading the blockchain. This process could
+take many hours, or even days on slower than average systems.
 
 You can monitor the download process by looking at the debug.log file:
-
-    tail -f $HOME/Library/Application\ Support/BTCU/debug.log
-
-Other commands:
--------
-
-    ./src/btcud -daemon # Starts the btcu daemon.
-    ./src/btcu-cli --help # Outputs a list of command-line options.
-    ./src/btcu-cli help # Outputs a list of RPC commands when the daemon is running.
-
-Notes
------
-
-* Tested on OS X 10.10 Yosemite through macOS 10.13 High Sierra on 64-bit Intel processors only.
-
-* Building with downloaded Qt binaries is not officially supported. See the notes in [#7714](https://github.com/bitcoin/bitcoin/issues/7714)
-
-Deterministic macOS DMG Notes
------------------------------
-
-Working macOS DMGs are created in Linux by combining a recent clang,
-the Apple binutils (ld, ar, etc) and DMG authoring tools.
-
-Apple uses clang extensively for development and has upstreamed the necessary
-functionality so that a vanilla clang can take advantage. It supports the use
-of -F, -target, -mmacosx-version-min, and --sysroot, which are all necessary
-when building for macOS.
-
-Apple's version of binutils (called cctools) contains lots of functionality
-missing in the FSF's binutils. In addition to extra linker options for
-frameworks and sysroots, several other tools are needed as well such as
-install_name_tool, lipo, and nmedit. These do not build under linux, so they
-have been patched to do so. The work here was used as a starting point:
-[mingwandroid/toolchain4](https://github.com/mingwandroid/toolchain4).
-
-In order to build a working toolchain, the following source packages are needed
-from Apple: cctools, dyld, and ld64.
-
-These tools inject timestamps by default, which produce non-deterministic
-binaries. The ZERO_AR_DATE environment variable is used to disable that.
-
-This version of cctools has been patched to use the current version of clang's
-headers and its libLTO.so rather than those from llvmgcc, as it was
-originally done in toolchain4.
-
-To complicate things further, all builds must target an Apple SDK. These SDKs
-are free to download, but not redistributable.
-To obtain it, register for a developer account, then download the [Xcode 7.3.1 dmg](https://developer.apple.com/devcenter/download.action?path=/Developer_Tools/Xcode_7.3.1/Xcode_7.3.1.dmg).
-
-This file is several gigabytes in size, but only a single directory inside is
-needed:
-```
-Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
+```shell
+tail -f $HOME/Library/Application\ Support/BTCU/debug.log
 ```
 
-Unfortunately, the usual linux tools (7zip, hpmount, loopback mount) are incapable of opening this file.
-To create a tarball suitable for Gitian input, there are two options:
-
-Using macOS, you can mount the dmg, and then create it with:
-```
-  $ hdiutil attach Xcode_7.3.1.dmg
-  $ tar -C /Volumes/Xcode/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/ -czf MacOSX10.11.sdk.tar.gz MacOSX10.11.sdk
-```
-
-Alternatively, you can use 7zip and SleuthKit to extract the files one by one.
-The script contrib/macdeploy/extract-osx-sdk.sh automates this. First ensure
-the dmg file is in the current directory, and then run the script. You may wish
-to delete the intermediate 5.hfs file and MacOSX10.11.sdk (the directory) when
-you've confirmed the extraction succeeded.
-
-```bash
-apt-get install p7zip-full sleuthkit
-contrib/macdeploy/extract-osx-sdk.sh
-rm -rf 5.hfs MacOSX10.11.sdk
+## Other commands:
+```shell
+btcud -daemon      # Starts the btcu daemon.
+btcu-cli --help    # Outputs a list of command-line options.
+btcu-cli help      # Outputs a list of RPC commands when the daemon is running.
+./src/qt/btcu-qt   # Start GUI
 ```
 
-The Gitian descriptors build 2 sets of files: Linux tools, then Apple binaries
-which are created using these tools. The build process has been designed to
-avoid including the SDK's files in Gitian's outputs. All interim tarballs are
-fully deterministic and may be freely redistributed.
-
-genisoimage is used to create the initial DMG. It is not deterministic as-is,
-so it has been patched. A system genisoimage will work fine, but it will not
-be deterministic because the file-order will change between invocations.
-The patch can be seen here:  [theuni/osx-cross-depends](https://raw.githubusercontent.com/theuni/osx-cross-depends/master/patches/cdrtools/genisoimage.diff).
-No effort was made to fix this cleanly, so it likely leaks memory badly. But
-it's only used for a single invocation, so that's no real concern.
-
-genisoimage cannot compress DMGs, so afterwards, the 'dmg' tool from the
-libdmg-hfsplus project is used to compress it. There are several bugs in this
-tool and its maintainer has seemingly abandoned the project. It has been forked
-and is available (with fixes) here: [theuni/libdmg-hfsplus](https://github.com/theuni/libdmg-hfsplus).
-
-The 'dmg' tool has the ability to create DMGs from scratch as well, but this
-functionality is broken. Only the compression feature is currently used.
-Ideally, the creation could be fixed and genisoimage would no longer be necessary.
-
-Background images and other features can be added to DMG files by inserting a
-.DS_Store before creation. This is generated by the script
-contrib/macdeploy/custom_dsstore.py.
-
-As of OS X 10.9 Mavericks, using an Apple-blessed key to sign binaries is a
-requirement in order to satisfy the new Gatekeeper requirements. Because this
-private key cannot be shared, we'll have to be a bit creative in order for the
-build process to remain somewhat deterministic. Here's how it works:
-
-- Builders use Gitian to create an unsigned release. This outputs an unsigned
-  dmg which users may choose to bless and run. It also outputs an unsigned app
-  structure in the form of a tarball, which also contains all of the tools
-  that have been previously (deterministically) built in order to create a
-  final dmg.
-- The Apple keyholder uses this unsigned app to create a detached signature,
-  using the script that is also included there. Detached signatures are available from this [repository](https://github.com/bitcoin-core/bitcoin-detached-sigs).
-- Builders feed the unsigned app + detached signature back into Gitian. It
-  uses the pre-built tools to recombine the pieces into a deterministic dmg.
-
+## Notes
+* Tested on OS X 11.1 Big Sur on 64-bit Intel processors only.
+* Note: `.dmg` build is currently unsupported
