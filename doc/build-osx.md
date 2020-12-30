@@ -48,10 +48,6 @@ brew install automake libtool miniupnpc pkg-config python qt libevent qrencode j
 # since brew has been removed the required version of the boost
 curl https://raw.githubusercontent.com/Homebrew/homebrew-core/8d748e26ccc9afc8ea0d0201ae234fda35de721e/Formula/boost.rb -o boost.rb
 brew install ./boost.rb
-
-brew uninstall --ignore-dependencies icu4c
-curl https://raw.githubusercontent.com/Homebrew/homebrew-core/a806a621ed3722fb580a58000fb274a2f2d86a6d/Formula/icu4c.rb -o icu4c.rb
-brew install ./icu4c.rb
 ```
 
 OpenSSL has it's uniq way to organize a folder structure so we have to try this command at first:
@@ -70,13 +66,15 @@ See [dependencies.md](dependencies.md) for a complete overview.
 If you want to build the disk image with `make deploy` (.dmg / optional), you need RSVG:
 ```shell
 brew install librsvg
+```
+NOTE: The option is currently unavailable.
 
+Also it is important to have the exact version of the icu4c:
+```shell
+brew uninstall --ignore-dependencies icu4c
 curl https://raw.githubusercontent.com/Homebrew/homebrew-core/a806a621ed3722fb580a58000fb274a2f2d86a6d/Formula/icu4c.rb -o icu4c.rb
 brew install ./icu4c.rb
 ```
-
-The wallet support requires one or both of the dependencies ([*SQLite*](#sqlite) and [*Berkeley DB*](#berkeley-db)) in the sections below.
-To build BTCU without wallet, see [*Disable-wallet mode*](#disable-wallet-mode).
 
 ### Libscrypt
 As a prerequisite it is also required to make libscrypt.a file. In order to do this you have to run followed commands:
@@ -192,6 +190,11 @@ brew install ./berkeley-db.rb
     Configure and build the headless BTCU binaries as well as the GUI (if Qt is found).
 
     You can disable the GUI build by passing `--without-gui` to configure.
+
+    The wallet support requires one or both of the dependencies ([*SQLite*](#sqlite) and [*Berkeley DB*](#berkeley-db)) from the previous section.
+    To build BTCU without wallet, see [*Disable-wallet mode*](#disable-wallet-mode).
+
+    To build the project run followed commands:
     ```shell
     ./autogen.sh
     ./configure
