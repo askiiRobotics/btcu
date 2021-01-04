@@ -43,7 +43,11 @@ compile_commands.json
 /src/lib_json/Makefile
 /src/test_lib_json/Makefile
 /src/test_lib_json/jsoncpp_test
+/test/**/*
 *.a
+CTestTestfile.cmake
+jsoncppConfigVersion.cmake
+version
 
 # eclipse project files
 .project
