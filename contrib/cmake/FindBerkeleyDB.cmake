@@ -27,7 +27,8 @@ else()
     # Paths for anything other than Windows
     # Cellar/berkeley-db is for macOS from homebrew installation
     list(APPEND _BERKELEYDB_PATHS
-            "/usr/local/Cellar/berkeley-db@4"
+            "/usr/local/opt/berkeley-db"
+            "/usr/local/Cellar/berkeley-db@18"
             "/usr/local/Cellar/berkeley-db"
             "/opt"
             "/opt/local"
