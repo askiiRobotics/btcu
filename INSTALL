@@ -1,13 +1,8 @@
 Building BTCU
+================
 
-Use the autogen script to prepare the build environment.
-
-    ./autogen.sh
-    ./configure
-    make
-
-Always verify the signatures and checksums.
-
-See doc/build-*.md for instructions on building btcud,
-the intended-for-services, no-graphical-interface, reference
-implementation of BTCU.
+See platform-specific instructions on building the various
+elements of the Bitcoin Ultimate:
+- [osx](doc/build-osx.md)
+- [unix](doc/build-unix.md)
+- [windows](doc/build-windows.md)
