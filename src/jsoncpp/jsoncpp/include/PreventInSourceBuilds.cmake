@@ -42,4 +42,5 @@ function(AssureOutOfSourceBuilds)
   endif()
 endfunction()
 
-AssureOutOfSourceBuilds()
+# We need this in order to build all sources from the root
+# AssureOutOfSourceBuilds()
