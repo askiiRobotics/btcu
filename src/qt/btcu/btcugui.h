@@ -29,6 +29,9 @@
 #include "qt/btcu/settings/settingswidget.h"
 #include "qt/rpcconsole.h"
 
+#ifdef Q_OS_MAC
+#include "qt/macos_appnap.h"
+#endif
 
 class ClientModel;
 class NetworkStyle;
@@ -150,6 +153,10 @@ private:
 
     QLabel *op = nullptr;
     bool opEnabled = false;
+
+#ifdef Q_OS_MAC
+    CAppNapInhibitor *m_app_nap_inhibitor = nullptr;
+#endif
 
     /** Create the main UI actions. */
     void createActions(const NetworkStyle* networkStyle);

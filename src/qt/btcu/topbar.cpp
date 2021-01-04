@@ -413,6 +413,8 @@ void TopBar::setNumConnections(int count) {
 }
 
 void TopBar::setNumBlocks(int count) {
+// TODO: Disabling macOS App Nap on initial sync, disk and reindex operations.
+
     if (!clientModel)
         return;
 

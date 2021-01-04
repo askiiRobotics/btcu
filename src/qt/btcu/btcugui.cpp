@@ -173,6 +173,9 @@ BTCUGUI::BTCUGUI(const NetworkStyle* networkStyle, QWidget* parent) :
     // Subscribe to notifications from core
     subscribeToCoreSignals();
 
+#ifdef Q_OS_MAC
+    m_app_nap_inhibitor = new CAppNapInhibitor;
+#endif
 }
 
 void BTCUGUI::createActions(const NetworkStyle* networkStyle){
@@ -238,6 +241,7 @@ BTCUGUI::~BTCUGUI() {
     if (trayIcon) // Hide tray icon, as deleting will let it linger until quit (on Ubuntu)
         trayIcon->hide();
 #ifdef Q_OS_MAC
+    delete m_app_nap_inhibitor;
     MacDockIconHandler::cleanup();
 #endif
 }
@@ -314,6 +318,11 @@ void BTCUGUI::createTrayIconMenu() {
 #ifndef Q_OS_MAC // This is built-in on Mac
     trayIconMenu->addSeparator();
     trayIconMenu->addAction(quitAction);
+#endif
+
+// TODO: Disabling macOS App Nap on initial sync, disk and reindex operations.
+#ifdef Q_OS_MAC
+    m_app_nap_inhibitor->enableAppNap();
 #endif
 }
 
