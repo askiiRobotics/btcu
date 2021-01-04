@@ -14,3 +14,4 @@ CMakeFiles/**/*
 !*.cmake.in
 ethash-bench
 kiss99-tester
+ethash-test
