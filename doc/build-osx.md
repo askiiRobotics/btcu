@@ -3,7 +3,7 @@
 The commands in this guide should be executed in a Terminal application.
 The built-in one is located in
 ```
-/Applications/Utilities/Terminal.app
+    /Applications/Utilities/Terminal.app
 ```
 
 ## Prerequisites
@@ -14,7 +14,7 @@ The next step is required only if you don't have an already instaled XCode. Othe
 Install the macOS command line tools:
 
 ```shell
-xcode-select --install
+    xcode-select --install
 ```
 
 When the popup appears, click `Install`.
@@ -25,98 +25,147 @@ Then you will need to install the [Homebrew](https://brew.sh). If you already ha
 To check it you can run the followed command:
 
 ```shell
-brew --version
+    brew --version
 ```
 
 If it throws an error, you don't have homebrew. In that case, install homebrew using the following command.
 ```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/ install.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/ install.sh)"
 ```
 
 It is important:  Even if you had homebrew installed beforehand, update your version of homebrew and upgrade all the packages it installed by running the following command.
 ```shell
-brew update && brew upgrade
+    brew update && brew upgrade
 ```
 
-If you run into issues, please check [Homebrew's Troubleshooting page](https://docs.brew.sh/Troubleshooting).
+## Troubleshooting
+If you see throught brew installation process errors like  `LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection`, try:
+```shell
+    networksetup -setv6off Wi-Fi
+```
+
+If you goes into error  `Error: Operation already in progress `, try:
+```shell
+    rm -rf /usr/local/var/homebrew/locks
+```
+
+For other issues please check [Homebrew's Troubleshooting page](https://docs.brew.sh/Troubleshooting).
 
 ## Dependencies
 ```shell
-brew install automake libtool miniupnpc pkg-config python qt libevent qrencode jsoncpp protobuf rocksdb snappy zeromq openssl libjson-rpc-cpp google-benchmark googletest
-# libscrypt from local since we need a version with cmake support but you still can get it via brew
+    brew install automake libtool miniupnpc pkg-config python qt libevent qrencode protobuf rocksdb snappy zeromq openssl libjson-rpc-cpp google-benchmark googletest
+    # libscrypt from local since we need a version with cmake support but you still can get it via brew
+```
 
-# since brew has been removed the required version of the boost
-curl https://raw.githubusercontent.com/Homebrew/homebrew-core/8d748e26ccc9afc8ea0d0201ae234fda35de721e/Formula/boost.rb -o boost.rb
-brew install ./boost.rb
+If you want to build the disk image with `make deploy` (.dmg / optional), you need RSVG:
+```shell
+    brew install librsvg
 ```
 
 OpenSSL has it's uniq way to organize a folder structure so we have to try this command at first:
 ```shell
-brew link openssl --force
+    brew link openssl --force
 ```
+
 If you'll get a refuse result such as "Warning: Refusing to link macOS provided/shadowed software: openssl", you'll have to call this command instead:
 ```shell
-( brew --prefix openssl && echo '/include/openssl'; ) | tr -d "[:space:]" | xargs -I '{}' ln -s {} /usr/local/include
+    ( brew --prefix openssl && echo '/include/openssl'; ) | tr -d "[:space:]" | xargs -I '{}' ln -s {} /usr/local/include
+```
+
+Next run an important command to keep appopriate versions to run:
+```shell
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
+```
+
+Next:
+```shell
+    # since brew has been removed the required version of the boost
+    curl https://raw.githubusercontent.com/Homebrew/homebrew-core/8d748e26ccc9afc8ea0d0201ae234fda35de721e/Formula/boost.rb -o boost.rb
+    brew install ./boost.rb
 ```
 
 Also it may be usefull to add openssl bin folder to PATH as it recommended by result of the command "brew link openssl --force".
 
 See [dependencies.md](dependencies.md) for a complete overview.
 
-If you want to build the disk image with `make deploy` (.dmg / optional), you need RSVG:
-```shell
-brew install librsvg
-```
-NOTE: The option is currently unavailable.
 
 Also it is important to have the exact version of the icu4c:
 ```shell
-brew uninstall --ignore-dependencies icu4c
-curl https://raw.githubusercontent.com/Homebrew/homebrew-core/a806a621ed3722fb580a58000fb274a2f2d86a6d/Formula/icu4c.rb -o icu4c.rb
-brew install ./icu4c.rb
+    brew uninstall --ignore-dependencies icu4c
+    curl https://raw.githubusercontent.com/Homebrew/homebrew-core/a806a621ed3722fb580a58000fb274a2f2d86a6d/Formula/icu4c.rb -o icu4c.rb
+    brew install ./icu4c.rb
+    ln -s /usr/local/Cellar/icu4c/64.2 /usr/local/opt/icu4c
 ```
 
-### Libscrypt
-As a prerequisite it is also required to make libscrypt.a file. In order to do this you have to run followed commands:
+After finishing this steps of the dependencies installation you may run the command to undo brew configuration:
+```shell
+    export HOMEBREW_NO_AUTO_UPDATE=0
+    export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=0
+```
+
+### Libscrypt (optional)
+You can also make a separate libscrypt.a file. In order to do this you have to run followed commands:
 
 ```shell
-cd src/libscrypt
-cmake .
-make
+    cd src/libscrypt
+    cmake .
+    make
 ```
 
-### Ethash
-As an another prerequisite it is required to make libethash.a file. In order to do this you have to run followed commands:
+### Cryptopp (optional)
+For a separate building of a libcryptopp.a file:
 
 ```shell
-cd src/cpp-ethereum/ethash
-cmake .
-make
+    cd src/cryptopp
+    cmake .
+    make
 ```
 
-### Cryptopp
-And an another prerequisite that is also required is a libcryptopp.a file. In order to do this you have to run followed commands:
-
-```shell
-cd src/cryptopp
-cmake .
-make
-```
-
-### Secp256k1
-And for a libunivalue.a file:
-
-```shell
-cd src/secp256k1
-make
-```
-
-### Univalue
+### Secp256k1 (optional)
 And for a libsecp256k1.a file:
 
 ```shell
-cd src/univalue
-make
+    cd src/secp256k1
+    cmake .
+    make
+```
+
+### Univalue (optional)
+And for a libunivalue.a file:
+
+```shell
+    cd src/univalue
+    ./autogen.sh
+    ./configure
+    make
+```
+
+### JSON CPP (optional)
+And for a libjsoncpp.dylib file:
+
+```shell
+    cd src/jsoncpp/jsoncpp-build
+    cmake ../jsoncpp 
+    make
+```
+
+### LibFF (optional)
+And for a libff.a file go to src/libff/CMakeLists.txt and uncomment lines from 102 to 113. Then run commands:
+
+```shell
+    cd src/libff/CMakeLists.txt
+    cmake .
+    make
+```
+
+### Ethash (optional)
+For libethash.a file:
+
+```shell
+    cd src/cpp-ethereum/ethash
+    cmake .
+    make
 ```
 
 #### SQLite
@@ -125,13 +174,13 @@ Usually, macOS installation already has a suitable SQLite installation.
 In order to check is there an installed SQLite you may run a command:
 
 ```shell
-sqlite3 --version
+    sqlite3 --version
 ```
 
 If you haven't SQLite installed it can be solved by the Homebrew package:
 
 ```shell
-brew install sqlite
+    brew install sqlite
 ```
 
 In that case the Homebrew package will prevail.
@@ -143,7 +192,7 @@ you can use [this](/contrib/install_db4.sh) script to install it
 like so:
 
 ```shell
-./contrib/install_db4.sh .
+    ./contrib/install_db4.sh .
 ```
 
 from the root of the repository.
@@ -151,67 +200,73 @@ from the root of the repository.
 Also, the Homebrew package could be installed:
 
 ```shell
-brew install berkeley-db@18
+    brew install berkeley-db@18
 ```
 
 The project is configured with the dependency Berkeley DB v18.1.32. In order to check the version you can run:
 ```shell
-brew info berkeley-db 
+    brew info berkeley-db 
 ```
 
 If the brew installed a different version run the followed command:
 ```shell
-# since brew switch is depreceted it is required to use workaround
-brew uninstall berkeley-db@18
-# since brew prohibited to use Git commits urls in install command
-curl https://raw.githubusercontent.com/Homebrew/homebrew-core/f325e0637fbf513819129744dc107382de028fc5/Formula/berkeley-db.rb -o berkeley-db.rb
-brew install ./berkeley-db.rb
+    # since brew switch is depreceted it is required to use workaround
+    brew uninstall berkeley-db@18
+    # since brew prohibited to use Git commits urls in install command
+    curl https://raw.githubusercontent.com/Homebrew/homebrew-core/f325e0637fbf513819129744dc107382de028fc5/Formula/berkeley-db.rb -o berkeley-db.rb
+    brew install ./berkeley-db.rb
 ```
 
 ## Build BTCU
 
 1. Clone the BTCU source code:
-    ```shell
+```shell
     git clone https://github.com/btcu-ultimatum/btcu
     cd btcu
-    ```
-2.  Make the Homebrew OpenSSL headers visible to the configure script  (do ```brew info openssl``` to find out why this is necessary, or if you use Homebrew with installation folders different from the default).
+```
+2.  (Optional) Make the Homebrew OpenSSL headers visible to the configure script  (do ```brew info openssl``` to find out why this is necessary, or if you use Homebrew with installation folders different from the default).
 
         export LDFLAGS="$LDFLAGS -L/usr/local/opt/openssl/lib"
-        export CPPFLAGS="$CPPFLAGS -I/usr/local/opt/openssl/include"
-
-    Same applied for jsoncpp but with a slight difference: the result of a command ```brew  --prefix jsoncpp ``` will be placed to LDFLAGS with '/lib' prefix and to CPPFLAGS with '/include' prefix. The common result will be like that:
-
-        export LDFLAGS="$LDFLAGS -L/usr/local/opt/jsoncpp/lib"
-        export CPPFLAGS="$CPPFLAGS -I/usr/local/opt/jsoncpp/include"
+        export CPPFLAGS="$CPPFLAGS -I/usr/local/opt/openssl/include/openssl"
 
 3.  Build BTCU
 
     Configure and build the headless BTCU binaries as well as the GUI (if Qt is found).
 
-    You can disable the GUI build by passing `--without-gui` to configure.
+    You can disable the GUI build by passing `-DENABLE_GUI=OFF` to cmake.
 
     The wallet support requires one or both of the dependencies ([*SQLite*](#sqlite) and [*Berkeley DB*](#berkeley-db)) from the previous section.
     To build BTCU without wallet, see [*Disable-wallet mode*](#disable-wallet-mode).
 
     To build the project run followed commands:
-    ```shell
-    ./autogen.sh
-    ./configure
+```shell
     cmake .
     make
-    ```
+```
 
 4.  It is recommended to build and run the unit tests:
-    ```shell
+```shell
     make check
-    ```
+```
+
+5.  You can also create a .dmg that contains the .app bundle (optional):
+```shell
+    make osx-dmg
+```
+
+## Compiling for different MacOS versions
+In a case when you need a different version of the OSX platforms add the parameter to a cmake command (for example we use 10.10 version) :
+```shell
+    cmake . -DCMAKE_OSX_DEPLOYMENT_TARGET=10.10
+```
+
+It may be required to have an installed appopriate SDK version. You can find an instruction how to make it [here](https://gist.github.com/robvanoostenrijk/7a1a32d2071232d9cd98).
 
 ## Disable-wallet mode
 When the intention is to run only a P2P node without a wallet, BTCU may be
 compiled in disable-wallet mode with:
 ```shell
-./configure --disable-wallet
+    cmake . -DBUILD_BITCOIN_WALLET=OFF
 ```
 
 In this case there is no dependency on [*Berkeley DB*](#berkeley-db) and [*SQLite*](#sqlite).
@@ -221,31 +276,27 @@ Mining is also possible in disable-wallet mode using the `getblocktemplate` RPC 
 ## Running
 BTCU is now available at `./btcud`
 
-Before running, you may create an empty configuration file:
+Before running, it's recommended that you create an RPC configuration file:
 ```shell
-mkdir -p "/Users/${USER}/Library/Application Support/BTCU"
+    echo -e "rpcuser=btcurpc\nrpcpassword=$(xxd -l 16 -p /dev/urandom)" > "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
 
-touch "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
-
-chmod 600 "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
+    chmod 600 "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
 ```
 
-The first time you run btcud, it will start downloading the blockchain. This process could
-take many hours, or even days on slower than average systems.
+The first time you run btcud, it will start downloading the blockchain. This process could take many hours, or even days on slower than average systems.
 
 You can monitor the download process by looking at the debug.log file:
 ```shell
-tail -f $HOME/Library/Application\ Support/BTCU/debug.log
+    tail -f $HOME/Library/Application\ Support/BTCU/debug.log
 ```
 
 ## Other commands:
 ```shell
-btcud -daemon      # Starts the btcu daemon.
-btcu-cli --help    # Outputs a list of command-line options.
-btcu-cli help      # Outputs a list of RPC commands when the daemon is running.
-./src/qt/btcu-qt   # Start GUI
+    btcud -daemon      # Starts the btcu daemon.
+    btcu-cli --help    # Outputs a list of command-line options.
+    btcu-cli help      # Outputs a list of RPC commands when the daemon is running.
+    ./src/qt/btcu-qt   # Start GUI
 ```
 
 ## Notes
 * Tested on OS X 11.1 Big Sur on 64-bit Intel processors only.
-* Note: `.dmg` build is currently unsupported
