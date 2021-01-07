@@ -6,6 +6,7 @@ adhoc.cpp.copied
 libcryptopp.a
 libcryptopp.so
 libcryptopp.dylib
+libcryptopp.*.dylib
 cryptest.exe
 cryptopp-test.cxx
 cryptopp-test.exe
