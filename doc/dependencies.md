@@ -36,12 +36,11 @@ Controlling dependencies
 ------------------------
 Some dependencies are not needed in all configurations. The following are some factors that affect the dependency list.
 
-#### Options passed to `./configure`
-* MiniUPnPc is not needed with  `--with-miniupnpc=no`.
-* Berkeley DB is not needed with `--disable-wallet`.
-* Qt is not needed with `--without-gui`.
-* If the qrencode dependency is absent, QR support won't be added. To force an error when that happens, pass `--with-qrencode`.
-* ZeroMQ is needed only with the `--with-zmq` option.
+#### Options passed to `cmake`
+* MiniUPnPc is not needed with  `-DWITH_MINIUNPC=OFF`.
+* Berkeley DB is not needed with `-DENABLE_WALLET=OFF`.
+* Qt is not needed with `-DENABLE_GUI=OFF`.
+* ZeroMQ is not needed with the `-DENABLE_ZMQ=OFF`.
 
 #### Other
 * librsvg is only needed if you need to run `make osx-dmg` on
