@@ -290,7 +290,8 @@ def runStrip(binaryPath: str, verbose: int):
 
 
 def copyFramework(framework: FrameworkInfo, path: str,
-                  verbose: int) -> Optional[str]:
+                  verbose: int, sysLibDir: str, builtLibDir: str
+                  ) -> Optional[str]:
     if framework.sourceFilePath.startswith("Qt"):
         # standard place for Nokia Qt installer's frameworks
         fromPath = "/Library/Frameworks/" + framework.sourceFilePath
@@ -299,11 +300,22 @@ def copyFramework(framework: FrameworkInfo, path: str,
     toDir = os.path.join(path, framework.destinationDirectory)
     toPath = os.path.join(toDir, framework.binaryName)
 
-    if fromPath.endswith(".dylib") and fromPath.startswith("@rpath"):
-        fromPath = fromPath.replace("@rpath", "/usr/local/lib")
-
     if not os.path.exists(fromPath):
-        raise RuntimeError("No file at " + fromPath)
+        # strip lib version from the path
+        tempPath = re.sub(r'@.*?\/', "/", fromPath)
+
+        if os.path.exists(tempPath):
+            fromPath = tempPath
+        else:
+            # strip all path in order to retry import
+            tempPath = re.sub(r'.*\/', "/", fromPath)
+
+            if os.path.exists(sysLibDir + tempPath):
+                fromPath = sysLibDir + tempPath
+            elif os.path.exists(builtLibDir + tempPath):
+                fromPath = builtLibDir + tempPath
+            else:
+                raise RuntimeError("No file at " + fromPath + " and at " + sysLibDir + tempPath + " and at " + builtLibDir + tempPath)
 
     if os.path.exists(toPath):
         return None  # Already there
@@ -371,8 +383,10 @@ def copyFramework(framework: FrameworkInfo, path: str,
     return toPath
 
 
-def deployFrameworks(frameworks: List[FrameworkInfo], bundlePath: str, binaryPath: str, strip: bool,
-                     verbose: int, deploymentInfo: Optional[DeploymentInfo] = None) -> DeploymentInfo:
+def deployFrameworks(frameworks: List[FrameworkInfo], bundlePath: str, binaryPath: str, 
+                     strip: bool, verbose: int, 
+                     sysLibDir: str, builtLibDir: str, 
+                     deploymentInfo: Optional[DeploymentInfo] = None) -> DeploymentInfo:
     if deploymentInfo is None:
         deploymentInfo = DeploymentInfo()
 
@@ -401,7 +415,7 @@ def deployFrameworks(frameworks: List[FrameworkInfo], bundlePath: str, binaryPat
             verbose)
 
         # Copy framework to app bundle.
-        deployedBinaryPath = copyFramework(framework, bundlePath, verbose)
+        deployedBinaryPath = copyFramework(framework, bundlePath, verbose, sysLibDir, builtLibDir)
         # Skip the rest if already was deployed.
         if deployedBinaryPath is None:
             continue
@@ -432,7 +446,7 @@ def deployFrameworks(frameworks: List[FrameworkInfo], bundlePath: str, binaryPat
 
 
 def deployFrameworksForAppBundle(
-        applicationBundle: ApplicationBundleInfo, strip: bool, verbose: int) -> DeploymentInfo:
+        applicationBundle: ApplicationBundleInfo, strip: bool, verbose: int, sysLibDir: str, builtLibDir: str) -> DeploymentInfo:
     frameworks = getFrameworks(applicationBundle.binaryPath, verbose)
     if len(frameworks) == 0 and verbose >= 1:
         print(
@@ -441,11 +455,11 @@ def deployFrameworksForAppBundle(
         return DeploymentInfo()
     else:
         return deployFrameworks(
-            frameworks, applicationBundle.path, applicationBundle.binaryPath, strip, verbose)
+            frameworks, applicationBundle.path, applicationBundle.binaryPath, strip, verbose, sysLibDir, builtLibDir)
 
 
 def deployPlugins(appBundleInfo: ApplicationBundleInfo,
-                  deploymentInfo: DeploymentInfo, strip: bool, verbose: int):
+                  deploymentInfo: DeploymentInfo, strip: bool, verbose: int, sysLibDir: str, builtLibDir: str, ):
     # Lookup available plugins, exclude unneeded
     plugins = []
     if deploymentInfo.pluginPath is None:
@@ -608,6 +622,8 @@ def deployPlugins(appBundleInfo: ApplicationBundleInfo,
                     destinationPath,
                     strip,
                     verbose,
+                    sysLibDir, 
+                    builtLibDir, 
                     deploymentInfo)
 
 
@@ -678,6 +694,18 @@ ap.add_argument(
     metavar="path",
     default=None,
     help="Path to Qt's translation files")
+ap.add_argument(
+    "-sys-lib-dir",
+    nargs=1,
+    metavar="path",
+    default=[""],
+    help="Path to system libraries folder")
+ap.add_argument(
+    "-built-lib-dir",
+    nargs=1,
+    metavar="path",
+    default=[""],
+    help="Path to built libraries folder")
 ap.add_argument(
     "-add-resources",
     nargs="+",
@@ -841,7 +869,7 @@ if verbose >= 2:
 
 try:
     deploymentInfo = deployFrameworksForAppBundle(
-        applicationBundle, config.strip, verbose)
+        applicationBundle, config.strip, verbose, config.sys_lib_dir[0], config.built_lib_dir[0])
     if deploymentInfo.qtPath is None:
         deploymentInfo.qtPath = os.getenv("QTDIR", None)
         if deploymentInfo.qtPath is None:
@@ -861,7 +889,7 @@ if config.plugins:
         print("+ Deploying plugins +")
 
     try:
-        deployPlugins(applicationBundle, deploymentInfo, config.strip, verbose)
+        deployPlugins(applicationBundle, deploymentInfo, config.strip, verbose, config.sys_lib_dir[0], config.built_lib_dir[0])
     except RuntimeError as e:
         if verbose >= 1:
             sys.stderr.write("Error: {}\n".format(str(e)))
