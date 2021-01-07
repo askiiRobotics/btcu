@@ -75,13 +75,6 @@ if(ZMQ_INCLUDE_DIR)
 
 	include(ExternalLibraryHelper)
 
-	# The dependency to iphlpapi starts from 4.2.0
-	if(ZMQ_VERSION VERSION_LESS 4.2.0)
-		set(_ZMQ_WINDOWS_LIBRARIES "$<$<PLATFORM_ID:Windows>:ws2_32;rpcrt4>")
-	else()
-		set(_ZMQ_WINDOWS_LIBRARIES "$<$<PLATFORM_ID:Windows>:ws2_32;rpcrt4;iphlpapi>")
-	endif()
-
 	find_component(ZMQ zmq
 		NAMES zmq
 		INCLUDE_DIRS ${ZMQ_INCLUDE_DIRS}
