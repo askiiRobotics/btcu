@@ -1,5 +1,8 @@
+project (ff)
+
 set(FF_EXTRASRCS)
 set(FF_EXTRALIBS)
+set(CMAKE_FIND_LIBRARY_SUFFIXES_SAVE "${CMAKE_FIND_LIBRARY_SUFFIXES}")
 if(${CURVE} STREQUAL "BN128")
   set(
     FF_EXTRASRCS
@@ -22,7 +25,6 @@ endif()
 
 add_library(
   ff
-  STATIC
 
   algebra/curves/alt_bn128/alt_bn128_g1.cpp
   algebra/curves/alt_bn128/alt_bn128_g2.cpp
@@ -53,7 +55,7 @@ add_library(
 )
 target_link_libraries(
   ff
-  ${GMP_LIBRARY}
+  ${GMP_LIBRARIES}
   ${PROCPS_LIBRARIES}
   ${FF_EXTRALIBS}
 )
@@ -141,7 +143,7 @@ if ("${IS_LIBFF_PARENT}")
   target_link_libraries(
     multiexp_profile
 
-    ${OPENSSL_LIBRARIES}
+    OpenSSL::SSL
     ff
   )
 
