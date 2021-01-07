@@ -1,32 +1,69 @@
 cmake_minimum_required(VERSION 3.10)
 
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set(CMAKE_TOOLCHAIN_FILE ./cmake/platforms/OSX.cmake)
+    endif()
+endif()
+
 set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
 list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
 
-if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Hunter configuration types")
-    set(HUNTER_JOBS_NUMBER 4 CACHE STRING "Hunter jobs number")
-    set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache" CACHE STRING "Hunter cache servers")
-    set(HUNTER_PASSWORDS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hunter/passwords.cmake CACHE STRING "Hunter password path")
-    # In CI builds upload the binaries if the GITHUB_USER_PASSWORD was decrypted
-    # (only for branches and internal PRs).
-    if("$ENV{CI}" AND NOT "$ENV{GITHUB_USER_PASSWORD}" STREQUAL "")
-        set(run_upload YES)
-    else()
-        set(run_upload NO)
-    endif()
-    option(HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload})
+# remove NDEBUG flag from Ethereum
+string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
-    include(HunterGate)
-    HunterGate(
-            URL "https://github.com/ruslo/hunter/archive/v0.23.44.tar.gz"
-            SHA1 "c4cfcc0cd39fdae8de08f6205b7f34cab4a7ba79"
-            LOCAL
-    )
-endif()
+string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+    
 
 project(BTCU)
+set(PACKAGE_NAME "BTCU")
 
+# TODO: implement all conditions:
+
+# ENABLE_LEASING_MANAGER --disable-leasing-manager   --  ENABLE_LEASING_MANAGER, configure flag, no cmake
+# ENABLE_WALLET --disable-wallet  --  ENABLE_WALLET, configure flag, no cmake
+# ENABLE_TESTS --disable-tests 
+# ENABLE_QT bitcoin_enable_qt --with-gui  --  ENABLE_GUI, configure flag, no cmake
+# ENABLE_QT_TESTS --disable-gui-tests 
+# ENABLE_BENCH --disable-bench 
+# USE_QTCHARTS --with-qtcharts
+# USE_LCOV --enable-lcov 
+# GLIBC_BACK_COMPAT --enable-glibc-back-compat  --  ENABLE_GLIBC_BACK_COMPAT, configure flag, no cmake
+# HARDEN --disable-hardening  --  DISABLE_HARDENING, configure flag, no cmake
+# USE_ASM --enable-asm 
+# BUILD_BITCOIND --with-daemon 
+# BUILD_BITCOIN_UTILS --with-utils  --  BUILD_UTILS, configure flag, no cmake
+# BUILD_BITCOIN_LIBS --with-libs  --  BUILD_LIBS, configure flag, no cmake
+# ENABLE_ZMQ --disable-zmq  --  ENABLE_ZMQ, configure flag, no cmake
+# USE_UPNP --with-miniupnpc  --  WITH_MINIUNPC, configure flag, no cmake
+# use_upnp_default --enable-upnp-default  --  START_WITH_UPNP, configure flag, no cmake
+# EXTENDED_FUNCTIONAL_TESTS --enable-extended-functional-tests
+# use_reduce_exports --enable-reduce-exports  --  ENABLE_REDUCE_EXPORTS, configure flag, no cmake
+# use_ccache --disable-ccache
+# use_lcov_branch --enable-lcov-branch-coverage
+# system_univalue --with-system-univalue
+# USE_NUM_GMP USE_NUM_OPENSSL --with-zerocoin-bignum
+# PROTOC --with-protoc-bindir
+# ENABLE_MAN --disable-man
+# enable_debug --enable-debug
+# SANITIZER_CXXFLAGS --with-sanitizers
+# enable_gprof --enable-gprof  --  ENABLE_GPROF, configure flag, no cmake
+# enable_werror --enable-werror
+
+option(ENABLE_LEASING_MANAGER "Disable leasing manager" OFF)
+option(ENABLE_GUI "Build btcu-qt" ON)
+option(ENABLE_ZMQ "Activate the ZMQ notifications" ON)
+option(ENABLE_WALLET "Activate the wallet functionality" ON)
+option(BUILD_UTILS "Build btcu-cli and btcu-tx" ON)
+option(BUILD_LIBS "Build the btcuconsensus shared library" ON)
+option(DISABLE_HARDENING "Do not attempt to harden the resulting executables" OFF)
+option(ENABLE_REDUCE_EXPORTS "Attempt to reduce exported symbols in the resulting" OFF)
+option(ENABLE_GLIBC_BACK_COMPAT "Enable backwards compatibility with glibc" OFF)
+option(WITH_MINIUNPC "Enable UPnP support" ON)
+option(START_WITH_UPNP "If UPNP is enabled, turn it on at startup" OFF)
+option(ENABLE_GPROF "Use gprof profiling compiler flags " OFF)
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
@@ -36,21 +73,36 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(ENV{target} "Mac")
 
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/boost)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/curl)
 
-    set(Boost_USE_STATIC_LIBS OFF)
-    set(Boost_NO_BOOST_CMAKE ON)
-    set( BOOST_ROOT "/usr/local/opt/boost" CACHE PATH "Boost library path" )
-    set( Boost_NO_SYSTEM_PATHS on CACHE BOOL "Do not search system for Boost" )
+    set( Boost_NO_BOOST_CMAKE ON )
+    set( Boost_USE_STATIC_LIBS OFF )
+    set( Boost_NO_SYSTEM_PATHS ON )
+    set( Boost_USE_DEBUG_RUNTIME OFF )
+    set( Boost_INCLUDE_DIR "/usr/local/opt/boost/include" )
+    set( BOOST_LIBRARYDIR "/usr/local/opt/boost/lib" )
+    set( BOOST_ROOT "/usr/local/opt/boost" )
+
     add_definitions(-DBOOST_LOG_DYN_LINK=1)
+    add_definitions(-DBOOST_NO_SCOPED_ENUMS=1)
+    add_definitions(-DBOOST_NO_CXX11_SCOPED_ENUMS=1)
+
+    message(STATUS Boost_INCLUDE_DIR:)
+    message (STATUS ${Boost_INCLUDE_DIR})
 endif()
 
-find_package(Boost COMPONENTS program_options filesystem system thread context fiber chrono log log_setup REQUIRED)
+find_package(Boost 1.71.0 EXACT COMPONENTS program_options filesystem system thread context fiber chrono log log_setup REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+
 add_definitions(-DETH_FATDB=1)
 
 message(STATUS Boost_LIBRARIES:)
 message (STATUS ${Boost_LIBRARIES})
 
 set(BDB_VER "18.1.32")
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/scripts")
+include(BrewHelper)
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/contrib/cmake")
 set(CMAKE_CXX_STANDARD 11)
 include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
@@ -60,27 +112,48 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     message(FATAL_ERROR "Native Windows CMake is not supported yet, use WSL instead")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")    
     find_package(PkgConfig REQUIRED) 
 
-    list(APPEND CMAKE_PREFIX_PATH ./src/osx-extr)
-
+    list(APPEND CMAKE_PREFIX_PATH ./src/jsoncpp)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/qt5)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/openssl)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/berkeley-db)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/rocksdb)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/jsoncpp)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libjson-rpc-cpp)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
     list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/snappy)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libevent)
     list(APPEND CMAKE_PREFIX_PATH ./src/libscrypt)
     list(APPEND CMAKE_PREFIX_PATH ./src/cryptopp)
     list(APPEND CMAKE_PREFIX_PATH ./src/cpp-ethereum/ethash)
 
-    set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl/")
-    set(ENV{CPPFLAGS} "-I${OPENSSL_ROOT_DIR}/include -DOBJC_OLD_DISPATCH_PROTOTYPES=0")
-    set(ENV{LDFLAGS} "-L${OPENSSL_ROOT_DIR}/lib")
     set(BerkeleyDB_ROOT_DIR "/usr/local/opt/berkeley-db")
+
+    set( CURL_INCLUDE_DIR "/usr/local/opt/curl/include" )
+    set( CURL_LIBRARY "/usr/local/opt/curl/lib" )
+
+    set( MHD_INCLUDE_DIR "/usr/local/opt/libmicrohttpd/include" )
+    set( MHD_LIBRARY "/usr/local/opt/libmicrohttpd/lib" )
+
+    set( BerkeleyDB_INCLUDE_DIRS "/usr/local/opt/berkeley-db/include" )
+    set( BerkeleyDB_LIBRARY "/usr/local/opt/berkeley-db/lib" )
+
+	find_brew_prefix(OPENSSL_ROOT_DIR openssl)
+
+    set( LibEvent_INCLUDE_DIR "/usr/local/opt/libevent/include" )
+    set( LibEvent_LIBRARY "/usr/local/opt/libevent/lib" )
+
+    set( GMP_INCLUDE_DIR "/usr/local/opt/gmp/include" )
+    set( GMP_LIBRARY "/usr/local/opt/gmp/lib" )
+
+    set( ZMQ_INCLUDE_DIR "/usr/local/opt/zmq/include" )
+    set( ZMQ_LIBRARY "/usr/local/opt/zmq/lib" )
+
+    set( Qrcode_INCLUDE_DIR "/usr/local/opt/qrencode/include" )
+    set( Qrcode_LIBRARY "/usr/local/opt/qrencode/lib" )
+    
+    set (CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG 1)
+    
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(ENV{target} "Linux")
     file(READ "/proc/version" _SYS_VERSION)
@@ -104,19 +177,19 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    find_package(jsoncpp CONFIG REQUIRED)
-
-    find_package(cryptopp CONFIG REQUIRED)
-
     find_package(libjson-rpc-cpp CONFIG REQUIRED)
-
-    find_package(libscrypt CONFIG REQUIRED)
-
-    find_package(ethash CONFIG REQUIRED)
 
     find_package(Snappy CONFIG REQUIRED)
 
     find_library(ROCKSDB_LIBRARY rocksdb)
+
+    add_subdirectory(src/libscrypt)
+
+    add_subdirectory(src/cryptopp)
+
+    add_subdirectory(src/jsoncpp/jsoncpp)
+
+    add_subdirectory(src/cpp-ethereum/ethash)
 else()
     hunter_add_package(jsoncpp)
     find_package(jsoncpp CONFIG REQUIRED)
@@ -140,7 +213,7 @@ else()
 endif()
 
 # Find Dependencies
-find_package(BerkeleyDB ${BDB_VER} REQUIRED)
+find_package(BerkeleyDB REQUIRED)
 if(BerkeleyDB_FOUND)
     if(NOT ${BerkeleyDB_VERSION} MATCHES "${BDB_VER}")
         message(WARNING "BerkeleyDB version other than ${BDB_VER} found!")
@@ -151,42 +224,181 @@ endif()
 find_package(OpenSSL REQUIRED)
 if(OPENSSL_FOUND)
     message(STATUS "Found OpenSSL (${OPENSSL_VERSION}): ${OPENSSL_LIBRARIES}")
+
+    message(STATUS OPENSSL_INCLUDE_DIR:)
+    message (STATUS ${OPENSSL_INCLUDE_DIR})
+
     if(OPENSSL_VERSION VERSION_GREATER_EQUAL 1.1)
         message(STATUS "Found unsupported OpenSSL version!")
         set(SSL_CONFIGURE_FLAGS "--with-unsupported-ssl")
     endif()
-endif()
 
-find_package(LibEvent REQUIRED)
+	set(CMAKE_REQUIRED_INCLUDES ${OPENSSL_INCLUDE_DIR})
+	set(CMAKE_REQUIRED_LIBRARIES ${OPENSSL_LIBRARIES})
+
+    set(ENV{CPPFLAGS} "-I${OPENSSL_ROOT_DIR}/include -DOBJC_OLD_DISPATCH_PROTOTYPES=0")
+    set(ENV{LDFLAGS} "-L${OPENSSL_ROOT_DIR}/lib")
+
+    set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
+    set(ENV{OPENSSL_LIB_DIR} "${OPENSSL_ROOT_DIR}/lib")
+    set(ENV{OPENSSL_INCLUDE_DIR} "${OPENSSL_ROOT_DIR}/include")
+
+    include_directories(${OPENSSL_INCLUDE_DIR})
+    link_directories(${OPENSSL_LIBRARIES})
+endif()
 
 find_package(GMP)
 if(GMP_FOUND)
+    message(STATUS "Found GMP (${GMP_VERSION}): ${GMP_LIBRARIES}")
+
+    message(STATUS GMP_INCLUDE_DIR:)
+    message (STATUS ${GMP_INCLUDE_DIR})
 else()
     message(WARNING "GMP not found, falling back to OpenSSL for bignum!")
     set(BIGNUM_CONFIGURE_FLAGS "--with-zerocoin-bignum=openssl")
 endif()
 
-find_package(ZMQ)
-find_package(Miniupnp)
 
 # run autogen.sh if missing header files from configure on Linux/Mac
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/configure")
 else()
+    message (STATUS "Need to generate configure. Running: ${CMAKE_CURRENT_SOURCE_DIR}/autogen.sh")
+
     execute_process(
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/autogen.sh
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
 
-# run configure if btcu_config.h doesn't exist
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/config/btcu-config.h")
+# collect config flags
+set(PROJECT_CONFIGURE_FLAGS "")
+if(ENABLE_GUI)
+    message(STATUS "Enabled option: Build btcu-qt")
+# default auto
+    set(PROJECT_CONFIGURE_FLAGS "--with-gui=auto")
 else()
-    execute_process(
-        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/configure ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+    message(STATUS "Disabled option: Build btcu-qt")
+    set(PROJECT_CONFIGURE_FLAGS "--without-gui")
 endif()
+if(ENABLE_LEASING_MANAGER)
+    message(STATUS "Disabled option: Leasing manager")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-leasing-manager")
+else()
+    message(STATUS "Enabled option: Leasing manager")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-leasing-manager")
+endif()
+if(ENABLE_ZMQ)
+    message(STATUS "Enabled option: Activate the ZMQ notifications")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-zmq")
+else()
+    message(STATUS "Disabled option: Activate the ZMQ notifications")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-zmq")
+endif()
+if(ENABLE_WALLET)
+    message(STATUS "Enabled option: Activate the wallet functionality")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-wallet")
+else()
+    message(STATUS "Disabled option: Activate the wallet functionality")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-wallet")
+endif()
+if(BUILD_UTILS)
+    message(STATUS "Enabled option: Build btcu-cli and btcu-tx")
+# default yes
+#     set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --with-utils")
+else()
+    message(STATUS "Disabled option: Build btcu-cli and btcu-tx")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --without-utils")
+endif()
+if(BUILD_LIBS)
+    message(STATUS "Enabled option: Build the btcuconsensus shared library")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --with-libs")
+else()
+    message(STATUS "Disabled option: Build the btcuconsensus shared library")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --without-libs")
+endif()
+if(DISABLE_HARDENING)
+    message(STATUS "Disabled option: Harden the executables")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-hardening")
+else()
+    message(STATUS "Enabled option: Harden the executables")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-hardening")
+endif()
+if(ENABLE_REDUCE_EXPORTS)
+    message(STATUS "Enabled option: Attempt to reduce exported symbols in the resulting")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-reduce-exports")
+else()
+    message(STATUS "Disabled option: Attempt to reduce exported symbols in the resulting")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-reduce-exports")
+endif()
+if(ENABLE_GLIBC_BACK_COMPAT)
+    message(STATUS "Enabled option: Backwards compatibility with glibc")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-glibc-back-compat")
+else()
+    message(STATUS "Disabled option: Backwards compatibility with glibc")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-glibc-back-compat")
+endif()
+if(WITH_MINIUNPC)
+    message(STATUS "Enabled option: UPnP support")
+# default yes
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --with-miniupnpc")
+else()
+    message(STATUS "Disabled option: UPnP support")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --without-miniupnpc")
+endif()
+if(START_WITH_UPNP)
+    message(STATUS "Enabled option: If UPNP is enabled, turn it on at startup")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-upnp-default")
+else()
+    message(STATUS "Disabled option: If UPNP is enabled, turn it on at startup")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-upnp-default")
+endif()
+if(ENABLE_GPROF)
+    message(STATUS "Enabled option: Use gprof profiling compiler flags")
+    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --enable-gprof")
+else()
+    message(STATUS "Disabled option: Use gprof profiling compiler flags")
+# default no
+#    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-gprof")
+endif()
+
+# run configure in order to update or create btcu-config.h
+
+find_program(GCC_COMPILER_FOR_AUTOCONF g++)
+find_program(CC_COMPILER_FOR_AUTOCONF cc)
+    
+message (STATUS "Updating btcu-config.h. Running: ${CMAKE_CURRENT_SOURCE_DIR}/configure ${PROJECT_CONFIGURE_FLAGS} ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS} CC=${CC_COMPILER_FOR_AUTOCONF} CXX=${GCC_COMPILER_FOR_AUTOCONF}")
+
+execute_process(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/configure ${PROJECT_CONFIGURE_FLAGS} ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS} CC=${CC_COMPILER_FOR_AUTOCONF} CXX=${GCC_COMPILER_FOR_AUTOCONF} 
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
 add_definitions(-DHAVE_CONFIG_H)
+
+find_package(LibEvent REQUIRED)
+
+find_package(ZMQ)
+if(ZMQ_FOUND)
+    message(STATUS "Found ZMQ (${ZMQ_VERSION}): ${ZMQ_LIBRARIES}")
+
+    message(STATUS ZMQ_INCLUDE_DIRS:)
+    message (STATUS ${ZMQ_INCLUDE_DIRS})
+else()
+    message(WARNING "ZMQ not found!")
+endif()
+find_package(miniupnp)
+
+add_subdirectory(src/libff)
+
+# Find the python interpreter. This is required for several targets.
+find_package(Python 3.5 COMPONENTS Interpreter REQUIRED)
 
 ExternalProject_Add (
         libunivalue
@@ -206,7 +418,11 @@ ExternalProject_Add (
         INSTALL_COMMAND ""
         )
 
-add_subdirectory(src/libff)
+link_directories(
+        ${CMAKE_SOURCE_DIR}/src/univalue/.libs
+        ${CMAKE_SOURCE_DIR}/src/secp256k1/.libs
+        )
+link_directories(${CMAKE_BINARY_DIR})
 
 set(libleveldb_a_headers
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/port/atomic_pointer.h
@@ -321,7 +537,7 @@ else()
     set(libleveldb_a_sources ${libleveldb_a_sources} ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/port/port_posix.cc)
 endif()
 
-add_library(leveldb STATIC ${libleveldb_a_headers} ${libleveldb_a_sources})
+add_library(leveldb ${libleveldb_a_headers} ${libleveldb_a_sources})
 target_compile_definitions(leveldb PUBLIC ${libleveldb_cpp_flags} -DLEVELDB_ATOMIC_PRESENT -D__STDC_LIMIT_MACROS)
 target_include_directories(leveldb PUBLIC ${ENDIAN_INCLUDES}
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb
@@ -346,6 +562,8 @@ target_include_directories(leveldb_sse42 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/helpers/memenv
         )
+
+target_link_libraries(leveldb leveldb_sse42)
 
 file(GLOB HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
 file(GLOB CRYPTO_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/crypto/*.h)
@@ -495,38 +713,57 @@ set(SERVER_SOURCES
 
 add_library(SERVER_A STATIC ${BitcoinHeaders} ${SERVER_SOURCES})
 if(MINIUPNP_FOUND)
-    target_compile_definitions(SERVER_A PUBLIC "-DSTATICLIB -DMINIUPNP_STATICLIB")
+    target_include_directories(SERVER_A PUBLIC
+        ${MINIUPNP_INCLUDE_DIR}
+        )
+    target_link_libraries(SERVER_A 
+        ${MINIUPNP_LIBRARY}
+        )
 endif()
-target_include_directories(SERVER_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/helpers/memenv
-    ${ZMQ_INCLUDE_DIR} ${LIBEVENT_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR} ${BerkeleyDB_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/ethash/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/evmc/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/qtum
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/secp256k1/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/libdevcore
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/utils
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/utils/libscrypt
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/libff/libff
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/libff
+target_include_directories(SERVER_A
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/helpers/memenv
+        ${ZMQ_INCLUDE_DIRS}
+        ${LibEvent_INCLUDE_DIR}
+        ${BerkeleyDB_INCLUDE_DIRS}
+        ${OPENSSL_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/ethash/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/evmc/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/qtum
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/secp256k1/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/libdevcore
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/utils
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/utils/libscrypt
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/libff/libff
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/libff
     )
-target_link_libraries(SERVER_A ${Boost_LIBRARIES} cryptopp-static libscrypt::scrypt jsoncpp_lib_static
+add_dependencies(SERVER_A libunivalue leveldb libsecp256k1)
+target_link_libraries(SERVER_A 
+        univalue
+        UTIL_A
+        BITCOIN_CRYPTO_A
+        COMMON_A
+        ${Boost_LIBRARIES} 
+        cryptopp-shared 
+        ${LibEvent_LIBRARIES}
+        ${BerkeleyDB_Cxx_LIBRARY}
+        ${OPENSSL_LIBRARIES}
+        ${ZMQ_LIBRARIES}
+        jsoncpp_lib
+        leveldb
+        secp256k1
         ${ROCKSDB_LIBRARY}
-        ${CMAKE_DL_LIBS} Threads::Threads ff Snappy::snappy)
-
-if(ZMQ_FOUND)
-    set(ZMQ_SOURCES
-        ./src/zmq/zmqabstractnotifier.cpp
-        ./src/zmq/zmqnotificationinterface.cpp
-        ./src/zmq/zmqpublishnotifier.cpp
-    )
-    add_library(ZMQ_A STATIC ${BitcoinHeaders} ${ZMQ_SOURCES} ${ZMQ_LIB})
-    target_include_directories(ZMQ_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${ZMQ_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
-    target_compile_definitions(ZMQ_A PUBLIC "-DZMQ_STATIC")
-endif()
+        ${CMAKE_DL_LIBS}
+        Threads::Threads 
+        ff 
+        Snappy::snappy
+        Threads::Threads
+        scrypt
+        )
 
 set(WALLET_SOURCES
         ./src/activemasternode.cpp
@@ -563,18 +800,39 @@ set(WALLET_SOURCES
         ./src/zbtcu/zpos.cpp
         ./src/stakeinput.cpp
         )
+
+if(ZMQ_FOUND)
+    set(ZMQ_SOURCES
+        ./src/zmq/zmqabstractnotifier.cpp
+        ./src/zmq/zmqnotificationinterface.cpp
+        ./src/zmq/zmqpublishnotifier.cpp
+    )
+    add_library(ZMQ_A STATIC ${BitcoinHeaders} ${ZMQ_SOURCES})
+    target_include_directories(ZMQ_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${ZMQ_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
+    target_link_libraries(ZMQ_A 
+        ${ZMQ_LIBRARIES}
+        )
+    if(GMP_FOUND)
+        target_include_directories(ZMQ_A PUBLIC ${GMP_INCLUDE_DIR})
+    endif()
+    target_compile_definitions(ZMQ_A PUBLIC "-DZMQ_STATIC")
+endif()
+
 add_library(WALLET_A STATIC ${BitcoinHeaders} ${WALLET_SOURCES})
 target_include_directories(WALLET_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/secp256k1/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/jsoncpp/jsoncpp/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/ethash/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/evmc/include
         ${OPENSSL_INCLUDE_DIR}
         ${BerkeleyDB_INCLUDE_DIRS}
         )
-
+if(GMP_FOUND)
+    target_include_directories(WALLET_A PUBLIC ${GMP_INCLUDE_DIR})
+endif()
 set(BITCOIN_CRYPTO_SOURCES
         ./src/crypto/sha1.cpp
         ./src/crypto/sha256.cpp
@@ -593,29 +851,19 @@ set(BITCOIN_CRYPTO_SOURCES
         ./src/crypto/keccak.c
         ./src/crypto/skein.c
         )
-add_library(BITCOIN_CRYPTO_A STATIC ${BITCOIN_CRYPTO_SOURCES})
-target_include_directories(BITCOIN_CRYPTO_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${OPENSSL_INCLUDE_DIR})
-
-set(ZEROCOIN_SOURCES
-        ./src/libzerocoin/bignum.cpp
-        ./src/libzerocoin/Accumulator.cpp
-        ./src/libzerocoin/Coin.cpp
-        ./src/libzerocoin/CoinRandomnessSchnorrSignature.cpp
-        ./src/libzerocoin/Denominations.cpp
-        ./src/libzerocoin/CoinSpend.cpp
-        ./src/libzerocoin/ParamGeneration.cpp
-        ./src/libzerocoin/Params.cpp
+add_library(BITCOIN_CRYPTO_A ${BITCOIN_CRYPTO_SOURCES})
+add_dependencies(BITCOIN_CRYPTO_A libunivalue)
+target_link_libraries(BITCOIN_CRYPTO_A
+            univalue
+            ${Boost_LIBRARIES} 
+            ${OPENSSL_LIBRARIES}
+            ${LibEvent_LIBRARIES}
+            Threads::Threads
         )
-if(GMP_FOUND)
-    list(APPEND ZEROCOIN_SOURCES ./src/libzerocoin/bignum_gmp.cpp)
-else()
-    list(APPEND ZEROCOIN_SOURCES ./src/libzerocoin/bignum_openssl.cpp)
-endif()
-add_library(ZEROCOIN_A STATIC ${ZEROCOIN_SOURCES})
-target_include_directories(ZEROCOIN_A PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${OPENSSL_INCLUDE_DIR}
-        )
+target_include_directories(BITCOIN_CRYPTO_A PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${OPENSSL_INCLUDE_DIR}
+    )
 
 set(COMMON_SOURCES
         ./src/allocators.cpp
@@ -662,10 +910,13 @@ set(COMMON_SOURCES
         )
 
 add_library(COMMON_A STATIC ${BitcoinHeaders} ${COMMON_SOURCES})
-target_include_directories(COMMON_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
+target_include_directories(COMMON_A 
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/secp256k1/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/jsoncpp/jsoncpp/include
         ${OPENSSL_INCLUDE_DIR}
         ${BerkeleyDB_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum
@@ -673,6 +924,51 @@ target_include_directories(COMMON_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/evmc/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/qtum
         )
+target_link_libraries(COMMON_A 
+            jsoncpp_lib
+            BITCOIN_CRYPTO_A
+            ${Boost_LIBRARIES} 
+            ${OPENSSL_LIBRARIES}
+            ${LibEvent_LIBRARIES}
+            UTIL_A
+            SERVER_A
+        )
+if(GMP_FOUND)
+    target_link_libraries(COMMON_A ${GMP_LIBRARIES})
+    target_include_directories(COMMON_A PUBLIC ${GMP_INCLUDE_DIR})
+endif()
+set(ZEROCOIN_SOURCES
+        ./src/libzerocoin/bignum.cpp
+        ./src/libzerocoin/Accumulator.cpp
+        ./src/libzerocoin/Coin.cpp
+        ./src/libzerocoin/CoinRandomnessSchnorrSignature.cpp
+        ./src/libzerocoin/Denominations.cpp
+        ./src/libzerocoin/CoinSpend.cpp
+        ./src/libzerocoin/ParamGeneration.cpp
+        ./src/libzerocoin/Params.cpp
+        )
+
+add_library(ZEROCOIN_A ${ZEROCOIN_SOURCES})
+add_dependencies(ZEROCOIN_A libsecp256k1)
+target_include_directories(ZEROCOIN_A PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${OPENSSL_INCLUDE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/secp256k1/include
+        )
+target_link_libraries(ZEROCOIN_A
+            UTIL_A
+            BITCOIN_CRYPTO_A
+            ${Boost_LIBRARIES} 
+            ${OPENSSL_LIBRARIES}
+            ${LibEvent_LIBRARIES}
+            jsoncpp_lib
+            COMMON_A
+            secp256k1
+        )
+if(GMP_FOUND)
+    target_link_libraries(ZEROCOIN_A ${GMP_LIBRARIES})
+    target_include_directories(ZEROCOIN_A PUBLIC ${GMP_INCLUDE_DIR})
+endif()
 
 set(UTIL_SOURCES
         ./src/allocators.cpp
@@ -692,22 +988,41 @@ set(UTIL_SOURCES
         ./src/support/cleanse.cpp
         ./src/util/string.cpp
         )
-add_library(UTIL_A STATIC ${BitcoinHeaders} ${UTIL_SOURCES})
-target_include_directories(UTIL_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
-        ${OPENSSL_INCLUDE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/
+add_library(UTIL_A 
+            ${BitcoinHeaders} 
+            ${UTIL_SOURCES}
+        )
+target_include_directories(UTIL_A PUBLIC 
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
+            ${OPENSSL_INCLUDE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/
+        )
+add_dependencies(UTIL_A libunivalue)
+target_link_libraries(UTIL_A
+            univalue
+            BITCOIN_CRYPTO_A
+            ${Boost_LIBRARIES} 
+            ${OPENSSL_LIBRARIES}
+            ${LibEvent_LIBRARIES}
+            Threads::Threads
         )
 
 set(CLI_A_SOURCES ./src/rpc/client.cpp)
-add_library(CLI_A STATIC ${BitcoinHeaders} ${CLI_A_SOURCES})
-target_include_directories(CLI_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
+add_library(CLI_A ${BitcoinHeaders} ${CLI_A_SOURCES})
+target_include_directories(CLI_A 
+            PUBLIC 
+                ${CMAKE_CURRENT_SOURCE_DIR}/src
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
         )
-
-link_directories(
-        ${CMAKE_SOURCE_DIR}/src/univalue/.libs
-        ${CMAKE_SOURCE_DIR}/src/secp256k1/.libs
+add_dependencies(CLI_A libunivalue)
+target_link_libraries(CLI_A
+            univalue
+            BITCOIN_CRYPTO_A
+            ${Boost_LIBRARIES} 
+            ${OPENSSL_LIBRARIES}
+            ${LibEvent_LIBRARIES}
+            Threads::Threads
         )
 
 set(btcu-cli_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcu-cli.cpp)
@@ -721,8 +1036,14 @@ target_link_libraries(btcu-cli
         univalue
         UTIL_A
         BITCOIN_CRYPTO_A
-        ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${LIBEVENT_LIB}
+        ${Boost_LIBRARIES} 
+        ${OPENSSL_LIBRARIES}
+        ${LibEvent_LIBRARIES}
         Threads::Threads
+        )
+target_include_directories(btcu-cli 
+            PUBLIC 
+                ${LibEvent_INCLUDE_DIR}
         )
 if($ENV{target} MATCHES "Windows")
     target_link_libraries(btcu-cli ${WINDOWS_LDADD})
@@ -742,16 +1063,16 @@ target_link_libraries(btcu-tx
         UTIL_A
         BITCOIN_CRYPTO_A
         secp256k1
-        ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${LIBEVENT_LIB}
+        ${Boost_LIBRARIES} 
+        ${OPENSSL_LIBRARIES}
+        ${LibEvent_LIBRARIES}
         )
 if($ENV{target} MATCHES "Windows")
     target_link_libraries(btcu-tx ${WINDOWS_LDADD})
 endif()
 if(GMP_FOUND)
-    target_link_libraries(btcu-tx ${GMP_LIBRARY})
+    target_link_libraries(btcu-tx ${GMP_LIBRARIES})
 endif()
-
-link_directories(${CMAKE_BINARY_DIR})
 
 set(btcud_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcud.cpp ${Boost_LOG_LIBRARY} ${Boost_LOG_SETUP_LIBRARY})
 if($ENV{target} MATCHES "Windows")
@@ -764,7 +1085,7 @@ target_include_directories(btcud PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/helpers/memenv
         ${btcud_SOURCES}
-        ${LIBEVENT_INCLUDE_DIR})
+        ${LibEvent_INCLUDE_DIR})
 target_link_libraries(btcud
         Threads::Threads
         SERVER_A
@@ -774,17 +1095,14 @@ target_link_libraries(btcud
         ZEROCOIN_A
         UTIL_A
         BITCOIN_CRYPTO_A
-        ${CMAKE_BINARY_DIR}/libleveldb.a
-        ${CMAKE_BINARY_DIR}/libleveldb_sse42.a
-        ${CMAKE_BINARY_DIR}/libmemenv.a
+        leveldb
+        leveldb_sse42
+        memenv
         secp256k1
-        ${BerkeleyDB_LIBRARIES}
+        ${BerkeleyDB_Cxx_LIBRARY}
         ${OPENSSL_LIBRARIES}
         ${Boost_LIBRARIES}
-        ${Boost_THREAD_LIBRARY}
-        ${Boost_LOG_LIBRARY}
-        ${Boost_LOG_SETUP_LIBRARY}
-        ${LIBEVENT_LIB}
+        ${LibEvent_LIBRARIES}
         )
 
 if($ENV{target} MATCHES "Windows")
@@ -792,12 +1110,12 @@ if($ENV{target} MATCHES "Windows")
     target_link_libraries(btcud ${WINDOWS_LDADD})
 endif()
 if(GMP_FOUND)
-    target_link_libraries(btcud ${GMP_LIBRARY})
+    target_link_libraries(btcud ${GMP_LIBRARIES})
     target_include_directories(btcud PUBLIC ${GMP_INCLUDE_DIR})
 endif()
 if(ZMQ_FOUND)
-    target_link_libraries(btcud ZMQ_A ${ZMQ_LIB})
-    target_include_directories(btcud PUBLIC ${ZMQ_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/)
+    target_link_libraries(btcud ZMQ_A ${ZMQ_LIBRARIES})
+    target_include_directories(btcud PUBLIC ${ZMQ_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/)
 endif()
 if(MINIUPNP_FOUND)
     target_compile_definitions(btcud PUBLIC "-DSTATICLIB -DMINIUPNP_STATICLIB")
@@ -935,24 +1253,24 @@ get_filename_component(BTCU_HEX_DESTDIR ${BTCU_HEX_DESTDIR} DIRECTORY)
             UTIL_A
             CLI_A
             BITCOIN_CRYPTO_A
-            ${CMAKE_BINARY_DIR}/libleveldb.a
-            ${CMAKE_BINARY_DIR}/libleveldb_sse42.a
-            ${CMAKE_BINARY_DIR}/libmemenv.a
+            leveldb
+            leveldb_sse42
+            memenv
             secp256k1
-            ${BerkeleyDB_LIBRARIES}
+            ${BerkeleyDB_Cxx_LIBRARY}
             ${OPENSSL_LIBRARIES}
             ${Boost_LIBRARIES}
             ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-            ${LIBEVENT_LIB}
+            ${LibEvent_LIBRARIES}
         )
 
     if(GMP_FOUND)
-        target_link_libraries(test_btcu ${GMP_LIBRARY})
+        target_link_libraries(test_btcu ${GMP_LIBRARIES})
         target_include_directories(test_btcu PUBLIC ${GMP_INCLUDE_DIR})
     endif()
     if(ZMQ_FOUND)
-        target_include_directories(test_btcu PUBLIC ${ZMQ_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/)
-        target_link_libraries(test_btcu ZMQ_A ${ZMQ_LIB})
+        target_include_directories(test_btcu PUBLIC ${ZMQ_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/)
+        target_link_libraries(test_btcu ZMQ_A ${ZMQ_LIBRARIES})
     endif()
     if(MINIUPNP_FOUND)
         target_compile_definitions(test_btcu PUBLIC "-DSTATICLIB -DMINIUPNP_STATICLIB")
