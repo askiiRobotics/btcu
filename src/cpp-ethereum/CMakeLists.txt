@@ -109,7 +109,7 @@ include(ProjectLibFF)
 find_package(Threads)
 
 if(MINIUPNPC)
-    find_package(Miniupnpc 1.8.2013 REQUIRED)
+    # find_package(miniupnpc 1.8.2013 REQUIRED)
 endif()
 
 set(UTILS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/utils")
