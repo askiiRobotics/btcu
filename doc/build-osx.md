@@ -51,6 +51,21 @@ If you goes into error  `Error: Operation already in progress `, try:
 
 For other issues please check [Homebrew's Troubleshooting page](https://docs.brew.sh/Troubleshooting).
 
+In a case when you get `dmg` image or sources via browser, telegramm and etc you'll face with an error `Operation not permitted` for the application extracted from the the `dmg` or in a terminal thought the building process accordingly.
+
+Note: The described behaviour for the sources case will be overlapped with another problem while you try to complete a command `cmake .` from the build section. The terminal will show a successfull generation but commands for the autogen.sh and configure won't show any actual result and appopriate result files won't be generated. You can run separately a command `./autogen.sh` to see the actual problem which is the same `Operation not permitted` as for the dmg image case.
+
+To solve the problem in a sources folder please run:
+```shell
+    xattr -d com.apple.quarantine autogen.sh
+```
+
+To solve the problem for the image case:
+```shell
+    xattr -d com.apple.quarantine btcu-qt.dmg
+```
+in the download folder where you've placed the file. If the file has another name please change the command accordingly to the file name (i.e. if your file name for example if `btcu-qt_somesimbols.dmg`, you'll run `xattr -d com.apple.quarantine btcu-qt_somesimbols.dmg`).
+
 ## Dependencies
 ```shell
     brew install automake libtool miniupnpc pkg-config python qt libevent qrencode protobuf rocksdb snappy zeromq openssl libjson-rpc-cpp google-benchmark googletest
@@ -102,70 +117,6 @@ After finishing this steps of the dependencies installation you may run the comm
 ```shell
     export HOMEBREW_NO_AUTO_UPDATE=0
     export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=0
-```
-
-### Libscrypt (optional)
-You can also make a separate libscrypt.a file. In order to do this you have to run followed commands:
-
-```shell
-    cd src/libscrypt
-    cmake .
-    make
-```
-
-### Cryptopp (optional)
-For a separate building of a libcryptopp.a file:
-
-```shell
-    cd src/cryptopp
-    cmake .
-    make
-```
-
-### Secp256k1 (optional)
-And for a libsecp256k1.a file:
-
-```shell
-    cd src/secp256k1
-    cmake .
-    make
-```
-
-### Univalue (optional)
-And for a libunivalue.a file:
-
-```shell
-    cd src/univalue
-    ./autogen.sh
-    ./configure
-    make
-```
-
-### JSON CPP (optional)
-And for a libjsoncpp.dylib file:
-
-```shell
-    cd src/jsoncpp/jsoncpp-build
-    cmake ../jsoncpp 
-    make
-```
-
-### LibFF (optional)
-And for a libff.a file go to src/libff/CMakeLists.txt and uncomment lines from 102 to 113. Then run commands:
-
-```shell
-    cd src/libff/CMakeLists.txt
-    cmake .
-    make
-```
-
-### Ethash (optional)
-For libethash.a file:
-
-```shell
-    cd src/cpp-ethereum/ethash
-    cmake .
-    make
 ```
 
 #### SQLite
@@ -224,6 +175,9 @@ If the brew installed a different version run the followed command:
     git clone https://github.com/btcu-ultimatum/btcu
     cd btcu
 ```
+
+It is important: Do not use spaces and other line breaking simbols in a path to the downloaded project because it'll cause a compilation problems.
+
 2.  (Optional) Make the Homebrew OpenSSL headers visible to the configure script  (do ```brew info openssl``` to find out why this is necessary, or if you use Homebrew with installation folders different from the default).
 
         export LDFLAGS="$LDFLAGS -L/usr/local/opt/openssl/lib"
@@ -252,6 +206,77 @@ If the brew installed a different version run the followed command:
 5.  You can also create a .dmg that contains the .app bundle (optional):
 ```shell
     make osx-dmg
+```
+
+### Libscrypt (optional)
+You can also make a separate libscrypt lib file. In order to do this you have to run followed commands:
+
+```shell
+    cd src/libscrypt
+    cmake .
+    make
+    cd ../..
+```
+
+### Cryptopp (optional)
+For a separate building of a libcryptopp lib file:
+
+```shell
+    cd src/cryptopp
+    cmake .
+    make
+    cd ../..
+```
+
+### Secp256k1 (optional)
+And for a libsecp256k1 lib file:
+
+```shell
+    cd src/secp256k1
+    cmake .
+    make
+    cd ../..
+```
+
+### Univalue (optional)
+And for a libunivalue lib file:
+
+```shell
+    cd src/univalue
+    ./autogen.sh
+    ./configure
+    make
+    cd ../..
+```
+
+### JSON CPP (optional)
+And for a libjsoncpp lib file:
+
+```shell
+    cd src/jsoncpp/jsoncpp-build
+    cmake ../jsoncpp 
+    make
+    cd ../../..
+```
+
+### LibFF (optional)
+And for a libff lib file go to src/libff and uncomment lines from 102 to 113. Then run commands:
+
+```shell
+    cd src/libff
+    cmake .
+    make
+    cd ../..
+```
+
+### Ethash (optional)
+For libethash.a file:
+
+```shell
+    cd src/cpp-ethereum/ethash
+    cmake .
+    make
+    cd ../../..
 ```
 
 ## Compiling for different MacOS versions
@@ -299,4 +324,4 @@ You can monitor the download process by looking at the debug.log file:
 ```
 
 ## Notes
-* Tested on OS X 11.1 Big Sur on 64-bit Intel processors only.
+* Tested on OS X (11.1 Big Sur and 10.15 Catalina) on 64-bit Intel processors only.
