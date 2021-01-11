@@ -36,6 +36,10 @@
 #define BASE_WINDOW_MIN_HEIGHT 620
 #define BASE_WINDOW_MIN_WIDTH 1100
 
+#if defined(Q_OS_MAC)
+
+void ForceActivation();
+#endif
 
 const QString BTCUGUI::DEFAULT_WALLET = "~Default";
 
@@ -559,6 +563,9 @@ void BTCUGUI::showHide(bool show){
         op->setVisible(false);
         opEnabled = false;
     }else{
+#ifdef Q_OS_MAC
+    ForceActivation();
+#endif
         QColor bg("#000000");
         bg.setAlpha(200);
         if(!isLightTheme()){

@@ -24,9 +24,9 @@
 #
 #   ZMQ::zmq
 
-find_path(ZMQ_INCLUDE_DIR
-	NAMES zmq.h
-)
+	find_path(ZMQ_INCLUDE_DIR
+		NAMES zmq.h
+		)
 
 set(ZMQ_INCLUDE_DIRS "${ZMQ_INCLUDE_DIR}")
 mark_as_advanced(ZMQ_INCLUDE_DIR)

@@ -26,11 +26,12 @@
 
 find_brew_prefix(_GMP_BREW_HINT gmp)
 
-find_path(GMP_INCLUDE_DIR
-	NAMES gmp.h
-	HINTS ${_GMP_BREW_HINT}
-	PATH_SUFFIXES include
-)
+	find_path(GMP_INCLUDE_DIR
+		NAMES gmp.h
+		HINTS ${_GMP_BREW_HINT}
+		PATH_SUFFIXES include
+	)
+
 set(GMP_INCLUDE_DIRS "${GMP_INCLUDE_DIR}")
 mark_as_advanced(GMP_INCLUDE_DIR)
 
@@ -79,7 +80,7 @@ if(GMP_INCLUDE_DIR)
     
 	find_component(GMP gmp
 		NAMES gmp
-		HINTS "${_Event_BREW_HINT}"
+		HINTS "${_GMP_BREW_HINT}"
 		INCLUDE_DIRS ${GMP_INCLUDE_DIRS}
 		PATHS ${GMP_LIBRARIES}
 	)

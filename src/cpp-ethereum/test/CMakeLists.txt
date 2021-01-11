@@ -3,9 +3,6 @@ set(CTEST_OUTPUT_ON_FAILURE TRUE)
 
 include(GoogleTest)
 
-if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    hunter_add_package(GTest)
-endif()
 find_package(GTest CONFIG REQUIRED)
 
 set(unittest_sources
@@ -103,9 +100,6 @@ foreach(file ${sources})
     endforeach(test_raw)
 endforeach(file)
 
-if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    hunter_add_package(yaml-cpp))
-endif()
 find_package(yaml-cpp CONFIG REQUIRED)
 
 add_executable(testeth ${sources})
