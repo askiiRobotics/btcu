@@ -1,45 +1,283 @@
 #!/bin/bash
+echo "[0%] Updating apt-get..."
+sudo apt-get update 
+echo "[5%] Upgrading apt-get..."
+sudo apt-get upgrade
+echo "[10%] Finished."
 
-if [ "$1" = "update" ]
+install_package () {
+    REQUIRED_PKG="$1"
+    PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+    if [ "" = "$PKG_OK" ]; then
+    sudo apt-get --yes install $REQUIRED_PKG 
+    fi
+}
 
-then
-echo "Downloadind latest version BTCU"
-git checkout master 
+uninstall_package () {
+    REQUIRED_PKG="$1"
+    PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+    if [ "install ok installed" = "$PKG_OK" ]; then
+    sudo apt remove --purge --auto-remove $REQUIRED_PKG
+    fi
+}
 
-if [ -s "versions.txt" ]
-then
-file="versions.txt"
-l=""
-while IFS= read line
-do
-l=$line
-done <"$file"
+echo "[11%] Installing dependency: cmake... "
 
-#echo $l | cut -d ' ' -f2
-my_var="$( cut -d ' ' -f 2 <<< "$l" )";
+install_package cmake
 
-echo 
-git checkout "release_$my_var"
-git pull
+echo -ne  "Done!"
+
+echo "[12%] Installing dependency: git... "
+
+install_package git
+
+echo -ne  "Done!"
+
+echo "[13%] Installing dependency: libboost-all-dev... "
+
+install_package libboost-all-dev
+
+echo -ne  "Done!"
+
+echo "[14%] Installing dependency: build-essential... "
+
+install_package build-essential
+
+echo -ne  "Done!"
+
+echo "[15%] Installing dependency: libtool... "
+
+install_package libtool
+
+echo -ne  "Done!"
+
+echo "[16%] Installing dependency: bsdmainutils... "
+
+install_package bsdmainutils
+
+echo -ne  "Done!"
+
+echo "[17%] Installing dependency: autotools-dev... "
+
+install_package autotools-dev
+
+echo -ne  "Done!"
+
+echo "[18%] Installing dependency: autoconf... "
+
+install_package autoconf
+
+echo -ne  "Done!"
+
+echo "[19%] Installing dependency: pkg-config... "
+
+install_package pkg-config
+
+echo -ne  "Done!"
+
+echo "[20%] Installing dependency: automake... "
+
+install_package automake
+
+echo -ne  "Done!"
+
+echo "[21%] Installing dependency: python3... "
+
+install_package python3
+
+echo -ne  "Done!"
+
+echo "[22%] Installing dependency: libminiupnpc-dev... "
+
+install_package libminiupnpc-dev
+
+echo -ne  "Done!"
+
+echo "[23%] Installing dependency: libzmq3-dev... "
+
+install_package libzmq3-dev
+
+echo -ne  "Done!"
+
+echo "[24%] Installing dependency: librocksdb-dev... "
+
+install_package librocksdb-dev
+
+echo -ne  "Done!"
+
+echo "[25%] Installing dependency: libssl-dev... "
+
+install_package libssl-dev
+
+echo -ne  "Done!"
+
+echo "[26%] Installing dependency: libgmp-dev... "
+
+install_package libgmp-dev
+
+echo -ne  "Done!"
+
+echo "[27%] Installing dependency: libevent-dev... "
+
+install_package libevent-dev
+
+echo -ne  "Done!"
+
+echo "[28%] Installing dependency: libjsonrpccpp-dev... "
+
+install_package libjsonrpccpp-dev
+
+echo -ne  "Done!"
+
+echo "[29%] Installing dependency: libsnappy-dev... "
+
+install_package libsnappy-dev
+
+echo -ne  "Done!"
+
+echo "[30%] Installing dependency: libbenchmark-dev... "
+
+install_package libbenchmark-dev
+
+echo -ne  "Done!"
+
+echo "[31%] Installing dependency: libgtest-dev... "
+
+install_package libgtest-dev
+
+echo -ne  "Done!"
+
+echo "[32%] Configuring GTest... "
+
+cd /usr/src/googletest
+sudo cmake .
+sudo cmake --build . --target install
+cd -
+
+echo "Done!"
+
+echo "[32%] Checking Berkeley DB... "
+
+uninstall_package libdb-dev
+
+uninstall_package libdb++-dev
+
+echo -ne  "Done!"
+
+echo "[33%] Installing dependency: libprotobuf-dev... "
+
+install_package libprotobuf-dev
+
+echo -ne  "Done!"
+
+echo "[34%] Installing dependency: protobuf-compiler... "
+
+install_package protobuf-compiler
+
+echo -ne  "Done!"
+
+echo "[35%] Installing dependency: libqrencode-dev... "
+
+install_package libqrencode-dev
+
+echo -ne  "Done!"
+
+echo "[36%] Installing dependency: libpng-dev... "
+
+install_package libpng-dev
+
+echo -ne  "Done!"
+
+echo "[39%] Installing QT Components. "
+
+echo "[40%] Installing QT dependency: libqt5gui5... "
+
+install_package libqt5gui5
+
+echo -ne  "Done!"
+
+echo "[41%] Installing QT dependency: libqt5core5a... "
+
+install_package libqt5core5a
+
+echo -ne  "Done!"
+
+echo "[42%] Installing QT dependency: libqt5dbus5... "
+
+install_package libqt5dbus5
+
+echo -ne  "Done!"
+
+echo "[43%] Installing QT dependency: qttools5-dev... "
+
+install_package qttools5-dev
+
+echo -ne  "Done!"
+
+echo "[44%] Installing QT dependency: qttools5-dev-tools... "
+
+install_package qttools5-dev-tools
+
+echo -ne  "Done!"
+
+echo "[45%] Installing QT dependency: libqt5svg5-dev... "
+
+install_package libqt5svg5-dev
+
+echo -ne  "Done!"
+
+echo "[46%] Installing QT dependency: libqt5charts5-dev... "
+
+install_package libqt5charts5-dev
+
+echo -ne  "Done!"
+
+echo "[47%] All QT Components has been installed. "
+
+echo "[50%] Checking is folder the git repository... "
+if [ -d .git ]; then
+echo -ne  "yes"
+    if [ "$1" = "update" ]
+    then
+    echo "[50%] Updating current version of the BTCU"
+    git checkout master 
+
+    if [ -s "versions.txt" ]
+        then
+            file="versions.txt"
+            l=""
+
+            while IFS= read line
+            do
+            l=$line
+            done <"$file"
+
+            my_var="$( cut -d ' ' -f 2 <<< "$l" )";
+            echo "[51%] Working branch: release_$my_var"
+            git checkout "release_$my_var"
+        else
+            echo "[51%] Working branch: master"
+        fi
+
+    git pull
+    echo  "Done!"
+
+    else 
+    echo "[50%] Updating current version of the BTCU"
+    echo "[51%] Working branch: master"
+    git checkout master 
+    git pull
+    echo  "Done!"
+    fi
 else
-git checkout master
-git pull
+    echo -ne  "no"
+    echo "[50%] Downloading latest version of the BTCU... "
+    git clone https://github.com/btcu-ultimatum/btcu
+    cd btcu
+    echo  "Done!"
+fi;
 
-fi
-
-fi
-echo "Downloading latest version"
-git checkout master
-git pull
-echo "Install BTCU dependencies"
-
-if [ -f /opt/lib/libdb-18.1.a ]
-then
-echo "BerkeleyDB installed"
-else
-sudo apt-get install libboost-all-dev
-
-sudo apt-get purge libdb4.8-dev libdb4.8++-dev
+echo "[60%] Installing Berkeley DB... "
 
 # Since as of 5th March 2020 the Oracle moved Barkeley DB 
 # to login-protected tarball for 18.1.32 version 
@@ -51,100 +289,43 @@ cd  db-18.1.32/build_unix
 ../dist/configure --enable-cxx --disable-shared --disable-replication --with-pic --prefix=/opt
 make
 
-sudo make install
-
-cd ../..
-fi
-ls
-sudo apt-get install libminiupnpc-dev
-
-if [ -f /usr/local/lib/libzmq.so ]
+if [ -f /opt/lib/libdb-18.1.a ]
 then
-echo "ZMQ installed"
-else
-#ZMQ dependencies (provides ZMQ API):
+    sudo make uninstall
+fi;
 
-    wget https://github.com/zeromq/libzmq/releases/download/v4.2.2/zeromq-4.2.2.tar.gz
-
-    # Unpack tarball package
-    tar xvzf zeromq-4.2.2.tar.gz
-
-    # Install dependency
-    sudo apt-get update && \
-    sudo apt-get install -y libtool pkg-config build-essential autoconf automake uuid-dev
-
-    # Create make file
-    cd zeromq-4.2.2
-    ./configure
-
-    # Build and install(root permission only)
-    sudo make install
-
-    # Install zeromq driver on linux
-    sudo ldconfig
-
-    # Check installed
-    ldconfig -p | grep zmq
-
-    cd ..
-    # Expected
-    ############################################################
-    # libzmq.so.5 (libc6,x86-64) => /usr/local/lib/libzmq.so.5
-    # libzmq.so (libc6,x86-64) => /usr/local/lib/libzmq.so
-    ############################################################
-fi
-
-ls
-sudo apt-get install build-essential libtool bsdmainutils autotools-dev autoconf pkg-config automake python3
-
-#Cmake installing:
-
-#(minimum required version 3.10)
-
-sudo apt-get install cmake
-
-#For Ethereum VM smart contracts:
-
-sudo apt-get install librocksdb-dev libjsoncpp-dev
-
-#Now, you can either build from self-compiled [depends](/depends/README.md) or install the required dependencies:
-
-sudo apt-get install libssl-dev libgmp-dev libevent-dev libboost-all-dev
-
-#Minimum required version 1.65
-
-sudo apt-get install libqt5gui5 libqt5core5a libqt5dbus5 libqt5svg5-dev libqt5charts5-dev qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler libqrencode-dev libpng-dev
-
-git clone https://github.com/fukuchi/libqrencode.git
-cd libqrencode
-cmake CMakeLists.txt
-make
 sudo make install
+cd -
 
-cd ..
+echo  "Done!"
 
-ls
 
-cd src/univalue/
-./autogen.sh
-./configure
+echo "[65%] Running CMake configuring... "
 
-make
+cmake -G "CodeBlocks - Unix Makefiles" .
 
-cd ../secp256k1/
-./autogen.sh
-./configure --disable-shared --with-pic --with-bignum=no --enable-module-recovery --enable-module-ecdh --enable-experimental --disable-jni
+echo  "Done!"
+
+echo "[75%] Building BTCU... "
 
 make
-cd ../../
 
-./autogen.sh
-./configure BDB_LIBS="-L/opt/lib -ldb_cxx-18.1" BDB_CFLAGS="-I/opt/include"
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" ..
-make -j4 btcud
-make -j4 btcu-cli
-make -j4 btcu-qt
-cd ..
-#make -j4 btcu-tx
+echo  "Done!"
+
+echo "[100%] Build is completed!"
+
+echo ""
+echo ""
+echo ""
+
+echo "=========================================================="
+echo "The built binaries was placed in ./bin folder"
+echo "For start daemon please run:"
+echo "./bin/btcud -daemon"
+echo "Outputs a list of command-line options:"
+echo "./bin/btcu-cli --help"
+echo "Outputs a list of RPC commands when the daemon is running:"
+echo "./bin/btcu-cli help"
+echo "Start GUI:"
+echo "./src/qt/btcu-qt"
+echo "=========================================================="
