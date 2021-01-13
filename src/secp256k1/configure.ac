@@ -72,7 +72,7 @@ esac
 
 CFLAGS="-W -fno-stack-check -fPIC $CFLAGS"
 CXXFLAGS="-fPIC $CXXFLAGS"
-LDFLAGS="-Wl -all_load $LDFLAGS"
+LDFLAGS="$LDFLAGS"
 
 warn_CFLAGS="-std=c89 -pedantic -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wundef -Wno-unused-function -Wno-long-long -Wno-overlength-strings"
 saved_CFLAGS="$CFLAGS"
