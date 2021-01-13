@@ -8,10 +8,6 @@ if(POLICY CMP0069)
     cmake_policy(SET CMP0069 NEW)  # Allow LTO.
 endif()
 
-if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    target_include_directories(include)
-endif()
-
 include(cmake/cable/bootstrap.cmake)
 
 include(CableBuildType)
@@ -20,25 +16,8 @@ include(CableToolchains)
 
 cable_configure_toolchain(DEFAULT cxx11)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/googletest)
-else()
-    include(HunterGate)
-
-    if(NOT WIN32)
-        # Outside of Windows build only Release packages.
-        set(HUNTER_CONFIGURATION_TYPES Release
-            CACHE STRING "Build type of the Hunter packages")
-    endif()
-
-    include(defaults/HunterCacheServers)
-
-    HunterGate(
-        URL "https://github.com/ruslo/hunter/archive/v0.20.35.tar.gz"
-        SHA1 "6e3cb4c333b76803a83c56fcbca3b0bfd9f96f27"
-    )
-endif()
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/googletest)
 
 project(ethash)
 set(PROJECT_VERSION 0.4.1)

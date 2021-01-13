@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(CMAKE_TOOLCHAIN_FILE ./cmake/platforms/OSX.cmake)
+        set(ENV{target} "Mac")
     endif()
 endif()
 
@@ -68,36 +69,41 @@ option(ENABLE_GPROF "Use gprof profiling compiler flags " OFF)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/boost)
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/curl)
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    message(STATUS "Compiling on macOS")
-    set(ENV{target} "Mac")
-
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/boost)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/curl)
-
     set( Boost_NO_BOOST_CMAKE ON )
-    set( Boost_USE_STATIC_LIBS OFF )
-    set( Boost_NO_SYSTEM_PATHS ON )
-    set( Boost_USE_DEBUG_RUNTIME OFF )
-    set( Boost_INCLUDE_DIR "/usr/local/opt/boost/include" )
-    set( BOOST_LIBRARYDIR "/usr/local/opt/boost/lib" )
-    set( BOOST_ROOT "/usr/local/opt/boost" )
-
-    add_definitions(-DBOOST_LOG_DYN_LINK=1)
-    add_definitions(-DBOOST_NO_SCOPED_ENUMS=1)
-    add_definitions(-DBOOST_NO_CXX11_SCOPED_ENUMS=1)
-
-    message(STATUS Boost_INCLUDE_DIR:)
-    message (STATUS ${Boost_INCLUDE_DIR})
 endif()
+set( Boost_USE_STATIC_LIBS OFF )
+set( Boost_NO_SYSTEM_PATHS ON )
+set( Boost_USE_DEBUG_RUNTIME OFF )
+
+set( Boost_INCLUDE_DIR "/usr/local/opt/boost/include" )
+set( BOOST_LIBRARYDIR "/usr/local/opt/boost/lib" )
+set( BOOST_ROOT "/usr/local/opt/boost" )
+
+add_definitions(-DBOOST_NO_SCOPED_ENUMS=1)
+add_definitions(-DBOOST_NO_CXX11_SCOPED_ENUMS=1)
+add_definitions(-DBOOST_LOG_DYN_LINK=1)
 
 find_package(Boost 1.71.0 EXACT COMPONENTS program_options filesystem system thread context fiber chrono log log_setup REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS}/boost)
 
 add_definitions(-DETH_FATDB=1)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	add_compile_definitions(MAC_OSX OBJC_OLD_DISPATCH_PROTOTYPES=0)
+
+	add_link_options(-Wl)
+	add_link_options(-dead_strip_dylibs)
+	add_link_options(-dead_strip_dylibs)
+endif()
 
 message(STATUS Boost_LIBRARIES:)
 message (STATUS ${Boost_LIBRARIES})
+
+message(STATUS Boost_INCLUDE_DIRS:)
+message (STATUS ${Boost_INCLUDE_DIRS})
 
 set(BDB_VER "18.1.32")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/scripts")
@@ -111,51 +117,56 @@ include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     message(FATAL_ERROR "Native Windows CMake is not supported yet, use WSL instead")
 endif()
+ 
+find_package(PkgConfig REQUIRED) 
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")    
-    find_package(PkgConfig REQUIRED) 
+list(APPEND CMAKE_PREFIX_PATH ./src/jsoncpp)
+list(APPEND CMAKE_PREFIX_PATH ./src/libscrypt)
+list(APPEND CMAKE_PREFIX_PATH ./src/cryptopp)
+list(APPEND CMAKE_PREFIX_PATH ./src/cpp-ethereum/ethash)
 
-    list(APPEND CMAKE_PREFIX_PATH ./src/jsoncpp)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/qt5)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/berkeley-db)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/rocksdb)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libjson-rpc-cpp)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/snappy)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libevent)
-    list(APPEND CMAKE_PREFIX_PATH ./src/libscrypt)
-    list(APPEND CMAKE_PREFIX_PATH ./src/cryptopp)
-    list(APPEND CMAKE_PREFIX_PATH ./src/cpp-ethereum/ethash)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/qt5)
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/berkeley-db)
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/rocksdb)
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libjson-rpc-cpp)
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/snappy)
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libevent)
+endif()
 
-    set(BerkeleyDB_ROOT_DIR "/usr/local/opt/berkeley-db")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(BerkeleyDB_ROOT_DIR "/usr/local/opt/berkeley-db")
 
-    set( CURL_INCLUDE_DIR "/usr/local/opt/curl/include" )
-    set( CURL_LIBRARY "/usr/local/opt/curl/lib" )
+	set( CURL_INCLUDE_DIR "/usr/local/opt/curl/include" )
+	set( CURL_LIBRARY "/usr/local/opt/curl/lib" )
 
-    set( MHD_INCLUDE_DIR "/usr/local/opt/libmicrohttpd/include" )
-    set( MHD_LIBRARY "/usr/local/opt/libmicrohttpd/lib" )
+	set( MHD_INCLUDE_DIR "/usr/local/opt/libmicrohttpd/include" )
+	set( MHD_LIBRARY "/usr/local/opt/libmicrohttpd/lib" )
 
-    set( BerkeleyDB_INCLUDE_DIRS "/usr/local/opt/berkeley-db/include" )
-    set( BerkeleyDB_LIBRARY "/usr/local/opt/berkeley-db/lib" )
+	set( BerkeleyDB_INCLUDE_DIR "/usr/local/opt/berkeley-db/include" )
+	set( BerkeleyDB_LIBRARY "/usr/local/opt/berkeley-db/lib" )
 
 	find_brew_prefix(OPENSSL_ROOT_DIR openssl)
 
-    set( LibEvent_INCLUDE_DIR "/usr/local/opt/libevent/include" )
-    set( LibEvent_LIBRARY "/usr/local/opt/libevent/lib" )
+	set( LibEvent_INCLUDE_DIR "/usr/local/opt/libevent/include" )
+	set( LibEvent_LIBRARY "/usr/local/opt/libevent/lib" )
 
-    set( GMP_INCLUDE_DIR "/usr/local/opt/gmp/include" )
-    set( GMP_LIBRARY "/usr/local/opt/gmp/lib" )
+	set( GMP_INCLUDE_DIR "/usr/local/opt/gmp/include" )
+	set( GMP_LIBRARY "/usr/local/opt/gmp/lib" )
 
-    set( ZMQ_INCLUDE_DIR "/usr/local/opt/zmq/include" )
-    set( ZMQ_LIBRARY "/usr/local/opt/zmq/lib" )
+	set( ZMQ_INCLUDE_DIR "/usr/local/opt/zmq/include" )
+	set( ZMQ_LIBRARY "/usr/local/opt/zmq/lib" )
 
-    set( Qrcode_INCLUDE_DIR "/usr/local/opt/qrencode/include" )
-    set( Qrcode_LIBRARY "/usr/local/opt/qrencode/lib" )
-    
-    set (CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG 1)
-    
+	set( Qrcode_INCLUDE_DIR "/usr/local/opt/qrencode/include" )
+	set( Qrcode_LIBRARY "/usr/local/opt/qrencode/lib" )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    set(ENV{target} "Linux")
+	set( GMP_INCLUDE_DIR "/usr/include/x86_64-linux-gnu" )
+	set( ZMQ_INCLUDE_DIR "/usr/include" )
+endif()
+set (CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG 1)
+    
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     file(READ "/proc/version" _SYS_VERSION)
     string(REGEX MATCH "Microsoft" _SYSTEM_VERSION_PARSED "${_SYS_VERSION}")
     if(${_SYSTEM_VERSION_PARSED} MATCHES "Microsoft")
@@ -164,61 +175,51 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(ENV{LIBGL_ALWAYS_INDIRECT} 1)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /home/$ENV{USER}/btcu-run)
         message(WARNING "WSL Runtime support requires VcXsrv to be installed and running")
-    else()
-        message(STATUS "Compiling on Linux")
     endif()
-    list(APPEND CMAKE_PREFIX_PATH /usr/lib/x86_64-linux-gnu/cmake/Qt5)
-    set(Qt5core_DIR "/usr/lib/x86_64-linux-gnu/cmake/Qt5/QtCore")
-    find_path(ENDIAN_INCLUDES endian.h)
-    if(ENDIAN_INCLUDES)
-        message(STATUS "Found endian.h: ${ENDIAN_INCLUDES}")
-    endif()
-    #add_definitions("-D__BYTE_ORDER -D__LITTLE_ENDIAN -D__GLIBC__ -DHAVE_DECL_BSWAP_16=0 -DHAVE_DECL_BSWAP_32=0 -DHAVE_DECL_BSWAP_64=0")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    find_package(libjson-rpc-cpp CONFIG REQUIRED)
-
-    find_package(Snappy CONFIG REQUIRED)
-
-    find_library(ROCKSDB_LIBRARY rocksdb)
-
-    add_subdirectory(src/libscrypt)
-
-    add_subdirectory(src/cryptopp)
-
-    add_subdirectory(src/jsoncpp/jsoncpp)
-
-    add_subdirectory(src/cpp-ethereum/ethash)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	include(Findlibjson-rpc-cpp)
 else()
-    hunter_add_package(jsoncpp)
-    find_package(jsoncpp CONFIG REQUIRED)
-
-    hunter_add_package(cryptopp)
-    find_package(cryptopp CONFIG REQUIRED)
-
-    hunter_add_package(libjson-rpc-cpp)
-    find_package(libjson-rpc-cpp CONFIG REQUIRED)
-
-    hunter_add_package(libscrypt)
-    find_package(libscrypt CONFIG REQUIRED)
-
-    hunter_add_package(ethash)
-    find_package(ethash CONFIG REQUIRED)
-
-    hunter_add_package(Snappy)
-    find_package(Snappy CONFIG REQUIRED)
-
-    find_library(ROCKSDB_LIBRARY rocksdb)
+	find_package(libjson-rpc-cpp CONFIG REQUIRED)
 endif()
+
+set(GTEST_ROOT "/usr/src/googletest" CACHE PATH "Path to googletest")
+
+find_package(Snappy CONFIG REQUIRED)
+
+find_library(ROCKSDB_LIBRARY rocksdb)
+
+add_subdirectory(src/libscrypt)
+
+add_subdirectory(src/cryptopp)
+
+add_subdirectory(src/jsoncpp/jsoncpp)
+
+add_subdirectory(src/cpp-ethereum/ethash)
 
 # Find Dependencies
 find_package(BerkeleyDB REQUIRED)
 if(BerkeleyDB_FOUND)
-    if(NOT ${BerkeleyDB_VERSION} MATCHES "${BDB_VER}")
-        message(WARNING "BerkeleyDB version other than ${BDB_VER} found!")
-        set(BDB_CONFIGURE_FLAGS "--with-incompatible-bdb")
+    message(STATUS "Found BerkeleyDB (${BerkeleyDB_VERSION}): ${BerkeleyDB_Cxx_LIBRARY}")
+    
+    message(STATUS BerkeleyDB_INCLUDE_DIRS:)
+    message (STATUS ${BerkeleyDB_INCLUDE_DIRS})
+    
+    get_filename_component(BerkeleyDB_Cxx_LIBRARY_DIRS "${BerkeleyDB_Cxx_LIBRARY}" DIRECTORY)
+    message(STATUS BerkeleyDB_LIBRARY_DIRS:)
+    message (STATUS ${BerkeleyDB_Cxx_LIBRARY_DIRS})
+    
+    if(${BerkeleyDB_VERSION} MATCHES "..")
+        message(WARNING "Unknown version Berkeley DB. If this is not ${BDB_VER}, please reinstall it!")
+    else()
+    	    if(NOT ${BerkeleyDB_VERSION} MATCHES "${BDB_VER}")
+		message(WARNING "BerkeleyDB version other than ${BDB_VER} found: ${BerkeleyDB_VERSION}!")
+		set(BDB_CONFIGURE_FLAGS "--with-incompatible-bdb")
+	    endif()
     endif()
+else()
+    message(WARNING "BerkeleyDB not found! BTCU Core requires this library for wallet functionality (-DENABLE_WALLET=OFF to disable wallet functionality)")
 endif()
 
 find_package(OpenSSL REQUIRED)
@@ -252,7 +253,7 @@ if(GMP_FOUND)
     message(STATUS "Found GMP (${GMP_VERSION}): ${GMP_LIBRARIES}")
 
     message(STATUS GMP_INCLUDE_DIR:)
-    message (STATUS ${GMP_INCLUDE_DIR})
+    message (STATUS ${GMP_INCLUDE_DIRS})
 else()
     message(WARNING "GMP not found, falling back to OpenSSL for bignum!")
     set(BIGNUM_CONFIGURE_FLAGS "--with-zerocoin-bignum=openssl")
@@ -368,18 +369,31 @@ else()
 # default no
 #    set(PROJECT_CONFIGURE_FLAGS "${PROJECT_CONFIGURE_FLAGS} --disable-gprof")
 endif()
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(BDB_LIBS "-L${BerkeleyDB_Cxx_LIBRARY_DIRS} -ldb_cxx")
+    set(BDB_CFLAGS "-I${BerkeleyDB_INCLUDE_DIRS}")
+endif()
 
 # run configure in order to update or create btcu-config.h
 
 find_program(GCC_COMPILER_FOR_AUTOCONF g++)
 find_program(CC_COMPILER_FOR_AUTOCONF cc)
-    
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 message (STATUS "Updating btcu-config.h. Running: ${CMAKE_CURRENT_SOURCE_DIR}/configure ${PROJECT_CONFIGURE_FLAGS} ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS} CC=${CC_COMPILER_FOR_AUTOCONF} CXX=${GCC_COMPILER_FOR_AUTOCONF}")
 
 execute_process(
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/configure ${PROJECT_CONFIGURE_FLAGS} ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS} CC=${CC_COMPILER_FOR_AUTOCONF} CXX=${GCC_COMPILER_FOR_AUTOCONF} 
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/configure ${PROJECT_CONFIGURE_FLAGS} ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS} CC=${CC_COMPILER_FOR_AUTOCONF} CXX=${GCC_COMPILER_FOR_AUTOCONF}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+else()
+message (STATUS "Updating btcu-config.h. Running: ${CMAKE_CURRENT_SOURCE_DIR}/configure ${PROJECT_CONFIGURE_FLAGS} ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS} CC=${CC_COMPILER_FOR_AUTOCONF} CXX=${GCC_COMPILER_FOR_AUTOCONF} BDB_LIBS=\"${BDB_LIBS}\" BDB_CFLAGS=\"${BDB_CFLAGS}\"")
+
+execute_process(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/configure ${PROJECT_CONFIGURE_FLAGS} ${CONFIGSITE} ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS} ${SSL_CONFIGURE_FLAGS} CC=${CC_COMPILER_FOR_AUTOCONF} CXX=${GCC_COMPILER_FOR_AUTOCONF} BDB_LIBS=\\\"${BDB_LIBS}\\\" BDB_CFLAGS=\\\"${BDB_CFLAGS}\\\"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+endif()
 add_definitions(-DHAVE_CONFIG_H)
 
 find_package(LibEvent REQUIRED)
@@ -423,6 +437,8 @@ link_directories(
         ${CMAKE_SOURCE_DIR}/src/secp256k1/.libs
         )
 link_directories(${CMAKE_BINARY_DIR})
+
+set(CMAKE_CXX_FLAGS "-fPIC -fno-stack-check")
 
 set(libleveldb_a_headers
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/port/atomic_pointer.h
@@ -808,7 +824,11 @@ if(ZMQ_FOUND)
         ./src/zmq/zmqpublishnotifier.cpp
     )
     add_library(ZMQ_A STATIC ${BitcoinHeaders} ${ZMQ_SOURCES})
-    target_include_directories(ZMQ_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${ZMQ_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
+    target_include_directories(ZMQ_A PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src ${ZMQ_INCLUDE_DIRS} 
+        ${OPENSSL_INCLUDE_DIR}
+        ${Boost_INCLUDE_DIRS}
+        )
     target_link_libraries(ZMQ_A 
         ${ZMQ_LIBRARIES}
         )
@@ -829,6 +849,7 @@ target_include_directories(WALLET_A PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/evmc/include
         ${OPENSSL_INCLUDE_DIR}
         ${BerkeleyDB_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}
         )
 if(GMP_FOUND)
     target_include_directories(WALLET_A PUBLIC ${GMP_INCLUDE_DIR})
@@ -863,6 +884,7 @@ target_link_libraries(BITCOIN_CRYPTO_A
 target_include_directories(BITCOIN_CRYPTO_A PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${OPENSSL_INCLUDE_DIR}
+    ${Boost_INCLUDE_DIRS}
     )
 
 set(COMMON_SOURCES
@@ -992,10 +1014,12 @@ add_library(UTIL_A
             ${BitcoinHeaders} 
             ${UTIL_SOURCES}
         )
+        
 target_include_directories(UTIL_A PUBLIC 
             ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_CURRENT_SOURCE_DIR}/src/univalue/include
             ${OPENSSL_INCLUDE_DIR}
+            ${Boost_LIBRARIES} 
             ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp-ethereum/
         )
 add_dependencies(UTIL_A libunivalue)
@@ -1074,7 +1098,7 @@ if(GMP_FOUND)
     target_link_libraries(btcu-tx ${GMP_LIBRARIES})
 endif()
 
-set(btcud_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcud.cpp ${Boost_LOG_LIBRARY} ${Boost_LOG_SETUP_LIBRARY})
+set(btcud_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcud.cpp ${Boost_INCLUDE_DIRS})
 if($ENV{target} MATCHES "Windows")
     list(APPEND btcud_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcud-res.rc)
 endif()
@@ -1085,7 +1109,8 @@ target_include_directories(btcud PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/helpers/memenv
         ${btcud_SOURCES}
-        ${LibEvent_INCLUDE_DIR})
+        ${LibEvent_INCLUDE_DIR}
+        ${Boost_INCLUDE_DIRS})
 target_link_libraries(btcud
         Threads::Threads
         SERVER_A

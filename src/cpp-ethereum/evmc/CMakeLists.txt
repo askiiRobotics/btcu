@@ -19,15 +19,6 @@ include(CableToolchains)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
-if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    option(HUNTER_ENABLED "Enable Hunter package manager support" "${EVMC_TESTING}")
-    if(EVMC_TESTING)
-        include(HunterGate)
-        include(HunterConfig)
-        include(defaults/HunterCacheServers)
-    endif()
-endif()
-
 cable_configure_toolchain(DEFAULT cxx11-pic)
 
 project(evmc)

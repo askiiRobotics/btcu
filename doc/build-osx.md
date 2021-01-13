@@ -233,7 +233,8 @@ And for a libsecp256k1 lib file:
 
 ```shell
     cd src/secp256k1
-    cmake .
+    ./autogen.sh
+    ./configure
     make
     cd ../..
 ```
@@ -300,7 +301,7 @@ Mining is also possible in disable-wallet mode using the `getblocktemplate` RPC 
 
 ## Running
 BTCU is now available at `./btcud`
-
+/Users/nataliabelets/.btcu
 Before running, it's recommended that you create an RPC configuration file:
 ```shell
     echo -e "rpcuser=btcurpc\nrpcpassword=$(xxd -l 16 -p /dev/urandom)" > "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"
