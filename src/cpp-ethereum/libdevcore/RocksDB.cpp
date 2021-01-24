@@ -141,7 +141,7 @@ bool RocksDB::exists(Slice _key) const
 {
     std::string value;
     rocksdb::Slice const key(_key.data(), _key.size());
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(WIN32)
     if (!m_db->KeyMayExist(m_readOptions, key, &value, nullptr, nullptr))
         return false;
 #else /* __APPLE__ */
