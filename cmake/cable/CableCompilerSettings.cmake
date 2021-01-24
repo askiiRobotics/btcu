@@ -64,10 +64,7 @@ macro(cable_configure_compiler)
             add_compile_options(-Wno-unknown-pragmas)
 
         elseif(MSVC)
-
-            # Enable basing warnings set and treat them as errors.
-            add_compile_options(/W4 /WX)
-
+        
             # Allow unknown pragmas, we don't want to wrap them with #ifdefs.
             add_compile_options(/wd4068)
 
