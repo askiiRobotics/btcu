@@ -22,6 +22,10 @@
 #include <boost/multi_index/tag.hpp>
 #include <boost/multi_index/composite_key.hpp>
 
+#ifdef  _WIN32
+#include <thread/interruption.hpp>
+#endif // _WIN32
+
 
 
 namespace bmi = boost::multi_index;
