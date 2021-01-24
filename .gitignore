@@ -166,3 +166,9 @@ lib/
 bin/
 conf*/*
 conftest.c
+ecmult_static_context.h
+
+.vs/
+db-*/
+*.zip
+.vscode/
