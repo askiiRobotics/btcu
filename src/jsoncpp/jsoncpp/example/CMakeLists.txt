@@ -13,7 +13,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_definitions(
         -D_SCL_SECURE_NO_WARNINGS
         -D_CRT_SECURE_NO_WARNINGS
-        -D_WIN32_WINNT=0x601
         -D_WINSOCK_DEPRECATED_NO_WARNINGS
     )
 endif()
