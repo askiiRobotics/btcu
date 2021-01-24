@@ -4,20 +4,32 @@
 # about the state of the plateform we are building on.
 
 include(CheckIncludeFiles)
+include(CheckFunctionExists)
 include(CheckLibraryExists)
 include(CheckSymbolExists)
 include(CheckCXXSymbolExists)
 include(CheckCXXSourceCompiles)
 include(TestBigEndian)
+include(BrewHelper)
 
 # Version
 set(CLIENT_VERSION_MAJOR ${btcu_VERSION_MAJOR})
 set(CLIENT_VERSION_MINOR ${btcu_VERSION_MINOR})
 set(CLIENT_VERSION_REVISION ${btcu_VERSION_PATCH})
 
+set(COPYRIGHT_YEAR 2021)
+
 option(CLIENT_VERSION_IS_RELEASE "Build a release version" OFF)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    # turning off static libs for correct config tests
+    set(BUILD_STATIC_LIBS OFF)
+endif()
+
+
 # AVX2
+set(CRYPTO_AVX2_FLAGS -mavx -mavx2)
+
 string(JOIN " " CMAKE_REQUIRED_FLAGS ${CRYPTO_AVX2_FLAGS})
 check_cxx_source_compiles("
 	#include <stdint.h>
@@ -29,6 +41,8 @@ check_cxx_source_compiles("
 " ENABLE_AVX2)
 
 # SHA-NI
+set(CRYPTO_SHANI_FLAGS -msse4 -msha)
+
 string(JOIN " " CMAKE_REQUIRED_FLAGS ${CRYPTO_SHANI_FLAGS})
 check_cxx_source_compiles("
 	#include <stdint.h>
@@ -42,6 +56,7 @@ check_cxx_source_compiles("
 " ENABLE_SHANI)
 
 # SSE4.1
+set(CRYPTO_SSE41_FLAGS -msse4.1)
 string(JOIN " " CMAKE_REQUIRED_FLAGS ${CRYPTO_SSE41_FLAGS})
 check_cxx_source_compiles("
 	#include <stdint.h>
@@ -61,13 +76,14 @@ set(CMAKE_REQUIRED_DEFINITIONS -D_FORTIFY_SOURCE=2)
 # and always succeed to build.
 set(CMAKE_REQUIRED_FLAGS -O2)
 
+# this check can cause a crush of Visual Studio while checking
 check_prototype_definition(
-	__fdelt_warn
-	"extern long unsigned int __fdelt_warn(long unsigned int a)"
-	"0"
-	"sys/select.h"
-	FDELT_PROTOTYPE_LONG_UNSIGNED_INT
-)
+		__fdelt_warn
+		"extern long unsigned int __fdelt_warn(long unsigned int a)"
+		"0"
+		"sys/select.h"
+		FDELT_PROTOTYPE_LONG_UNSIGNED_INT
+	)
 
 if(FDELT_PROTOTYPE_LONG_UNSIGNED_INT)
 	set(FDELT_TYPE "long unsigned int")
@@ -94,6 +110,7 @@ check_include_files("byteswap.h" HAVE_BYTESWAP_H)
 check_symbol_exists(bswap_16 "byteswap.h" HAVE_DECL_BSWAP_16)
 check_symbol_exists(bswap_32 "byteswap.h" HAVE_DECL_BSWAP_32)
 check_symbol_exists(bswap_64 "byteswap.h" HAVE_DECL_BSWAP_64)
+# for the case when it doesn't have the byteswap.h please check src/compat/byteswap.h 
 
 # Endianness
 check_include_files("endian.h" HAVE_ENDIAN_H)
@@ -120,6 +137,7 @@ if(ENDIAN_FILE)
 	check_symbol_exists(be64toh ${ENDIAN_FILE} HAVE_DECL_BE64TOH)
 	check_symbol_exists(le64toh ${ENDIAN_FILE} HAVE_DECL_LE64TOH)
 endif()
+# for else case please check src/compat/endian.h
 
 #  check strerror_r
 CHECK_FUNCTION_EXISTS(strerror_r HAVE_STRERROR_R)
@@ -185,22 +203,29 @@ function(check_builtin_exist SYMBOL VARIABLE)
 	endif()
 endfunction()
 
-check_builtin_exist(__builtin_clz HAVE_DECL___BUILTIN_CLZ)
-check_builtin_exist(__builtin_clzl HAVE_DECL___BUILTIN_CLZL)
-check_builtin_exist(__builtin_clzll HAVE_DECL___BUILTIN_CLZLL)
-check_builtin_exist(__builtin_popcount HAVE_BUILTIN_POPCOUNT)
+# Windows MSVC has a row undefined and unsupported behaviours with this functions
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	check_builtin_exist(__builtin_clz HAVE_DECL___BUILTIN_CLZ)
+	check_builtin_exist(__builtin_clzl HAVE_DECL___BUILTIN_CLZL)
+	check_builtin_exist(__builtin_clzll HAVE_DECL___BUILTIN_CLZLL)
+	check_builtin_exist(__builtin_popcount HAVE_BUILTIN_POPCOUNT)
+endif()
 
 # Memory management capabilities
+
+# this check can cause a crush of Visual Studio while checking
 check_symbol_exists(M_ARENA_MAX "malloc.h" HAVE_MALLOPT_ARENA_MAX)
 check_symbol_exists(malloc_info "malloc.h" HAVE_MALLOC_INFO)
 
 # Various system libraries
 check_symbol_exists(strnlen "string.h" HAVE_DECL_STRNLEN)
+
 # daemon() is located in unistd.h on linux and in stdlib.h on BSDs and macOS.
 check_symbol_exists(daemon "unistd.h;stdlib.h" HAVE_DECL_DAEMON)
 
 # Check for ways to obtain entropy
 check_symbol_exists(getentropy "unistd.h" HAVE_GETENTROPY)
+
 # macOS needs unistd.h and sys/random.h to define getentropy
 check_symbol_exists(getentropy "unistd.h;sys/random.h" HAVE_GETENTROPY_RAND)
 
@@ -266,91 +291,134 @@ check_cxx_source_compiles("
 " HAVE_FUNC_ATTRIBUTE_DLLIMPORT)
 
 # Check for the `advapi32' library (-ladvapi32)
-check_library_exists(advapi32 ${ADVAPI32_LIBRARY} HAVE_LIBADVAPI32)
+if(ADVAPI32_LIBRARY)
+	set(HAVE_LIBADVAPI32 1)
+endif()
 
 # Check for the `comctl32' library (-lcomctl32)
-check_library_exists(comctl32 ${COMCTL32_LIBRARY} HAVE_LIBCOMCTL32)
+if(COMCTL32_LIBRARY)
+	set(HAVE_LIBCOMCTL32 1)
+endif()
 
 # Check for the `comdlg32' library (-lcomdlg32)
-check_library_exists(comdlg32 ${COMDLG32_LIBRARY} HAVE_LIBCOMDLG32)
+if(COMDLG32_LIBRARY)
+	set(HAVE_LIBCOMDLG32 1)
+endif()
 
 # Check for the `crypt32' library (-lcrypt32)
-check_library_exists(crypt32 ${CRYPT32_LIBRARY} HAVE_LIBCRYPT32)
+if(CRYPT32_LIBRARY)
+	set(HAVE_LIBCRYPT32 1)
+endif()
 
 # Check for the `gdi32' library (-lgdi32)
-check_library_exists(gdi32 ${GDI32_LIBRARY} HAVE_LIBGDI32)
+if(GDI32_LIBRARY)
+	set(HAVE_LIBGDI32 1)
+endif()
 
 # Set flag is libgmp installed
 set(HAVE_LIBGMP ${GMP_FOUND})
 
 # Check for the `imm32' library (-limm32).
-check_library_exists(imm32 ${IMM32_LIBRARY} HAVE_LIBIMM32)
+if(IMM32_LIBRARY)
+	set(HAVE_LIBIMM32 1)
+endif()
 
 # Check for the `iphlpapi' library (-liphlpapi).
-check_library_exists(iphlpapi ${IPHLPAPI_LIBRARY} HAVE_LIBIPHLPAPI)
+if(IPHLPAPI_LIBRARY)
+	set(HAVE_LIBIPHLPAPI 1)
+endif()
 
 # Check for the `kernel32' library (-lkernel32).
-check_library_exists(kernel32 ${KERNEL32_LIBRARY} HAVE_LIBKERNEL32)
+if(KERNEL32_LIBRARY)
+	set(HAVE_LIBKERNEL32 1)
+endif()
 
 # Check for the `mingwthrd' library (-lmingwthrd).
-check_library_exists(mingwthrd ${MINGWTHRD_LIBRARY} HAVE_LIBMINGWTHRD)
+if(MINGWTHRD_LIBRARY)
+	set(HAVE_LIBMINGWTHRD 1)
+endif()
 
 # Check for the `mswsock' library (-lmswsock).
-check_library_exists(mswsock ${MSWSOCK_LIBRARY} HAVE_LIBMSWSOCK)
+if(MSWSOCK_LIBRARY)
+	set(HAVE_LIBMSWSOCK 1)
+endif()
 
 # Check for the `ole32' library (-lole32).
-check_library_exists(ole32 ${OLE32_LIBRARY} HAVE_LIBOLE32)
+if(OLE32_LIBRARY)
+	set(HAVE_LIBOLE32 1)
+endif()
 
 # Check for the `oleaut32' library (-loleaut32).
-check_library_exists(oleaut32 ${OLEAUT32_LIBRARY} HAVE_LIBOLEAUT32)
+if(OLEAUT32_LIBRARY)
+	set(HAVE_LIBOLEAUT32 1)
+endif()
 
 # Check for the `rpcrt4' library (-lrpcrt4).
-check_library_exists(rpcrt4 ${RPCRT4_LIBRARY} HAVE_LIBRPCRT4)
+if(RPCRT4_LIBRARY)
+	set(HAVE_LIBRPCRT4 1)
+endif()
 
 # Check for the `rt' library (-lrt).
-check_library_exists(rt ${RT_LIBRARY} HAVE_LIBRT)
+if(RT_LIBRARY)
+	set(HAVE_LIBRT 1)
+endif()
 
 # Check for the `shell32' library (-lshell32).
-check_library_exists(shell32 ${SHELL32_LIBRARY} HAVE_LIBSHELL32)
+if(SHELL32_LIBRARY)
+	set(HAVE_LIBSHELL32 1)
+endif()
 
 # Check for the `shlwapi' library (-lshlwapi).
-check_library_exists(shlwapi ${SHLWAPI_LIBRARY} HAVE_LIBSHLWAPI)
+if(SHLWAPI_LIBRARY)
+	set(HAVE_LIBSHLWAPI 1)
+endif()
 
 # Check for the `ssp' library (-lssp).
-check_library_exists(ssp ${SSP_LIBRARY} HAVE_LIBSSP)
+if(SSP_LIBRARY)
+	set(HAVE_LIBSSP 1)
+endif()
 
 # Check for the `user32' library (-luser32).
-check_library_exists(user32 ${USER32_LIBRARY} HAVE_LIBUSER32)
+if(USER32_LIBRARY)
+	set(HAVE_LIBUSER32 1)
+endif()
 
 # Check for the `uuid' library (-luuid).
-check_library_exists(uuid ${UUID_LIBRARY} HAVE_LIBUUID)
+if(UUID_LIBRARY)
+	set(HAVE_LIBUUID 1)
+endif()
 
 # Check for the `winmm' library (-lwinmm).
-check_library_exists(winmm ${WINMM_LIBRARY} HAVE_LIBWINMM)
+if(WINMM_LIBRARY)
+	set(HAVE_LIBWINMM 1)
+endif()
 
 # Check for the `winspool' library (-lwinspool).
-check_library_exists(winspool ${WINSPOOL_LIBRARY} HAVE_LIBWINSPOOL)
+if(WINSPOOL_LIBRARY)
+	set(HAVE_LIBWINSPOOL 1)
+endif()
 
 # Check for the `ws2_32' library (-lws2_32).
-check_library_exists(ws2_32 ${WS2_32_LIBRARY} HAVE_LIBWS2_32)
+if(WS2_32_LIBRARY)
+	set(HAVE_LIBWS2_32 1)
+endif()
 
 # Check for the `z ' library (-lz ).
-check_library_exists('z ${Z_LIBRARY} HAVE_LIBZ_)
+if(Z_LIBRARY)
+	set(HAVE_LIBZ_ 1)
+endif()
 
 # <memory.h> header file
 check_include_files("memory.h" HAVE_MEMORY_H)
 
-# <miniupnpc/miniupnpc.h> header file
-check_include_files("miniupnpc/miniupnpc.h" HAVE_MINIUPNPC_MINIUPNPC_H)
-
-# <miniupnpc/miniwget.h> header file.
-check_include_files("miniupnpc/miniwget.h" HAVE_MINIUPNPC_MINIWGET_H)
-
-# <miniupnpc/upnpcommands.h> header file.
-check_include_files("miniupnpc/upnpcommands.h" HAVE_MINIUPNPC_UPNPCOMMANDS_H)
-
-# <miniupnpc/upnperrors.h> header file.
-check_include_files("miniupnpc/upnperrors.h" HAVE_MINIUPNPC_UPNPERRORS_H)
+# check is enabled UPnP support
+find_package(miniupnp)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    find_package(miniupnpc)
+endif()
+if(WITH_MINIUNPC AND MINIUPNP_FOUND)
+	set(ENABLE_UPNP 1)
+endif()
 
 # check for the MSG_DONTWAIT
 check_cxx_source_compiles("
@@ -441,11 +509,8 @@ check_cxx_source_compiles("
 # the sub-directory where libtool stores uninstalled libraries
 set(LT_OBJDIR ".libs/")
 
-# the version of this package
-set(PACKAGE_VERSION 3.0.2)
-
 # full name and version of this package
-set(PACKAGE_STRING "${PROJECT_NAME} ${PACKAGE_VERSION}")
+set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 
 # short name of this package
 set(PACKAGE_TARNAME ${PROJECT_NAME})
@@ -463,8 +528,8 @@ foreach(PTHREAD_TEST PTHREAD_CREATE_JOINABLE PTHREAD_CREATE_UNDETACHED)
 			int attr = ${PTHREAD_TEST};
 			return 0;
 		}
-		" IS_SUCCESSED)
-	if(IS_SUCCESSED)
+		" PTHREAD_TEST_ITEM)
+	if(PTHREAD_TEST_ITEM)
 		set(ATTR_NAME "${PTHREAD_TEST}")
 		break()
 	endif()
@@ -474,30 +539,28 @@ if("${ATTR_NAME}" STREQUAL "${PTHREAD_CREATE_JOINABLE}")
 	set(PTHREAD_CREATE_JOINABLE "${ATTR_NAME}")
 endif()
 
-# check is qt platform cocoa
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	set(QT_QPA_PLATFORM_COCOA 1)
-endif()
-
 # check is the minimal qt platform exists
+find_package(Qt5Core)
 if(Qt5Core_FOUND)
-	set(QT_QPA_PLATFORM_MINIMAL 1)
+	# check are qt plugins static
+	get_target_property(QT_CORE_TYPE Qt5::Core TYPE)
+	if(QT_CORE_TYPE MATCHES STATIC)
+		set(QT_STATICPLUGIN 1)
+	endif()
 endif()
 
-# check is it the windows qt platform
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	# check is qt platform cocoa
+	set(QT_QPA_PLATFORM_COCOA 1)
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	# check is it the windows qt platform
 	set(QT_QPA_PLATFORM_WINDOWS 1)
-endif()
-
-# check is it the xcb qt platform
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	# check is it the xcb qt platform
 	set(QT_QPA_PLATFORM_XCB 1)
-endif()
-
-# check are qt plugins static
-# TODO: add support for QT_STATIC_BUILD
-if(QT_STATIC_BUILD)
-	set(QT_STATICPLUGIN 1)
+else()
+	# set minimal support
+	set(QT_QPA_PLATFORM_MINIMAL 1)
 endif()
 
 # check do you have the ANSI C header files
@@ -521,6 +584,8 @@ if(ENABLE_DBUS_NOTIFICATIONS)
 endif()
 
 # check is gmp was found
+find_package(GMP)
+find_package(OpenSSL)
 if(GMP_FOUND)
     set(USE_NUM_GMP 1)
 elseif(OPENSSL_FOUND)
@@ -531,13 +596,8 @@ else()
 endif()
 
 # check is QTCHARTS support should be compiled in
-if(ENABLE_QTCHARTS AND Qt5Charts_FOUND)
+if(ENABLE_QTCHARTS)
 	set(USE_QTCHARTS 1)
-endif()
-
-# check is enabled UPnP support
-if(WITH_MINIUNPC AND MINIUPNP_FOUND)
-	set(ENABLE_UPNP 1)
 endif()
 
 # Try to find miniupnpc
@@ -563,8 +623,6 @@ endif()
 # definition to be set.
 if(NOT HAVE_LARGE_FILE_SUPPORT)
 	set(_FILE_OFFSET_BITS 64)
-	add_compile_definitions(_FILE_OFFSET_BITS=64)
-	add_linker_flags(-Wl,--large-address-aware)
 else()
 	set(_LARGE_FILES 1)
 endif()
@@ -575,6 +633,10 @@ check_cxx_symbol_exists(std::system "cstdlib" _HAVE_STD_SYSTEM)
 check_cxx_symbol_exists(::wsystem "" _HAVE_WSYSTEM)
 if(_HAVE_STD_SYSTEM OR _HAVE_WSYSTEM)
 	set(HAVE_SYSTEM 1)
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(BUILD_STATIC_LIBS ON)
 endif()
 
 # Generate the config
