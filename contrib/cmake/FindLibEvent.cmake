@@ -26,6 +26,7 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_Event QUIET libevent)
 
+include(BrewHelper)
 find_brew_prefix(_Event_BREW_HINT libevent)
 
 find_path(LibEvent_INCLUDE_DIR
@@ -41,18 +42,28 @@ mark_as_advanced(LibEvent_INCLUDE_DIR)
 if(LibEvent_INCLUDE_DIR)
 	include(ExternalLibraryHelper)
 
-	find_component(LibEvent event
-		NAMES event
-		HINTS "${_Event_BREW_HINT}"
-		INCLUDE_DIRS ${LibEvent_INCLUDE_DIRS}
-		PATHS ${PC_Event_LIBRARY_DIRS}
-	)
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		find_component(LibEvent event
+			NAMES event
+			HINTS "${_Event_BREW_HINT}"
+			INCLUDE_DIRS ${LibEvent_INCLUDE_DIRS}
+			PATHS ${PC_LibEvent_LIBRARY_DIRS}
+			INTERFACE_LINK_LIBRARIES "ws2_32;shell32;advapi32;iphlpapi"
+		)
+	else()
+		find_component(LibEvent event
+			NAMES event
+			HINTS "${_Event_BREW_HINT}"
+			INCLUDE_DIRS ${LibEvent_INCLUDE_DIRS}
+			PATHS ${PC_LibEvent_LIBRARY_DIRS}
+		)
+	endif()
 
-	pkg_check_modules(PC_Event_pthreads QUIET event_pthreads libevent_pthreads)
+	pkg_check_modules(PC_LibEvent_pthreads QUIET event_pthreads libevent_pthreads)
 	find_component(LibEvent pthreads
 		NAMES event_pthreads
 		INCLUDE_DIRS ${LibEvent_INCLUDE_DIRS}
-		PATHS ${PC_Event_pthreads_LIBRARY_DIRS}
+		PATHS ${PC_LibEvent_pthreads_LIBRARY_DIRS}
 	)
 
 	if(NOT LibEvent_VERSION)
