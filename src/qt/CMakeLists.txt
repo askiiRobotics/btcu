@@ -19,12 +19,18 @@ endif ()
 find_package(Qrcode REQUIRED)
 include_directories ( ${Qrcode_INCLUDE_DIRS} )
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	set(Qt5_USE_STATIC_LIBS ON)
+	set(Qt5_USE_STATIC_RUNTIME ON)
+endif ()
+
 unset(Qt5Enables)
 foreach(comp Widgets Core Gui Network LinguistTools DBus Svg Charts Test)
-    find_package(Qt5${comp})
+    find_package(Qt5${comp} NO_SYSTEM_ENVIRONMENT_PATH)
     set(Qt5Enables "${Qt5Enables};Qt5${comp}_FOUND")
     if(Qt5${comp}_FOUND)
-        MESSAGE(STATUS "FOUND QT5${comp}")
+        message(STATUS "FOUND QT5${comp}")
+    	message(STATUS "INCLUDE: ${Qt5${comp}_INCLUDE_DIRS}")
         include_directories(${include_directories} ${Qt5${comp}_INCLUDE_DIRS} ${QT_USE_FILE})
         add_definitions(${Qt5${comp}_DEFINITIONS})
         list(APPEND Qt5_LIBRARIES ${Qt5${comp}_LIBRARIES})
@@ -42,14 +48,25 @@ if (Qt5Charts_FOUND)
 endif()
 
 find_program(MOC_BIN NAMES moc moc-qt5 qt5-moc
-        PATHS /usr/lib/qt5/bin /usr/lib/x86_64-linux-gnu/qt5/bin /usr/local/opt/qt/bin /usr/local/opt/qt5/bin
+        PATHS /usr/lib/qt5/bin /usr/lib/x86_64-linux-gnu/qt5/bin /usr/local/opt/qt/bin /usr/local/opt/qt5/bin ${MOC_BIN_DIR}
         NO_DEFAULT_PATH
         NO_SYSTEM_ENVIRONMENT_PATH)
 if (MOC_BIN)
     MESSAGE(STATUS "FOUND MOC ${MOC_BIN}")
-endif ()
+else()
+    MESSAGE(STATUS "NOT FOUND MOC ${MOC_BIN}")
+endif()
 
 add_compile_options("-DQT_NO_KEYWORDS")
+
+# Find out more about Qt. This is similar to
+# http://code.qt.io/cgit/qt/qtwebkit.git/tree/Source/cmake/OptionsQt.cmake
+get_target_property(QT_CORE_TYPE Qt5::Core TYPE)
+if(QT_CORE_TYPE MATCHES STATIC)
+	set(QT_STATIC_BUILD ON)
+    message(STATUS "QT5: Static build ENABLED")
+endif()
+
 
 file(GLOB LOCAL_QT_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 source_group("QtHeaders" FILES ${LOCAL_QT_HEADERS})
@@ -206,6 +223,8 @@ target_include_directories(qt_stuff
 			${OPENSSL_INCLUDE_DIR}
 			${BerkeleyDB_INCLUDE_DIRS}
 			${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
+			${Boost_INCLUDE_DIRS}
+			${Boost_INCLUDE_DIRS}/filesystem
         )
 set_property(TARGET qt_stuff PROPERTY CXX_STANDARD 11)
 
@@ -221,7 +240,15 @@ QT5_ADD_RESOURCES(QRC_RESOURCE btcu.qrc)
 QT5_ADD_RESOURCES(QRC_LOCALE_RESOURCE btcu_locale.qrc)
 
 add_executable(btcu-qt btcu.cpp ${QM} ${QRC_RESOURCE} ${QRC_LOCALE_RESOURCE})
-add_dependencies(btcu-qt translations_target libunivalue libsecp256k1 leveldb leveldb_sse42 memenv)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	include(WindowsVersionInfo)
+	generate_windows_version_info(btcu-qt
+		DESCRIPTION "GUI node for BTCU"
+		ICONS
+			"res/icons/bitcoin.ico"
+	)
+endif()
+add_dependencies(btcu-qt translations_target leveldb leveldb_sse42 memenv)
 
 target_include_directories(btcu-qt PUBLIC ${ENDIAN_INCLUDES} ${CMAKE_SOURCE_DIR}/src/cpp-ethereum/)
 
@@ -239,27 +266,19 @@ target_link_libraries(btcu-qt
         Threads::Threads
         )
 
-# Add the minimal integration plugin, and other plugins according to the target
-# platform.
-set(QT_PLUGIN_COMPONENTS QMinimalIntegrationPlugin)
-set(QT_PLUGIN_PLATFORM_DEFINITIONS -DQT_QPA_PLATFORM_MINIMAL=1)
 
 # Linux support
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	list(APPEND QT_PLUGIN_COMPONENTS QXcbIntegrationPlugin)
 	list(APPEND QT_PLUGIN_PLATFORM_DEFINITIONS -DQT_QPA_PLATFORM_XCB=1)
-endif()
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(CMAKE_AUTOMOC_MOC_OPTIONS "-DQ_OS_WIN")
 
-# Windows support
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(APPEND QT_PLUGIN_COMPONENTS QWindowsIntegrationPlugin)
 	list(APPEND QT_PLUGIN_PLATFORM_DEFINITIONS -DQT_QPA_PLATFORM_WINDOWS=1)
 
 	target_sources(btcu-qt PRIVATE winshutdownmonitor.cpp)
-endif()
-
-# OSX support
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_AUTOMOC_MOC_OPTIONS "-DQ_OS_MAC")
 
 	list(APPEND QT_PLUGIN_COMPONENTS QCocoaIntegrationPlugin)
@@ -270,21 +289,41 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		"-framework ApplicationServices"
 		"-framework AppKit"
 	)
+else()
+	# Add the minimal integration plugin, and other plugins according to the target
+	# platform.
+	set(QT_PLUGIN_COMPONENTS QMinimalIntegrationPlugin)
+	set(QT_PLUGIN_PLATFORM_DEFINITIONS -DQT_QPA_PLATFORM_MINIMAL=1)
 endif()
+
 if(GMP_FOUND)
     target_link_libraries(btcu-qt ${GMP_LIBRARIES})
     target_include_directories(btcu-qt PUBLIC ${GMP_INCLUDE_DIR})
 endif()
-if(ZMQ_FOUND)
-    target_link_libraries(btcu-qt ZMQ_A ${ZMQ_LIBRARIES})
-    target_include_directories(btcu-qt PUBLIC ${ZMQ_INCLUDE_DIRS})
+if(ZeroMQ_FOUND)
+    target_link_libraries(btcu-qt ZMQ_A)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		target_link_libraries(btcu-qt 
+			${ZeroMQ_STATIC_LIBRARY}
+			)
+	else()
+		target_link_libraries(btcu-qt 
+			${ZeroMQ_LIBRARY}
+			)
+	endif()
+    target_include_directories(btcu-qt PUBLIC ${ZeroMQ_INCLUDE_DIRS})
 endif()
 if (Qrcode_FOUND)
     target_link_libraries(btcu-qt ${Qrcode_LIBRARIES})
     target_include_directories(btcu-qt PUBLIC ${Qrcode_INCLUDE_DIRS})
 endif()
 if(MINIUPNP_FOUND)
-    target_compile_definitions(btcu-qt PUBLIC "-DSTATICLIB -DMINIUPNP_STATICLIB")
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		target_compile_definitions(btcu-qt
+			PUBLIC -DSTATICLIB
+			PUBLIC -DMINIUPNP_STATICLIB
+		)
+	endif()
     target_link_libraries(btcu-qt ${MINIUPNP_LIBRARY})
     target_include_directories(btcu-qt PUBLIC ${MINIUPNP_INCLUDE_DIR})
 endif()
@@ -552,8 +591,7 @@ set(QT_TEST_SOURCES
     )
 
 add_executable(test_btcu-qt ${QT_TEST_SOURCES})
-add_dependencies(test_btcu-qt translations_target libunivalue libsecp256k1 leveldb leveldb_sse42 memenv)
-target_compile_options(test_btcu-qt PUBLIC -fPIC)
+add_dependencies(test_btcu-qt translations_target leveldb leveldb_sse42 memenv)
 target_include_directories(test_btcu-qt PUBLIC
         ${ENDIAN_INCLUDES}
         ${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
@@ -580,10 +618,12 @@ target_link_libraries(test_btcu-qt PUBLIC
 		${Boost_LIBRARIES} 
 		${PROTOBUF_LIBRARIES} 
 		${LibEvent_LIBRARIES}
-        pthread
         ${Qrcode_LIBRARIES}
         Qt5::Gui Qt5::Core Qt5::Widgets Qt5::Network Qt5::Svg Qt5::Test ${QT_LIBRARIES}
     )
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	target_link_libraries(test_btcu-qt PUBLIC pthread)
+endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(test_btcu-qt PUBLIC
@@ -603,12 +643,26 @@ endif()
 if (Qt5Charts_FOUND)
     target_link_libraries(test_btcu-qt PUBLIC Qt5::Charts ${QT_LIBRARIES})
 endif()
-if(ZMQ_FOUND)
-    target_link_libraries(test_btcu-qt PUBLIC ZMQ_A ${ZMQ_LIBRARIES})
-    target_include_directories(test_btcu-qt PUBLIC ${ZMQ_INCLUDE_DIRS})
+if(ZeroMQ_FOUND)
+    target_link_libraries(test_btcu-qt PUBLIC ZMQ_A)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        target_link_libraries(test_btcu-qt PUBLIC
+            ${ZeroMQ_STATIC_LIBRARY}
+            )
+    else()
+        target_link_libraries(test_btcu-qt PUBLIC
+            ${ZeroMQ_LIBRARY}
+            )
+    endif()
+    target_include_directories(test_btcu-qt PUBLIC ${ZeroMQ_INCLUDE_DIRS})
 endif()
 if(MINIUPNP_FOUND)
-    target_compile_definitions(test_btcu-qt PUBLIC "-DSTATICLIB -DMINIUPNP_STATICLIB")
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		target_compile_definitions(test_btcu-qt
+			PUBLIC -DSTATICLIB
+			PUBLIC -DMINIUPNP_STATICLIB
+		)
+	endif()
     target_link_libraries(test_btcu-qt PUBLIC ${MINIUPNP_LIBRARY})
     target_include_directories(test_btcu-qt PUBLIC ${MINIUPNP_INCLUDE_DIR})
 endif()
