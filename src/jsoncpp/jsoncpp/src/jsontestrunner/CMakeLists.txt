@@ -21,7 +21,7 @@ if(BUILD_SHARED_LIBS)
     endif()
     target_link_libraries(jsontestrunner_exe jsoncpp_lib)
 else()
-    target_link_libraries(jsontestrunner_exe jsoncpp_static)
+    target_link_libraries(jsontestrunner_exe jsoncpp_lib_static)
 endif()
 
 set_target_properties(jsontestrunner_exe PROPERTIES OUTPUT_NAME jsontestrunner_exe)
