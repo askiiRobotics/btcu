@@ -12,3 +12,8 @@ target_link_libraries(devcrypto
         cryptopp-shared 
         ${LIBCRYPT_LIBRARY}
         )
+if (MSVC)
+    target_link_libraries(devcrypto cryptopp-static)
+else()
+    target_link_libraries(devcrypto cryptopp-shared)
+endif()
