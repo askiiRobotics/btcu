@@ -7,10 +7,10 @@
 #include "winshutdownmonitor.h"
 
 #if defined(Q_OS_WIN)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #include "init.h"
 #include "util.h"
-
-#include <windows.h>
 
 #include <QDebug>
 

@@ -6,10 +6,9 @@
 #define BITCOIN_QT_WINSHUTDOWNMONITOR_H
 
 #ifdef WIN32
+#include <windows.h>
 #include <QByteArray>
 #include <QString>
-
-#include <windef.h> // for HWND
 
 #include <QAbstractNativeEventFilter>
 
