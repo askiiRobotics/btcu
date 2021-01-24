@@ -2,14 +2,14 @@
 # Copyright 2018 Aleth Autors.
 # Licensed under the GNU General Public License, Version 3. See the LICENSE file.
 
-cmake_minimum_required(VERSION 3.9.3)
+cmake_minimum_required(VERSION 3.14)
 
 #if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git OR NOT EXISTS ${CMAKE_SOURCE_DIR}/cmake/cable/.git)
 #    message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
 #endif()
 
 message(${CMAKE_CURRENT_LIST_DIR})
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/cable/bootstrap.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/cable/bootstrap.cmake)
 include(CableBuildInfo)
 include(CableBuildType)
 include(CableToolchains)
@@ -17,7 +17,7 @@ include(GNUInstallDirs)
 
 cable_configure_toolchain(DEFAULT cxx11-pic)
 
-set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
+set(ETH_CMAKE_DIR "${CMAKE_SOURCE_DIR}/cmake" CACHE PATH "The path to the cmake directory")
 list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
 
 # Map current configuration to configurations of imported targets.
@@ -40,11 +40,10 @@ include(EthExecutableHelper)
 include(EthDependencies)
 include(EthUtils)
 
-#set(Boost_USE_STATIC_LIBS ON)
-#set(Boost_USE_MULTITHREADED ON)
-#hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber log)
-#find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber log)
-
+if (MSVC)
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_STATIC_LIBS ON)
+endif()
 set(CMAKE_CXX_STANDARD 11)
 
 find_package(jsoncpp CONFIG REQUIRED)
@@ -58,9 +57,6 @@ find_package(libjson-rpc-cpp CONFIG REQUIRED)
 find_package(libscrypt CONFIG REQUIRED)
 
 find_package(ethash CONFIG REQUIRED)
-
-include(ProjectSecp256k1)
-include(ProjectLibFF)
 
 find_package(Threads)
 

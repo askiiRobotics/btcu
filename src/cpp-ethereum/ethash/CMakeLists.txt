@@ -1,19 +1,16 @@
 # ethash: C/C++ implementation of Ethash, the Ethereum Proof of Work algorithm.
 # Copyright 2018 Pawel Bylica.
 # Licensed under the Apache License, Version 2.0. See the LICENSE file.
-
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.14)
 
 if(POLICY CMP0069)
     cmake_policy(SET CMP0069 NEW)  # Allow LTO.
 endif()
 
-include(cmake/cable/bootstrap.cmake)
-
+include(${CMAKE_SOURCE_DIR}/cmake/cable/bootstrap.cmake)
+include(CableToolchains)
 include(CableBuildType)
 include(CableCompilerSettings)
-include(CableToolchains)
-
 cable_configure_toolchain(DEFAULT cxx11)
 
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
@@ -51,8 +48,10 @@ endif()
 
 add_subdirectory(lib/ethash)
 
-
-option(ETHASH_BUILD_TESTS "Build unit tests" ON)
-if(ETHASH_BUILD_TESTS)
-    add_subdirectory(test)
+# Disable tests for Windows
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    option(ETHASH_BUILD_TESTS "Build unit tests" ON)
+    if(ETHASH_BUILD_TESTS)
+        add_subdirectory(test)
+    endif()
 endif()
