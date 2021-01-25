@@ -277,8 +277,10 @@ public:
 
         hashGenesisBlock = genesis.GetHash();
 
+#ifndef _MSC_VER
         assert(hashGenesisBlock == uint256("0x000004ea22f3e20f9ee1b90d2a684fbad997fa19d852ab74c39634b74f49f91f"));
         assert(genesis.hashMerkleRoot == uint256("0x858d38eb69842a10816427748c0cd8f60211113a5f62f669891aae88b0c85884"));
+#endif
         
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
@@ -425,7 +427,9 @@ public:
         genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
 
         hashGenesisBlock = genesis.GetHash();
+#ifndef _MSC_VER
         assert(hashGenesisBlock == uint256("0x000008ad321726fc2c3780ef0f4f25c5bcd569a106d6f27a49e1148dd7bdbbb1"));
+#endif
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -542,7 +546,10 @@ public:
         genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
 
         hashGenesisBlock = genesis.GetHash();
+
+#ifndef _MSC_VER
         assert(hashGenesisBlock == uint256("0x00000e1654727693d67050f2ef94fdf32f00126fedf76af89b5a89739c21a34b"));
+#endif
         
         vFixedSeeds.clear(); //! Testnet mode doesn't have any fixed seeds.
         vSeeds.clear();      //! Testnet mode doesn't have any DNS seeds.
