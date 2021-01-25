@@ -4,6 +4,10 @@
 
 cmake_minimum_required(VERSION 3.14)
 
+# Default visibility is hidden on all targets.
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+
 #if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git OR NOT EXISTS ${CMAKE_SOURCE_DIR}/cmake/cable/.git)
 #    message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
 #endif()

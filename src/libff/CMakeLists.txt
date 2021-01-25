@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.14)
 
 project (libff)
 
+# Default visibility is hidden on all targets.
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+
 # Default to RelWithDebInfo configuration if no configuration is explicitly specified.
 #if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 #  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type on single-configuration generators" FORCE)

@@ -4,7 +4,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 # the version of this package
 set(PROJECT_VERSION 0.1.1)
 
-project(btcu 
+project(btcu
 	VERSION ${PROJECT_VERSION}
 	DESCRIPTION "BTCU is a free open source peer-to-peer electronic cash system that is completely decentralized, without the need for a central server or trusted parties.  Users hold the crypto keys to their own money and transact directly with each other, with the help of a P2P network to check for double-spending."
 	HOMEPAGE_URL "https://btcu.io/"
@@ -42,10 +42,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" CACHE PATH "Archive
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" CACHE PATH "Library output dir.")
 set(CMAKE_PDB_OUTPUT_DIRECTORY     "${CMAKE_BINARY_DIR}/bin" CACHE PATH "PDB (MSVC debug symbol)output dir.")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" CACHE PATH "Executable/dll output dir.")
-
-# Default visibility is hidden on all targets.
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 add_custom_target(print-version
   COMMENT "Print the current ${PROJECT_NAME} version"
