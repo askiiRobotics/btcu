@@ -11,8 +11,6 @@
 #  RocksDB_INCLUDE_DIR
 #  ROCKSDB_LIBRARY
 
-message(STATUS "Found ROCKSDB_ROOT_DIR ${ROCKSDB_ROOT_DIR}")
-
 if(ROCKSDB_ROOT_DIR)
     set(_ROCKSDB_PATHS "${ROCKSDB_ROOT_DIR}")
 else()
@@ -31,18 +29,14 @@ find_path(RocksDB_INCLUDE_DIR NAMES rocksdb/db.h
         PATHS "${_ROCKSDB_PATHS}"
         PATH_SUFFIXES "include" "includes")
 
-message(STATUS "Found _ROCKSDB_PATHS ${_ROCKSDB_PATHS}")
 if(RocksDB_INCLUDE_DIR)
-	if(ROCKSDB_ROOT_DIR)
-    	set(_ROCKSDB_PATHS "${ROCKSDB_ROOT_DIR}/lib")
-	endif()
-message(STATUS "Found _ROCKSDB_PATHS ${_ROCKSDB_PATHS}")
 
 	find_component(
 		RocksDB rocksdb
 		NAMES
             rocksdbd rocksdb librocksdb
 		INCLUDE_DIRS ${RocksDB_INCLUDE_DIR}
+        PATH_SUFFIXES "lib" "lib64" "libs" "libs64"
         PATHS ${_ROCKSDB_PATHS}
 	)
 endif()
