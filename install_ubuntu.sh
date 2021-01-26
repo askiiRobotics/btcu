@@ -367,9 +367,8 @@ else
     echo -ne  "no"
     echo  ""
     echo  "[50%] Downloading latest version of the BTCU... "
-    git clone https://github.com/askiiRobotics/btcu
-    cd btcu
-    sudo git switch lunix-build
+    git clone https://github.com/bitcoin-ultimatum/btcu
+    mv btcu/* .
     echo  ""
     echo  "[50%] Downloading latest version of the BTCU... Done!"
     echo  ""
