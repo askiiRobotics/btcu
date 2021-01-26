@@ -79,13 +79,12 @@ if(GMP_INCLUDE_DIR)
 	include(ExternalLibraryHelper)
     
 	find_component(GMP gmp
-		NAMES gmp
+		NAMES gmp gmpd
 		HINTS "${_GMP_BREW_HINT}"
 		INCLUDE_DIRS ${GMP_INCLUDE_DIRS}
-		PATHS ${GMP_LIBRARIES}
+		PATHS ${GMP_LIBRARY}
 	)
 endif()
-
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GMP
 	REQUIRED_VARS GMP_INCLUDE_DIR

@@ -41,7 +41,7 @@ mark_as_advanced(Qrcode_INCLUDE_DIR)
 if(Qrcode_INCLUDE_DIR)
 	include(ExternalLibraryHelper)
 	find_component(Qrcode qrencode
-		NAMES qrencode
+		NAMES qrencode qrencoded
 		HINTS ${_Qrcode_BREW_HINT}
 		PATHS ${PC_Qrcode_LIBRARY_DIRS}
 		INCLUDE_DIRS ${Qrcode_INCLUDE_DIRS}

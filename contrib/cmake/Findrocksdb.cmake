@@ -11,7 +11,7 @@
 find_path(RocksDB_INCLUDE_DIR NAMES rocksdb/db.h
                              PATHS ${ROCKSDB_ROOT_DIR} ${ROCKSDB_ROOT_DIR}/include)
 
-find_library(ROCKSDB_LIBRARY NAMES rocksdb
+find_library(ROCKSDB_LIBRARY NAMES rocksdb rocksdbd
                               PATHS ${ROCKSDB_ROOT_DIR} ${ROCKSDB_ROOT_DIR}/lib)
 
 include(FindPackageHandleStandardArgs)

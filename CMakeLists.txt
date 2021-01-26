@@ -407,9 +407,9 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         set( BerkeleyDB_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows" )
 
         if(${CMAKE_BUILD_TYPE} MATCHES "DEBUG" OR ${CMAKE_BUILD_TYPE} MATCHES "Debug")
-            set( BerkeleyDB_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows/x64/Static Debug" )
+            set( BerkeleyDB_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows/x64/Static Debug/" )
         else()
-            set( BerkeleyDB_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows/x64/Static Release" )
+            set( BerkeleyDB_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows/x64/Static Release/" )
         endif()
     else()
         message(FATAL_ERROR "The required Berkeley DB package is not installed. Please check installation instruction boost section!")
@@ -432,6 +432,9 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
         set( Boost_LIBRARY_DIR_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/stage/lib" )
         set( Boost_LIBRARY_DIR_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/stage/lib" )
+        
+	    set(Boost_THREADAPI win32)
+
         set( Boost_NO_SYSTEM_PATHS ON )
         set( Boost_USE_STATIC_LIBS ON )
         set( Boost_USE_STATIC_RUNTIME ON )
@@ -458,11 +461,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_definitions(-DBOOST_ALL_STATIC_LINK=1)
     add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
     add_definitions(-DBOOST_LOG_BUILDING_THE_LIB=1)
+    add_definitions(-DBOOST_THREAD_USE_LIB=1)
 
     add_compile_definitions(
         BOOST_ALL_STATIC_LINK=1
         BOOST_ALL_NO_LIB=1
         BOOST_LOG_BUILDING_THE_LIB=1
+        BOOST_THREAD_USE_LIB=1
 	)
 else()
     add_definitions(-DBOOST_LOG_DYN_LINK=1)
@@ -472,7 +477,7 @@ endif()
 add_definitions(-DBOOST_NO_SCOPED_ENUMS=1)
 add_definitions(-DBOOST_NO_CXX11_SCOPED_ENUMS=1)
 
-find_package(Boost 1.71.0 EXACT COMPONENTS program_options filesystem system thread context fiber chrono log unit_test_framework REQUIRED) #log_setup
+find_package(Boost 1.71.0 EXACT COMPONENTS program_options filesystem system thread context fiber chrono log_setup log unit_test_framework REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS}/boost)
 
 add_definitions(-DETH_FATDB=1)
@@ -675,13 +680,25 @@ if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 find_package(Snappy CONFIG REQUIRED)
+if(Snappy_FOUND)
+    message(STATUS "Found Snappy")
+    message(STATUS Snappy_LIBRARIES:)
+    message (STATUS ${Snappy_LIBRARIES})
+    message(STATUS Snappy_INCLUDE_DIRS:)
+    message (STATUS ${Snappy_INCLUDE_DIRS})
+else()
+    message(WARNING "Snappy not found! BTCU requires this functionality")
+endif()
 
 find_package(RocksDB CONFIG)
-
 if(RocksDB_FOUND)
-    message(STATUS "Found ROCKSDB_LIBRARY")
+    message(STATUS "Found RocksDB")
+    message(STATUS ROCKSDB_LIBRARY:)
+    message (STATUS ${ROCKSDB_LIBRARY})
+    message(STATUS RocksDB_INCLUDE_DIR:)
+    message (STATUS ${RocksDB_INCLUDE_DIR})
 else()
-    message(WARNING "ROCKSDB_LIBRARY not found! BTCU requires this functionality")
+    message(WARNING "RocksDB not found! BTCU requires this functionality")
 endif()
 
 add_subdirectory(src/libscrypt)
