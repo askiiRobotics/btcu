@@ -491,17 +491,19 @@ check_c_source_compiles("
 " HAVE_VISIBILITY_ATTRIBUTE)
 
 # check is boost sleep works
+list(APPEND CMAKE_REQUIRED_LIBRARIES ${Boost_LIBRARIES})
+set (CMAKE_REQUIRED_INCLUDES "${Boost_INCLUDE_DIRS}")   
 check_cxx_source_compiles("
 	#include <boost/thread.hpp>
-	#include <boost/date_time/posix_time/posix_time_types.hpp>
+	#include <boost/date_time/posix_time/posix_time.hpp>
     void func() { boost::this_thread::sleep(boost::posix_time::milliseconds(0)); }
     int main() { return 0; }
 " HAVE_WORKING_BOOST_SLEEP)
 
 # check is boost sleep_for works
 check_cxx_source_compiles("
-	#include <boost/thread/thread.hpp>
-	#include <boost/version.hpp>
+	#include <boost/chrono/chrono.hpp>
+	#include <boost/thread.hpp>
     void func() { boost::this_thread::sleep_for(boost::chrono::milliseconds(0)); }
     int main() { return 0; }
 " HAVE_WORKING_BOOST_SLEEP_FOR)
