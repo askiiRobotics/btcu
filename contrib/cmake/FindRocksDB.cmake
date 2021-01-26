@@ -11,19 +11,39 @@
 #  RocksDB_INCLUDE_DIR
 #  ROCKSDB_LIBRARY
 
-message(STATUS "Into rocksdb cmake find")
+message(STATUS "Found ROCKSDB_ROOT_DIR ${ROCKSDB_ROOT_DIR}")
+
+if(ROCKSDB_ROOT_DIR)
+    set(_ROCKSDB_PATHS "${ROCKSDB_ROOT_DIR}")
+else()
+    # Paths for anything other than Windows
+    # Cellar/berkeley-db is for macOS from homebrew installation
+    list(APPEND _ROCKSDB_PATHS
+            "/usr/local/opt/rocksdb"
+            "/usr/local/Cellar/rocksdb"
+            "/opt"
+            "/opt/local"
+			"/urs/"
+            "/usr/local"
+            )
+endif()
 find_path(RocksDB_INCLUDE_DIR NAMES rocksdb/db.h
-                             PATHS ${ROCKSDB_ROOT_DIR} ${ROCKSDB_ROOT_DIR}/include /usr/include /usr/local/include)
+        PATHS "${_ROCKSDB_PATHS}"
+        PATH_SUFFIXES "include" "includes")
 
-message(STATUS RocksDB_INCLUDE_DIR:)
-message(STATUS ${RocksDB_INCLUDE_DIR})
-
+message(STATUS "Found _ROCKSDB_PATHS ${_ROCKSDB_PATHS}")
 if(RocksDB_INCLUDE_DIR)
-	find_component(RocksDB rocksdb
+	if(ROCKSDB_ROOT_DIR)
+    	set(_ROCKSDB_PATHS "${ROCKSDB_ROOT_DIR}/lib")
+	endif()
+message(STATUS "Found _ROCKSDB_PATHS ${_ROCKSDB_PATHS}")
+
+	find_component(
+		RocksDB rocksdb
 		NAMES
-            rocksdb rocksdbd librocksdb
-			libzmq
+            rocksdbd rocksdb librocksdb
 		INCLUDE_DIRS ${RocksDB_INCLUDE_DIR}
+        PATHS ${_ROCKSDB_PATHS}
 	)
 endif()
 

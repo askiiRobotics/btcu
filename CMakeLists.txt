@@ -535,7 +535,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	set( ZeroMQ_INCLUDE_DIR "/usr/include" )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/Qt5Core")
-
+	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/rocksdb")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/zeromq")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/snappy")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools/protobuf")
@@ -564,11 +564,11 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	set( MOC_BIN_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools/qt5/bin")
 
     if(${CMAKE_BUILD_TYPE} MATCHES "DEBUG" OR ${CMAKE_BUILD_TYPE} MATCHES "Debug")
-	    set( ROCKSDB_ROOT_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib" )
+	    set( ROCKSDB_ROOT_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug" )
 	    set( MHD_LIBRARY "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib" )
 	    set( GMP_LIBRARY "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib" )
     else()
-	    set( ROCKSDB_ROOT_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib" )
+	    set( ROCKSDB_ROOT_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}" )
 	    set( MHD_LIBRARY "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib" )
 	    set( GMP_LIBRARY "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib" )
     endif()
@@ -685,9 +685,13 @@ else()
     message(WARNING "Snappy not found! BTCU requires this functionality")
 endif()
 
-# TODO: there is a problem with import of the rocks db config via cmake
-# it is required to fix this
-include(${CMAKE_SOURCE_DIR}/contrib/cmake/FindRocksDB.cmake)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    # TODO: there is a problem with import of the rocks db config via cmake
+    # it is required to fix this
+    include(${CMAKE_SOURCE_DIR}/contrib/cmake/FindRocksDB.cmake)
+else()
+    find_package(RocksDB CONFIG REQUIRED)
+endif()
 if(RocksDB_FOUND)
     message(STATUS "Found RocksDB")
     message(STATUS RocksDB_LIBRARIES:)
@@ -781,7 +785,13 @@ endif()
 
 find_package(LibEvent REQUIRED)
 
-find_package(ZeroMQ)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    # TODO: there is a problem with import of the zero mq config via cmake
+    # it is required to fix this
+    include(${CMAKE_SOURCE_DIR}/contrib/cmake/FindZeroMQ.cmake)
+else()
+    find_package(ZeroMQ)
+endif()
 if(ZeroMQ_FOUND)
     set( ZeroMQ_LIBRARY "${ZeroMQ_zmq_LIBRARY}" CACHE STRING "")
     message(STATUS "Found ZeroMQ (${ZeroMQ_VERSION}): ${ZeroMQ_LIBRARY}")
