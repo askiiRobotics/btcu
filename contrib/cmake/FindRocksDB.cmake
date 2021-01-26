@@ -9,10 +9,10 @@
 #  ROCKSDB_LIBRARY
 
 find_path(RocksDB_INCLUDE_DIR NAMES rocksdb/db.h
-                             PATHS ${ROCKSDB_ROOT_DIR} ${ROCKSDB_ROOT_DIR}/include)
+                             PATHS ${ROCKSDB_ROOT_DIR} ${ROCKSDB_ROOT_DIR}/include /usr/include /usr/local/include)
 
-find_library(ROCKSDB_LIBRARY NAMES rocksdb rocksdbd
-                              PATHS ${ROCKSDB_ROOT_DIR} ${ROCKSDB_ROOT_DIR}/lib)
+find_library(ROCKSDB_LIBRARY NAMES rocksdb rocksdbd librocksdb
+                              PATHS ${ROCKSDB_ROOT_DIR} ${ROCKSDB_ROOT_DIR}/lib /usr/lib /usr/local/lib)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(RocksDB DEFAULT_MSG RocksDB_INCLUDE_DIR ROCKSDB_LIBRARY)

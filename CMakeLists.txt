@@ -782,6 +782,7 @@ find_package(LibEvent REQUIRED)
 
 find_package(ZeroMQ)
 if(ZeroMQ_FOUND)
+    set( ZeroMQ_LIBRARY "${ZeroMQ_zmq_LIBRARY}" CACHE STRING "")
     message(STATUS "Found ZeroMQ (${ZeroMQ_VERSION}): ${ZeroMQ_LIBRARY}")
 
     message(STATUS ZeroMQ_INCLUDE_DIRS:)
