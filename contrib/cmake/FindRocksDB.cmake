@@ -1,3 +1,6 @@
+# .rst:
+# FindRocksDB
+# --------------
 # Find the RocksDB libraries
 #
 # The following variables are optionally searched for defaults

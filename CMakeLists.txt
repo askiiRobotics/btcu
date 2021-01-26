@@ -540,7 +540,6 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/snappy")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools/protobuf")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools/qt5/bin")
-    list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/rocksdb")
 
     if(${CMAKE_BUILD_TYPE} MATCHES "DEBUG" OR ${CMAKE_BUILD_TYPE} MATCHES "Debug")
 	    list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib")
@@ -686,7 +685,9 @@ else()
     message(WARNING "Snappy not found! BTCU requires this functionality")
 endif()
 
-find_package(RocksDB CONFIG REQUIRED)
+# TODO: there is a problem with import of the rocks db config via cmake
+# it is required to fix this
+include(${CMAKE_SOURCE_DIR}/contrib/cmake/FindRocksDB.cmake)
 if(RocksDB_FOUND)
     message(STATUS "Found RocksDB")
     message(STATUS RocksDB_LIBRARIES:)
