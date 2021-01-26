@@ -355,13 +355,6 @@ echo -ne  "yes"
     echo  ""
     echo  "[50%] Updating current version of the BTCU"
     
-    echo  ""
-    echo  "[51%] Working branch: master"
-    git checkout master 
-    git pull
-    echo  ""
-    echo  "[51%] Working branch: master... Done!"
-    echo  ""
     fi
 else
     echo -ne  "no"
