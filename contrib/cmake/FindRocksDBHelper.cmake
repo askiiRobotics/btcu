@@ -15,7 +15,7 @@ if(ROCKSDB_ROOT_DIR)
     set(_ROCKSDB_PATHS "${ROCKSDB_ROOT_DIR}")
 else()
     # Paths for anything other than Windows
-    # Cellar/berkeley-db is for macOS from homebrew installation
+    # Cellar/rocksdb is for macOS from homebrew installation
     list(APPEND _ROCKSDB_PATHS
             "/usr/local/opt/rocksdb"
             "/usr/local/Cellar/rocksdb"

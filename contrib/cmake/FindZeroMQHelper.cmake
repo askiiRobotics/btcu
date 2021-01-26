@@ -24,8 +24,26 @@
 #
 #   ZeroMQ::zmq
 
-find_path(ZeroMQ_INCLUDE_DIR
-	NAMES zmq.h
+if(ZeroMQ_ROOT_DIR)
+    set(_ZMQ_PATHS "${ZeroMQ_ROOT_DIR}")
+else()
+    # Paths for anything other than Windows
+    # Cellar/zmq is for macOS from homebrew installation
+    list(APPEND _ZMQ_PATHS
+            "/usr/local/opt/zmq"
+            "/usr/local/Cellar/zmq"
+            "/opt"
+            "/opt/local"
+			"/urs/"
+            "/usr/local"
+            )
+endif()
+
+find_path(
+	ZeroMQ_INCLUDE_DIR
+		NAMES zmq.h
+        PATHS "${_ZMQ_PATHS}"
+        PATH_SUFFIXES "include" "includes"
 )
 
 set(ZeroMQ_INCLUDE_DIRS "${ZeroMQ_INCLUDE_DIR}")
@@ -83,8 +101,10 @@ if(ZeroMQ_INCLUDE_DIR)
 	endif()
 
 	find_component(ZeroMQ zmq
-		NAMES zmq
+		NAMES zmq libzmq
 		INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIRS}
+        PATH_SUFFIXES "lib" "lib64" "libs" "libs64"
+        PATHS ${_ZMQ_PATHS}
 		INTERFACE_LINK_LIBRARIES "${_ZeroMQ_WINDOWS_LIBRARIES}"
 	)
 endif()
