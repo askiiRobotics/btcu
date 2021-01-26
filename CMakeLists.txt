@@ -14,6 +14,12 @@ project(btcu
 set(PACKAGE_NAME "BTCU")
 set(PACKAGE_BUGREPORT "https://github.com/bitcoin-ultimatum/btcu/issues")
 
+# set default cmake build type to RelWithDebInfo
+# possible options are: None Debug Release RelWithDebInfo MinSizeRel
+IF( NOT CMAKE_BUILD_TYPE )
+    SET( CMAKE_BUILD_TYPE "RelWithDebInfo" )
+ENDIF()
+
 # Trying to set toolchain if not presented
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -368,8 +374,6 @@ if (MSVC)
     add_compile_options(-DNOMINMAX)                 # undefine windows.h MAX && MIN macros cause it cause conflicts with std::min && std::max functions
     add_compile_options(-DMINIUPNP_STATICLIB)       # define miniupnp static library
 
-    
-
 	add_compile_definitions(
 		# Define WIN32_LEAN_AND_MEAN to exclude APIs such as Cryptography, DDE,
 		# RPC, Shell, and Windows Sockets.
@@ -411,7 +415,6 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         message(FATAL_ERROR "The required Berkeley DB package is not installed. Please check installation instruction boost section!")
     endif()
 
-
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/INSTALL")
     
         option(CMAKE_USE_WIN32_THREADS_INIT "using WIN32 threads" ON)
@@ -430,14 +433,17 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         set( Boost_LIBRARY_DIR_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/stage/lib" )
         set( Boost_LIBRARY_DIR_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/stage/lib" )
         set( Boost_NO_SYSTEM_PATHS ON )
+        set( Boost_USE_STATIC_LIBS ON )
+        set( Boost_USE_STATIC_RUNTIME ON )
 
     else()
         message(FATAL_ERROR "The required Boost package is not installed. Please check installation instruction boost section!")
     endif()
+else()
+    set( Boost_USE_STATIC_LIBS  OFF )
+    set( Boost_USE_STATIC_RUNTIME OFF )
 endif()
 
-set( Boost_USE_STATIC_LIBS ON )
-set( Boost_USE_STATIC_RUNTIME ON )
 set( Boost_USE_MULTITHREADED ON )
 set( Boost_NO_SYSTEM_PATHS ON )
 
@@ -494,9 +500,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/google-benchmark)
 	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/snappy)
 	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libevent)
-endif()
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    
 	set(BerkeleyDB_ROOT_DIR "/usr/local/opt/berkeley-db")
 
 	set( CURL_INCLUDE_DIR "/usr/local/opt/curl/include" )
@@ -538,9 +542,21 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     else()
 	    list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib")
     endif()
+    
+	set( CURL_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/curl"  CACHE STRING "Curl root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/curl")
 
 	set( OPENSSL_ROOT_DIR "${VCPKG_ROOT}/packages/openssl_${VCPKG_TARGET_TRIPLET}" CACHE STRING "OpenSSL root dir is ${VCPKG_ROOT}/packages/openssl_${VCPKG_TARGET_TRIPLET}")
     
+	set( Qt5Core_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Core" CACHE STRING "QT5Core root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Core")
+    set( Qt5Widgets_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Widgets" CACHE STRING "Qt5Widgets root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Widgets")
+    set( Qt5Gui_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Gui" CACHE STRING "Qt5Gui root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Gui")
+    set( Qt5Network_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Network" CACHE STRING "Qt5Network root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Network")
+    set( Qt5LinguistTools_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5LinguistTools" CACHE STRING "Qt5LinguistTools root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5LinguistTools")
+    set( Qt5DBus_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5DBus" CACHE STRING "Qt5DBus root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5DBus")
+    set( Qt5Svg_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Svg" CACHE STRING "Qt5Svg root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Svg")
+    set( Qt5Charts_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Charts" CACHE STRING "QT5Core root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Charts")
+    set( Qt5Test_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Test" CACHE STRING "QT5Core root dir is ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/cmake/Qt5Test")
+
 	set( MOC_BIN_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools/qt5/bin")
 
 	set( rocksdb_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/rocksdb" )
@@ -549,8 +565,10 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
     if(${CMAKE_BUILD_TYPE} MATCHES "DEBUG" OR ${CMAKE_BUILD_TYPE} MATCHES "Debug")
 	    set( ROCKSDB_ROOT_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib" )
+	    set( MHD_LIBRARY "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib" )
     else()
 	    set( ROCKSDB_ROOT_DIR "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib" )
+	    set( MHD_LIBRARY "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib" )
     endif()
 
 	set( CURL_LIBRARY "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/include" )
