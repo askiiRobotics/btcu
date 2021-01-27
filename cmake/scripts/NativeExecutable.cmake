@@ -66,7 +66,13 @@ function(add_native_executable NAME)
 
 		configure_file(
 			"${CMAKE_SOURCE_DIR}/cmake/templates/NativeBuildRunner.cmake.in"
-			"${CMAKE_CURRENT_BINARY_DIR}/build_native_${NAME}.sh"
+			"${CMAKE_CURRENT_BINARY_DIR}/tmp/build_native_${NAME}.sh"
+		)
+		
+		file(
+			COPY "${CMAKE_CURRENT_BINARY_DIR}/tmp/build_native_${NAME}.sh"
+			DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/build_native_${NAME}.sh"
+			FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 		)
 
 		# We create a symlink because cmake craps itself if the imported
@@ -117,8 +123,14 @@ function(_gen_native_cmake_target)
 	file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/config")
 	configure_file(
 		"${CMAKE_SOURCE_DIR}/cmake/templates/NativeCmakeRunner.cmake.in"
-		"${CMAKE_BINARY_DIR}/config/run_native_cmake.sh"
+		"${CMAKE_BINARY_DIR}/config/tmp/run_native_cmake.sh"
+    	@ONLY
 	)
+	file(
+		COPY "${CMAKE_BINARY_DIR}/config/tmp/run_native_cmake.sh"
+		DESTINATION "${CMAKE_BINARY_DIR}/config/run_native_cmake.sh"
+		FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    )
 endfunction(_gen_native_cmake_target)
 
 function(_gen_native_cmake_hook VAR ACCESS)
