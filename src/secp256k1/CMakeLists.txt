@@ -101,7 +101,7 @@ else()
   set(USE_SCALAR_8X32 1)
 endif()
 
-find_package(GMP)
+# find_package(GMP)
 if(GMP_FOUND)
   	set(USE_NUM_GMP 1)
   	set(HAVE_LIBGMP 1)
@@ -188,7 +188,7 @@ cmake_dependent_option(
 if(SECP256K1_BUILD_OPENSSL_TESTS)
 	include(BrewHelper)
 	find_brew_prefix(OPENSSL_ROOT_DIR openssl)
-	find_package(OpenSSL COMPONENTS Crypto)
+	# find_package(OpenSSL COMPONENTS Crypto)
 	if(NOT OpenSSL_FOUND)
 		message(FATAL_ERROR
 			"OpenSSL is not found, but is required for some tests. You can disable them by passing -DSECP256K1_BUILD_OPENSSL_TESTS=OFF."
