@@ -20,5 +20,5 @@ else()
     target_link_libraries(devcore PRIVATE leveldb::leveldb)
 endif()
 
-find_package(RocksDB CONFIG REQUIRED)
+# find_package(RocksDB REQUIRED)
 target_link_libraries(devcore PRIVATE RocksDB::rocksdb)

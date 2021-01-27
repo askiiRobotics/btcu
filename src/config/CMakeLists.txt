@@ -586,8 +586,6 @@ if(ENABLE_DBUS_NOTIFICATIONS)
 endif()
 
 # check is gmp was found
-find_package(GMP)
-find_package(OpenSSL)
 if(GMP_FOUND)
     set(USE_NUM_GMP 1)
 elseif(OPENSSL_FOUND)

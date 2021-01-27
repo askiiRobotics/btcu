@@ -629,6 +629,41 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     include(WindowsVersionInfo)
 endif()
 
+find_package(OpenSSL REQUIRED)
+if(OPENSSL_FOUND)
+    message(STATUS "Found OpenSSL (${OPENSSL_VERSION}): ${OPENSSL_LIBRARIES}")
+
+    message(STATUS OPENSSL_INCLUDE_DIR:)
+    message (STATUS ${OPENSSL_INCLUDE_DIR})
+
+    if(OPENSSL_VERSION VERSION_GREATER_EQUAL 1.1)
+        message(STATUS "Found unsupported OpenSSL version!")
+    endif()
+
+	set(CMAKE_REQUIRED_INCLUDES ${OPENSSL_INCLUDE_DIR})
+	set(CMAKE_REQUIRED_LIBRARIES ${OPENSSL_LIBRARIES})
+
+    set(ENV{CPPFLAGS} "-I${OPENSSL_ROOT_DIR}/include")
+    set(ENV{LDFLAGS} "-L${OPENSSL_ROOT_DIR}/lib")
+
+    set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
+    set(ENV{OPENSSL_LIB_DIR} "${OPENSSL_ROOT_DIR}/lib")
+    set(ENV{OPENSSL_INCLUDE_DIR} "${OPENSSL_ROOT_DIR}/include")
+
+    include_directories(${OPENSSL_INCLUDE_DIR})
+    link_directories(${OPENSSL_LIBRARIES})
+endif()
+
+find_package(GMP)
+if(GMP_FOUND)
+    message(STATUS "Found GMP (${GMP_VERSION}): ${GMP_LIBRARIES}")
+
+    message(STATUS GMP_INCLUDE_DIR:)
+    message (STATUS ${GMP_INCLUDE_DIRS})
+else()
+    message(WARNING "GMP not found, falling back to OpenSSL for bignum!")
+endif()
+
 set(BDB_VER "18.1.32")
 
 # libtool style configure
@@ -736,41 +771,6 @@ if(BerkeleyDB_FOUND)
     endif()
 else()
     message(WARNING "BerkeleyDB not found! BTCU Core requires this library for wallet functionality (-DENABLE_WALLET=OFF to disable wallet functionality)")
-endif()
-
-find_package(OpenSSL REQUIRED)
-if(OPENSSL_FOUND)
-    message(STATUS "Found OpenSSL (${OPENSSL_VERSION}): ${OPENSSL_LIBRARIES}")
-
-    message(STATUS OPENSSL_INCLUDE_DIR:)
-    message (STATUS ${OPENSSL_INCLUDE_DIR})
-
-    if(OPENSSL_VERSION VERSION_GREATER_EQUAL 1.1)
-        message(STATUS "Found unsupported OpenSSL version!")
-    endif()
-
-	set(CMAKE_REQUIRED_INCLUDES ${OPENSSL_INCLUDE_DIR})
-	set(CMAKE_REQUIRED_LIBRARIES ${OPENSSL_LIBRARIES})
-
-    set(ENV{CPPFLAGS} "-I${OPENSSL_ROOT_DIR}/include")
-    set(ENV{LDFLAGS} "-L${OPENSSL_ROOT_DIR}/lib")
-
-    set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
-    set(ENV{OPENSSL_LIB_DIR} "${OPENSSL_ROOT_DIR}/lib")
-    set(ENV{OPENSSL_INCLUDE_DIR} "${OPENSSL_ROOT_DIR}/include")
-
-    include_directories(${OPENSSL_INCLUDE_DIR})
-    link_directories(${OPENSSL_LIBRARIES})
-endif()
-
-find_package(GMP)
-if(GMP_FOUND)
-    message(STATUS "Found GMP (${GMP_VERSION}): ${GMP_LIBRARIES}")
-
-    message(STATUS GMP_INCLUDE_DIR:)
-    message (STATUS ${GMP_INCLUDE_DIRS})
-else()
-    message(WARNING "GMP not found, falling back to OpenSSL for bignum!")
 endif()
 
 find_package(LibEvent REQUIRED)
