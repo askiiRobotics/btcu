@@ -124,7 +124,6 @@ function(_gen_native_cmake_target)
 	configure_file(
 		"${CMAKE_SOURCE_DIR}/cmake/templates/NativeCmakeRunner.cmake.in"
 		"${CMAKE_BINARY_DIR}/config/tmp/run_native_cmake.sh"
-    	@ONLY
 	)
 	file(
 		COPY "${CMAKE_BINARY_DIR}/config/tmp/run_native_cmake.sh"
