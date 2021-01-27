@@ -533,9 +533,10 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	set( Qrcode_INCLUDE_DIR "/usr/local/opt/qrencode/include" )
 	set( Qrcode_LIBRARY "/usr/local/opt/qrencode/lib" )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-	set( GMP_INCLUDE_DIR "/usr/include/x86_64-linux-gnu" )
+    set( GTEST_ROOT "/usr/src/googletest" CACHE PATH "Path to googletest")
+	set( GMP_INCLUDE_DIR "/usr/include/x86_64-linux-gnu" CACHE STRING "")
 	set( RocksDB_INCLUDE_DIR "/usr/include" )
-	set( ZeroMQ_INCLUDE_DIR "/usr/include" )
+	set( ZeroMQ_INCLUDE_DIR "/usr/include" CACHE STRING "" FORCE)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/Qt5Core")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/rocksdb")
@@ -628,6 +629,8 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     include(WindowsVersionInfo)
 endif()
 
+set(BDB_VER "18.1.32")
+
 # libtool style configure
 add_subdirectory(src/config)
 add_definitions(-DHAVE_CONFIG_H)
@@ -661,39 +664,12 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         message(WARNING "WSL Runtime support requires VcXsrv to be installed and running")
     endif()
 endif()
-
-# dependencies
-set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
-list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
  
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     find_package(PkgConfig REQUIRED) 
 endif()
 
-set(BDB_VER "18.1.32")
-
-if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    set(GTEST_ROOT "/usr/src/googletest" CACHE PATH "Path to googletest")
-endif()
-
-find_package(Snappy CONFIG REQUIRED)
-if(Snappy_FOUND)
-    message(STATUS "Found Snappy")
-    message(STATUS Snappy_LIBRARIES:)
-    message (STATUS ${Snappy_LIBRARIES})
-    message(STATUS Snappy_INCLUDE_DIRS:)
-    message (STATUS ${Snappy_INCLUDE_DIRS})
-else()
-    message(WARNING "Snappy not found! BTCU requires this functionality")
-endif()
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    # TODO: there is a problem with import of the rocks db config via cmake
-    # it is required to fix this
-    include(${CMAKE_SOURCE_DIR}/contrib/cmake/FindRocksDBHelper.cmake)
-else()
-    find_package(RocksDB CONFIG REQUIRED)
-endif()
+find_package(RocksDB CONFIG REQUIRED)
 if(RocksDB_FOUND)
     message(STATUS "Found RocksDB")
     message(STATUS RocksDB_LIBRARIES:)
@@ -708,20 +684,15 @@ else()
     message(WARNING "RocksDB not found! BTCU requires this functionality")
 endif()
 
-add_subdirectory(src/libscrypt)
-
-add_subdirectory(src/cryptopp)
-
-add_subdirectory(src/jsoncpp/jsoncpp)
-
-add_subdirectory(src/cpp-ethereum/ethash)
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-	include(Findlibjson-rpc-cpp)
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    include(${CMAKE_SOURCE_DIR}/contrib/cmake/jsonrpc.cmake)
+find_package(Snappy CONFIG REQUIRED)
+if(Snappy_FOUND)
+    message(STATUS "Found Snappy")
+    message(STATUS Snappy_LIBRARIES:)
+    message (STATUS ${Snappy_LIBRARIES})
+    message(STATUS Snappy_INCLUDE_DIRS:)
+    message (STATUS ${Snappy_INCLUDE_DIRS})
 else()
-	find_package(libjson-rpc-cpp CONFIG REQUIRED)
+    message(WARNING "Snappy not found! BTCU requires this functionality")
 endif()
 
 # Find Dependencies
@@ -787,13 +758,7 @@ endif()
 
 find_package(LibEvent REQUIRED)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    # TODO: there is a problem with import of the zero mq config via cmake
-    # it is required to fix this
-    include(${CMAKE_SOURCE_DIR}/contrib/cmake/FindZeroMQHelper.cmake)
-else()
-    find_package(ZeroMQ)
-endif()
+find_package(ZeroMQ)
 if(ZeroMQ_FOUND)
     set( ZeroMQ_LIBRARY "${ZeroMQ_zmq_LIBRARY}" CACHE STRING "")
     message(STATUS "Found ZeroMQ (${ZeroMQ_VERSION}): ${ZeroMQ_LIBRARY}")
@@ -820,14 +785,30 @@ else()
     message(WARNING "Miniupnp not found!")
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    include(${CMAKE_SOURCE_DIR}/contrib/cmake/jsonrpc.cmake)
+else()
+	find_package(libjson-rpc-cpp CONFIG REQUIRED)
+endif()
+
 add_subdirectory(src/libff)
 
 # Find the python interpreter. This is required for several targets.
 find_package(Python 3.5 COMPONENTS Interpreter REQUIRED)
 
 
+add_subdirectory(src/libscrypt)
+add_subdirectory(src/cryptopp)
+add_subdirectory(src/jsoncpp/jsoncpp)
 add_subdirectory(src/secp256k1)
 add_subdirectory(src/univalue)
+
+
+# dependencies
+set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
+list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
+
+add_subdirectory(src/cpp-ethereum/ethash)
 
 link_directories(${CMAKE_BINARY_DIR})
 
