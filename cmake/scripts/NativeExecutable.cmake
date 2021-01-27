@@ -30,7 +30,7 @@ function(non_native_target_link_libraries TARGET LIB VERSION)
 endfunction()
 
 # It is imperative that NATIVE_BUILD_DIR be in the cache.
-set(NATIVE_BUILD_DIR "${CMAKE_BINARY_DIR}/native" CACHE PATH "The path of the native build directory" FORCE)
+set(NATIVE_BUILD_DIR "${CMAKE_BINARY_DIR}" CACHE PATH "The path of the native build directory" FORCE)
 
 # Only ninja support depfiles and this is a hard error with other generators
 # so we need a nice wrapper to handle this mess.

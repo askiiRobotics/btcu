@@ -13,7 +13,7 @@ if test "x${CMAKE_GENERATOR}" = "xNinja"; then
         --build-dir "${NATIVE_BUILD_DIR}" \
         --base-dir "${CMAKE_BINARY_DIR}" \
         --ninja "${CMAKE_MAKE_PROGRAM}" \
-        native/CMakeCache.txt build.ninja \
+        CMakeCache.txt build.ninja \
         --extra-deps build.ninja \
             > "${NATIVE_BUILD_DIR}/CMakeFiles/CMakeCache.txt.d"
 fi

@@ -4,7 +4,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 # the version of this package
 set(PROJECT_VERSION 0.1.1)
 
-project(btcu 
+project(btcu
 	VERSION ${PROJECT_VERSION}
 	DESCRIPTION "BTCU is a free open source peer-to-peer electronic cash system that is completely decentralized, without the need for a central server or trusted parties.  Users hold the crypto keys to their own money and transact directly with each other, with the help of a P2P network to check for double-spending."
 	HOMEPAGE_URL "https://btcu.io/"
@@ -729,7 +729,11 @@ if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     find_package(PkgConfig REQUIRED) 
 endif()
 
-find_package(ZeroMQ)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    find_package(ZeroMQ)
+else()
+    find_package(ZeroMQ CONFIG)
+endif()
 if(ZeroMQ_FOUND)
     set( ZeroMQ_LIBRARY "${ZeroMQ_zmq_LIBRARY}" CACHE STRING "")
     message(STATUS "Found ZeroMQ (${ZeroMQ_VERSION}): ${ZeroMQ_LIBRARY}")
