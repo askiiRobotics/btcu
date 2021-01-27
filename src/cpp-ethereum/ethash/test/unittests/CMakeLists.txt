@@ -17,6 +17,12 @@ add_executable(
     test_progpow.cpp
 )
 
-target_link_libraries(ethash-test PRIVATE ethash GTest::gtest GTest::gtest_main)
+target_link_libraries(ethash-test 
+    PRIVATE 
+        ethash 
+        GTest::gtest 
+        GTest::gtest_main
+        ${Boost_LIBRARIES}
+        )
 target_include_directories(ethash-test PRIVATE ${ETHASH_PRIVATE_INCLUDE_DIR})
 set_target_properties(ethash-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ..)

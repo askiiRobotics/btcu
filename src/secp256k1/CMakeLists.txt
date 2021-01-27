@@ -297,6 +297,7 @@ if(SECP256K1_ECMULT_STATIC_PRECOMPUTATION)
 	set(USE_ECMULT_STATIC_PRECOMPUTATION 1)
 
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		set(USE_ECMULT_STATIC_PRECOMPUTATION 0)
 		add_executable(gen_context src/gen_context.c)
 		target_include_directories(gen_context PRIVATE ${CMAKE_SOURCE_DIR})
 
