@@ -50,23 +50,9 @@ if (MSVC)
 endif()
 set(CMAKE_CXX_STANDARD 11)
 
-find_package(jsoncpp CONFIG REQUIRED)
-
-find_package(Snappy CONFIG REQUIRED)
-
-find_package(cryptopp CONFIG REQUIRED)
-
-find_package(libjson-rpc-cpp CONFIG REQUIRED)
-
-find_package(libscrypt CONFIG REQUIRED)
-
 find_package(ethash CONFIG REQUIRED)
 
 find_package(Threads)
-
-if(MINIUPNPC)
-    # find_package(miniupnpc 1.8.2013 REQUIRED)
-endif()
 
 set(UTILS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/utils")
 

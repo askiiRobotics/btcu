@@ -664,6 +664,19 @@ else()
     message(WARNING "GMP not found, falling back to OpenSSL for bignum!")
 endif()
 
+find_package(miniupnp)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    find_package(miniupnpc)
+endif()
+if(MINIUPNP_FOUND)
+    message(STATUS "Found miniupnp (${MINIUPNP_VERSION}): ${MINIUPNP_LIBRARIES}")
+else()
+    message(WARNING "Miniupnp not found!")
+endif()
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	find_package(libjson-rpc-cpp REQUIRED)
+endif()
+
 set(BDB_VER "18.1.32")
 
 # libtool style configure
@@ -775,20 +788,8 @@ endif()
 
 find_package(LibEvent REQUIRED)
 
-find_package(miniupnp)
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    find_package(miniupnpc)
-endif()
-if(MINIUPNP_FOUND)
-    message(STATUS "Found miniupnp (${MINIUPNP_VERSION}): ${MINIUPNP_LIBRARIES}")
-else()
-    message(WARNING "Miniupnp not found!")
-endif()
-
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     include(${CMAKE_SOURCE_DIR}/contrib/cmake/jsonrpc.cmake)
-else()
-	find_package(libjson-rpc-cpp REQUIRED)
 endif()
 
 add_subdirectory(src/libff)

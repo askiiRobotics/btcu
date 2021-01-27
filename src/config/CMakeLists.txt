@@ -412,10 +412,6 @@ endif()
 check_include_files("memory.h" HAVE_MEMORY_H)
 
 # check is enabled UPnP support
-find_package(miniupnp)
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    find_package(miniupnpc)
-endif()
 if(WITH_MINIUNPC AND MINIUPNP_FOUND)
 	set(ENABLE_UPNP 1)
 endif()
