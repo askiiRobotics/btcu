@@ -118,14 +118,7 @@ if(MSVC)
     add_compile_options($<$<CONFIG:Debug>:/W4>)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    # using regular Clang or AppleClang
-    add_compile_options(-Wall -Wconversion -Wshadow -Werror=conversion -Werror=sign-compare)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # using GCC
-    add_compile_options(-Wall -Wconversion -Wshadow -Wextra)
-    # not yet ready for -Wsign-conversion
-
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(JSONCPP_WITH_STRICT_ISO)
         add_compile_options(-Wpedantic)
     endif()
