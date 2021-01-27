@@ -294,47 +294,22 @@ if(SECP256K1_ENABLE_MODULE_RECOVERY)
 	list(APPEND SECP256K1_PUBLIC_HEADERS include/secp256k1_recovery.h)
 endif()
 
-
-# Static precomputation for elliptic curve multiplication
-# Currently this is not supported in Windows build
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	option(SECP256K1_ECMULT_STATIC_PRECOMPUTATION "Precompute libsecp256k1's elliptic curve multiplication tables" OFF)
+option(SECP256K1_ECMULT_STATIC_PRECOMPUTATION "Precompute libsecp256k1's elliptic curve multiplication tables" OFF)
+if(SECP256K1_ECMULT_STATIC_PRECOMPUTATION)
 	set(USE_ECMULT_STATIC_PRECOMPUTATION 0)
-
-	add_executable(gen_context src/gen_context.c)
-	target_include_directories(gen_context PRIVATE ${CMAKE_SOURCE_DIR})
-
-	add_custom_target(ecmult_static_context gen_context WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-	add_dependencies(secp256k1 ecmult_static_context)
-	
-	install(TARGETS secp256k1 ARCHIVE DESTINATION lib)
-	install(DIRECTORY include/ DESTINATION include)
 else()
-	option(SECP256K1_ECMULT_STATIC_PRECOMPUTATION "Precompute libsecp256k1's elliptic curve multiplication tables" ON)
-	if(SECP256K1_ECMULT_STATIC_PRECOMPUTATION)
-		set(USE_ECMULT_STATIC_PRECOMPUTATION 1)
-  		set(SECP256K1_USE_ASM OFF)
-  		set(SECP256K1_BUILD_OPENSSL_TESTS OFF)
-
-		include(NativeExecutable)
-		native_add_cmake_flags(
-			"-DSECP256K1_ECMULT_WINDOW_SIZE=${SECP256K1_ECMULT_WINDOW_SIZE}"
-			"-DSECP256K1_ECMULT_GEN_PRECISION=${SECP256K1_ECMULT_GEN_PRECISION}"
-			"-DSECP256K1_USE_ASM=OFF"
-			"-DSECP256K1_TEST_OVERRIDE_WIDE_MULTIPLY=${SECP256K1_TEST_OVERRIDE_WIDE_MULTIPLY}"
-			"-DSECP256K1_BUILD_OPENSSL_TESTS=OFF"
-		)
-		add_native_executable(gen_context src/gen_context.c)
-
-		add_custom_command(
-			OUTPUT src/ecmult_static_context.h
-			COMMAND gen_context
-		)
-
-		target_sources(secp256k1 PRIVATE src/ecmult_static_context.h)
-	endif()
+	set(USE_ECMULT_STATIC_PRECOMPUTATION 1)
 endif()
 
+add_executable(gen_context src/gen_context.c)
+target_include_directories(gen_context PRIVATE ${CMAKE_SOURCE_DIR})
+
+add_custom_target(ecmult_static_context gen_context WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_dependencies(secp256k1 ecmult_static_context)
+
+install(TARGETS secp256k1 ARCHIVE DESTINATION lib)
+install(DIRECTORY include/ DESTINATION include)
+	
 # If this project is not the top level project, then don't install by default
 get_directory_property(SECP256K1_PARENT_DIRECTORY PARENT_DIRECTORY)
 if(SECP256K1_PARENT_DIRECTORY)
