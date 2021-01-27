@@ -24,6 +24,8 @@
 #
 #   ZeroMQ::zmq
 
+find_brew_prefix(_ZMQ_BREW_HINT zmq)
+
 if(ZeroMQ_ROOT_DIR)
     set(_ZMQ_PATHS "${ZeroMQ_ROOT_DIR}")
 else()
@@ -34,18 +36,21 @@ else()
             "/usr/local/Cellar/zmq"
             "/opt"
             "/opt/local"
-			"/urs/"
+			"/usr"
             "/usr/local"
             )
 endif()
 
-find_path(
-	ZeroMQ_INCLUDE_DIR
-		NAMES zmq.h
-        PATHS "${_ZMQ_PATHS}"
-        PATH_SUFFIXES "include" "includes"
-)
-
+if(NOT ZeroMQ_INCLUDE_DIR)
+	find_path(ZeroMQ_INCLUDE_DIR
+			zmq.h
+			PATHS "${_ZMQ_PATHS}"
+		    HINTS ${_ZMQ_BREW_HINT}
+			PATH_SUFFIXES "include" "includes"
+			)
+endif()
+# Find includes path
+		
 set(ZeroMQ_INCLUDE_DIRS "${ZeroMQ_INCLUDE_DIR}")
 mark_as_advanced(ZeroMQ_INCLUDE_DIR)
 
@@ -103,6 +108,7 @@ if(ZeroMQ_INCLUDE_DIR)
 	find_component(ZeroMQ zmq
 		NAMES zmq libzmq
 		INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIRS}
+		HINTS ${_ZMQ_BREW_HINT}
         PATH_SUFFIXES "lib" "lib64" "libs" "libs64"
         PATHS ${_ZMQ_PATHS}
 		INTERFACE_LINK_LIBRARIES "${_ZeroMQ_WINDOWS_LIBRARIES}"

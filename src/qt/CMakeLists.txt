@@ -193,6 +193,13 @@ SET(QT_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/settings/settingswidget.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/welcomecontentwidget.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/btcu/splash.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/multileasingdialog.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/createmasternodewidget.cpp 
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/createvalidatorwidget.cpp 
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/leasingstatisticswidget.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/cbtokenrow.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/cbtokenmodel.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/cbtocendropdown.cpp
         )
 
 # Workaround until the old rpcconsole UI window is fully removed
@@ -213,6 +220,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     list(APPEND QT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/macnotificationhandler.mm)
     list(APPEND QT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/macos_appnap.mm)
 endif()
+
+
 
 add_library(qt_stuff STATIC ${BitcoinHeaders} ${QtHeaders} ${QT_SOURCES} ${PROTO_SRCS} ${PROTO_HDRS})
 target_include_directories(qt_stuff 
@@ -281,7 +290,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(APPEND QT_PLUGIN_COMPONENTS QWindowsIntegrationPlugin)
 	list(APPEND QT_PLUGIN_PLATFORM_DEFINITIONS -DQT_QPA_PLATFORM_WINDOWS=1)
 
-	target_sources(btcu-qt PRIVATE winshutdownmonitor.cpp)
+	target_sources(btcu-qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/winshutdownmonitor.cpp)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_AUTOMOC_MOC_OPTIONS "-DQ_OS_MAC")
 

@@ -348,7 +348,7 @@ non-wallet distribution of the latest changes on Arch Linux:
     cd btcu/
     mkdir build
     cd build
-    cmake -DBUILD_BITCOIN_WALLET=OFF -DENABLE_GUI=OFF -DENABLE_UPNP=OFF -DENABLE_ZMQ=OFF
+    cmake -DENABLE_WALLET=OFF -DENABLE_GUI=OFF -DENABLE_UPNP=OFF -DENABLE_ZMQ=OFF
     make
 ```
 

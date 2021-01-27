@@ -1647,7 +1647,7 @@ UniValue CreateLeasingTransaction(const UniValue& params, CWalletTx& wtxNew, CRe
     if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty()) {
         // Address provided
         ownerAddr.SetString(params[2].get_str());
-        if (!ownerAddr.IsValid() || ownerAddr.IsLeasingAddress())
+        if (!ownerAddr.IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid BTCU spending address");
         if (!ownerAddr.GetKeyID(ownerKey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Unable to get spend pubkey hash from owneraddress");
@@ -1921,6 +1921,9 @@ UniValue signmessage(const UniValue& params, bool fHelp)
             HelpExampleRpc("signmessage", "\"DMJRSsuU9zfyrvxVaAEFQqK4MxZg6vgeS6\", \"my message\""));
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    if (!pwalletMain->IsCrypted()  && !Params().IsRegTestNet())
+        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an not encrypted wallet. Run encryptwallet first");
 
     EnsureWalletIsUnlocked();
 
@@ -3600,6 +3603,9 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
             "encryptwallet <passphrase>\n"
             "Encrypts the wallet with <passphrase>.");
 
+    if(!CheckPassphraseRestriction(strWalletPass.c_str()))
+        throw JSONRPCError(RPC_WALLET_PASSPHRASE_NOT_SECURE, "Error: passphrase not secure. Passphrase should contain: Upper case, lower case, number, special char and length not less than 8 symbols");
+
     if (!pwalletMain->EncryptWallet(strWalletPass))
         throw JSONRPCError(RPC_WALLET_ENCRYPTION_FAILED, "Error: Failed to encrypt the wallet.");
 
@@ -4473,9 +4479,6 @@ UniValue mintzerocoin(const UniValue& params, bool fHelp)
             HelpExampleRpc("mintzerocoin", "13, \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\""));
 
 
-    if (!Params().IsRegTestNet())
-        throw JSONRPCError(RPC_WALLET_ERROR, "zBTCU minting is DISABLED");
-
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     if (params.size() == 1)
@@ -4599,7 +4602,6 @@ UniValue spendzerocoin(const UniValue& params, bool fHelp)
     std::vector<CZerocoinMint> vMintsSelected;
     return DoZbtcuSpend(nAmount, vMintsSelected, address_str);
 }
-
 
 UniValue spendzerocoinmints(const UniValue& params, bool fHelp)
 {

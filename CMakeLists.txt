@@ -492,6 +492,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     link_directories(${BOOST_LIBRARYDIR})
 endif()
 
+include(BrewHelper)
+
 list(APPEND CMAKE_PREFIX_PATH ./src/jsoncpp)
 list(APPEND CMAKE_PREFIX_PATH ./src/libscrypt)
 list(APPEND CMAKE_PREFIX_PATH ./src/cryptopp)
@@ -532,6 +534,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	set( Qrcode_LIBRARY "/usr/local/opt/qrencode/lib" )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	set( GMP_INCLUDE_DIR "/usr/include/x86_64-linux-gnu" )
+	set( RocksDB_INCLUDE_DIR "/usr/include" )
+	set( ZeroMQ_INCLUDE_DIR "/usr/include" )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/Qt5Core")
 	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/share/rocksdb")
@@ -667,7 +671,6 @@ if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 set(BDB_VER "18.1.32")
-include(BrewHelper)
 
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(GTEST_ROOT "/usr/src/googletest" CACHE PATH "Path to googletest")
@@ -1117,6 +1120,9 @@ set(SERVER_SOURCES
         ./src/validation.cpp
         ./src/consensus/consensus.cpp
         ./src/zbtcuchain.cpp
+        
+        # currently used only as experimental feature on Windows
+        ./src/shutdown.cpp
         )
 
 

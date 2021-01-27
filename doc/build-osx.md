@@ -68,7 +68,7 @@ in the download folder where you've placed the file. If the file has another nam
 
 ## Dependencies
 ```shell
-    brew install automake libtool miniupnpc pkg-config python qt libevent qrencode protobuf rocksdb snappy zeromq openssl libjson-rpc-cpp google-benchmark googletest
+    brew install automake libtool miniupnpc pkg-config python qt libevent qrencode protobuf rocksdb snappy zeromq openssl libjson-rpc-cpp google-benchmark googletest cmake
     # libscrypt from local since we need a version with cmake support but you still can get it via brew
 ```
 
@@ -138,17 +138,9 @@ In that case the Homebrew package will prevail.
 
 #### Berkeley DB
 
-It is recommended to use Berkeley DB 18.1.32. If you have to build it yourself,
-you can use [this](/contrib/install_db4.sh) script to install it
-like so:
+It is recommended to use Berkeley DB 18.1.32.
 
-```shell
-    ./contrib/install_db4.sh .
-```
-
-from the root of the repository.
-
-Also, the Homebrew package could be installed:
+The Homebrew package could be installed:
 
 ```shell
     brew install berkeley-db@18
@@ -172,7 +164,7 @@ If the brew installed a different version run the followed command:
 
 1. Clone the BTCU source code:
 ```shell
-    git clone https://github.com/btcu-ultimatum/btcu
+    git clone https://github.com/bitcoin-ultimatum/btcu
     cd btcu
 ```
 
@@ -292,7 +284,7 @@ It may be required to have an installed appopriate SDK version. You can find an 
 When the intention is to run only a P2P node without a wallet, BTCU may be
 compiled in disable-wallet mode with:
 ```shell
-    cmake . -DBUILD_BITCOIN_WALLET=OFF
+    cmake . -DENABLE_WALLET=OFF
 ```
 
 In this case there is no dependency on [*Berkeley DB*](#berkeley-db) and [*SQLite*](#sqlite).
@@ -301,7 +293,7 @@ Mining is also possible in disable-wallet mode using the `getblocktemplate` RPC 
 
 ## Running
 BTCU is now available at `./btcud`
-/Users/nataliabelets/.btcu
+
 Before running, it's recommended that you create an RPC configuration file:
 ```shell
     echo -e "rpcuser=btcurpc\nrpcpassword=$(xxd -l 16 -p /dev/urandom)" > "/Users/${USER}/Library/Application Support/BTCU/btcu.conf"

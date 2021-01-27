@@ -270,15 +270,15 @@ public:
         genesis.nVersion = 8;
         genesis.nTime = 1583491266;
         genesis.nBits = 0x1e0ffff0;
-        genesis.nNonce = 4860171;
-        genesis.hashChainstate = uint256("0x12ecf5df211cbae201ceafcfc46392b39539409b0e6a89a3f7498af0e6ebd320");
+        genesis.nNonce = 5492953;
+        genesis.hashChainstate = uint256("0x91ea77397a8e48f8a69377a505add5bff9a8e23c47e4e4e4b747edfeba9b6a79");
         genesis.hashStateRoot = uint256(h256Touint(dev::h256("e965ffd002cd6ad0e2dc402b8044de833e06b23127ea8c3d80aec91410771495"))); // qtum
         genesis.hashUTXORoot = uint256(h256Touint(dev::sha3(dev::rlp("")))); // qtum
 
         hashGenesisBlock = genesis.GetHash();
 
 #ifndef _MSC_VER
-        assert(hashGenesisBlock == uint256("0x000004ea22f3e20f9ee1b90d2a684fbad997fa19d852ab74c39634b74f49f91f"));
+        assert(hashGenesisBlock == uint256("0x000000786809183e51a8a112ee0b082be2a46df19f05d6b4a7525c0c027fc04a"));
         assert(genesis.hashMerkleRoot == uint256("0x858d38eb69842a10816427748c0cd8f60211113a5f62f669891aae88b0c85884"));
 #endif
         
@@ -328,6 +328,13 @@ public:
 
         //////////qtum
         nMPoSRewardRecipients = 10;
+        
+        vExcludedAddresses = {"35hK24tcLEWcgNA4JxpvbkNkoAcDGqQPsP",
+                              "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ",
+                              "37XuVSEpWW4trkfmvWzegTHQt7BdktSKUs",
+                              "1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF"};
+
+        rechargedAddress = "3Lps1Jxf7jg4eesTAxCQTRFUErAD6xZEnE";
     }
 
     const Checkpoints::CCheckpointData& Checkpoints() const
@@ -402,7 +409,7 @@ public:
 
         //! Modify the testnet genesis block so the timestamp is valid for a later start.
         genesis.nTime = 1583491266;
-        genesis.nNonce = 3293335;
+        genesis.nNonce = 4352283;
 
         //! Modify genesis testnet validators pubkeys
         CMutableTransaction txNew = genesis.vtx[0];
@@ -428,7 +435,7 @@ public:
 
         hashGenesisBlock = genesis.GetHash();
 #ifndef _MSC_VER
-        assert(hashGenesisBlock == uint256("0x000008ad321726fc2c3780ef0f4f25c5bcd569a106d6f27a49e1148dd7bdbbb1"));
+        assert(hashGenesisBlock == uint256("0x00000ae988ea045538fe321cd062cef4b2f201049e7d8439cf19cc149f2f0f0b"));
 #endif
 
         vFixedSeeds.clear();
@@ -490,22 +497,22 @@ public:
         nMinerThreads = 1;
         bnProofOfWorkLimit = ~uint256(0) >> 1;
         nLastPOWBlock = 250;
-        nMaturity = 10;
+        nMaturity = 100;
         nStakeMinAge = 0;
-        nStakeMinDepth = 10;
+        nStakeMinDepth = 0;
         nMasternodeCountDrift = 4;
         nModifierUpdateBlock = 0;
-        nZerocoinStartHeight = 1;
+        nZerocoinStartHeight = 300;
         nBlockZerocoinV2 = 300;
         nZerocoinStartTime = 1501776000;
         nBlockEnforceSerialRange = 1;               // Enforce serial range starting this block
-        nBlockRecalculateAccumulators = 1;          // Trigger a recalculation of accumulators
+        nBlockRecalculateAccumulators = 999999999;  // Trigger a recalculation of accumulators
         nBlockFirstFraudulent = 999999999;          // First block that bad serials emerged
         nBlockLastGoodCheckpoint = 999999999;       // Last valid accumulator checkpoint
         nBlockStakeModifierlV2 = nLastPOWBlock + 1; // start with modifier V2 on regtest
         nBlockTimeProtocolV2 = 999999999;
 
-        nMintRequiredConfirmations = 1;
+        nMintRequiredConfirmations = 10;
         nZerocoinRequiredStakeDepth = nMintRequiredConfirmations;
 
         // Public coin spend enforcement
@@ -523,7 +530,7 @@ public:
         
         //! Modify the regtest genesis block so the timestamp is valid for a later start.
         genesis.nTime = 1583491266;
-        genesis.nNonce = 2507949;
+        genesis.nNonce = 3055395;
 
         //! Modify genesis regtest validators pubkeys
         CMutableTransaction txNew = genesis.vtx[0];
@@ -548,7 +555,7 @@ public:
         hashGenesisBlock = genesis.GetHash();
 
 #ifndef _MSC_VER
-        assert(hashGenesisBlock == uint256("0x00000e1654727693d67050f2ef94fdf32f00126fedf76af89b5a89739c21a34b"));
+        assert(hashGenesisBlock == uint256("0x00000e203c36e781e6cc4f08508c2256cd7f5dd02693fad1bea1f2e9eea51dcc"));
 #endif
         
         vFixedSeeds.clear(); //! Testnet mode doesn't have any fixed seeds.

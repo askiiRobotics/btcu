@@ -55,10 +55,6 @@ void MilliSleep(int64_t n)
     boost::this_thread::sleep_for(boost::chrono::milliseconds(n));
 #elif defined(HAVE_WORKING_BOOST_SLEEP)
     boost::this_thread::sleep(boost::posix_time::milliseconds(n));
-#elif defined(WIN32)
-    #include <chrono>
-    #include <thread>
-    std::this_thread::sleep_for(std::chrono::milliseconds(n));
 #else
 //should never get here
 #error missing boost sleep implementation

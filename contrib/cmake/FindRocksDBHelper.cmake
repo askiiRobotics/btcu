@@ -11,6 +11,8 @@
 #  RocksDB_INCLUDE_DIR
 #  ROCKSDB_LIBRARY
 
+find_brew_prefix(_ROCKSDB_BREW_HINT rocksdb)
+
 if(ROCKSDB_ROOT_DIR)
     set(_ROCKSDB_PATHS "${ROCKSDB_ROOT_DIR}")
 else()
@@ -21,13 +23,16 @@ else()
             "/usr/local/Cellar/rocksdb"
             "/opt"
             "/opt/local"
-			"/urs/"
+			"/usr"
             "/usr/local"
             )
 endif()
-find_path(RocksDB_INCLUDE_DIR NAMES rocksdb/db.h
-        PATHS "${_ROCKSDB_PATHS}"
-        PATH_SUFFIXES "include" "includes")
+if(NOT RocksDB_INCLUDE_DIR)
+    find_path(RocksDB_INCLUDE_DIR NAMES rocksdb/db.h
+            PATHS "${_ROCKSDB_PATHS}"
+		    HINTS ${_ROCKSDB_BREW_HINT}
+            PATH_SUFFIXES "include" "includes")
+endif()
 
 if(RocksDB_INCLUDE_DIR)
 
@@ -36,6 +41,7 @@ if(RocksDB_INCLUDE_DIR)
 		NAMES
             rocksdbd rocksdb librocksdb
 		INCLUDE_DIRS ${RocksDB_INCLUDE_DIR}
+		HINTS ${_ROCKSDB_BREW_HINT}
         PATH_SUFFIXES "lib" "lib64" "libs" "libs64"
         PATHS ${_ROCKSDB_PATHS}
 	)

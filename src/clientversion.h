@@ -15,7 +15,7 @@
 #if !defined(CLIENT_VERSION_MAJOR) || !defined(CLIENT_VERSION_MINOR) ||        \
     !defined(CLIENT_VERSION_REVISION) || !defined(COPYRIGHT_YEAR) ||           \
     !defined(CLIENT_VERSION_IS_RELEASE)
-#error Client version information missing: version is not defined by bitcoin-config.h nor defined any other way
+#error Client version information missing: version is not defined by btcu-config.h nor defined any other way
 #endif
 
 /**

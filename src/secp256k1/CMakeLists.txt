@@ -127,6 +127,9 @@ elseif(CMAKE_C_COMPILER_TARGET MATCHES "arm-linux-gnueabihf")
   	set(ASM_BUILD_TARGET "arm-linux-gnueabihf")
 	set(SECP256K1_DEFAULT_USE_ASM ON)
   	set(USE_ASM 1)
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(SECP256K1_DEFAULT_USE_ASM OFF)
+  	set(USE_ASM OFF)
 endif()
 
 # Enable ASM by default only if we are building for a compatible target.
