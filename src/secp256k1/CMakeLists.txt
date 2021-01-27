@@ -101,7 +101,6 @@ else()
   set(USE_SCALAR_8X32 1)
 endif()
 
-# find_package(GMP)
 if(GMP_FOUND)
   	set(USE_NUM_GMP 1)
   	set(HAVE_LIBGMP 1)
@@ -135,7 +134,6 @@ endif()
 # Enable ASM by default only if we are building for a compatible target.
 # The user can still enable/disable it manually if needed.
 option(SECP256K1_USE_ASM "Use assembly" ${SECP256K1_DEFAULT_USE_ASM})
-
 if(SECP256K1_USE_ASM)
 	macro(unsupported_asm_error)
 		message(FATAL_ERROR
@@ -294,11 +292,11 @@ if(SECP256K1_ENABLE_MODULE_RECOVERY)
 	list(APPEND SECP256K1_PUBLIC_HEADERS include/secp256k1_recovery.h)
 endif()
 
-option(SECP256K1_ECMULT_STATIC_PRECOMPUTATION "Precompute libsecp256k1's elliptic curve multiplication tables" OFF)
+option(SECP256K1_ECMULT_STATIC_PRECOMPUTATION "Precompute libsecp256k1's elliptic curve multiplication tables" ON)
 if(SECP256K1_ECMULT_STATIC_PRECOMPUTATION)
-	set(USE_ECMULT_STATIC_PRECOMPUTATION 0)
-else()
 	set(USE_ECMULT_STATIC_PRECOMPUTATION 1)
+else()
+	set(USE_ECMULT_STATIC_PRECOMPUTATION 0)
 endif()
 
 add_executable(gen_context src/gen_context.c)
