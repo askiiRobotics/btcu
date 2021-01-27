@@ -14,6 +14,9 @@ project(btcu
 set(PACKAGE_NAME "BTCU")
 set(PACKAGE_BUGREPORT "https://github.com/bitcoin-ultimatum/btcu/issues")
 
+# currently the crossbuild is not supported
+set(__IS_NATIVE_BUILD 1 CACHE INTERNAL "Indicate if this is a native build")
+
 # set default cmake build type to RelWithDebInfo
 # possible options are: None Debug Release RelWithDebInfo MinSizeRel
 IF( NOT CMAKE_BUILD_TYPE )
