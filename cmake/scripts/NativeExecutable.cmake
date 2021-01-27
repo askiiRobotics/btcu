@@ -71,7 +71,7 @@ function(add_native_executable NAME)
 		
 		file(
 			COPY "${CMAKE_CURRENT_BINARY_DIR}/tmp/build_native_${NAME}.sh"
-			DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/build_native_${NAME}.sh"
+			DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
 			FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 		)
 
@@ -128,7 +128,7 @@ function(_gen_native_cmake_target)
 	)
 	file(
 		COPY "${CMAKE_BINARY_DIR}/config/tmp/run_native_cmake.sh"
-		DESTINATION "${CMAKE_BINARY_DIR}/config/run_native_cmake.sh"
+		DESTINATION "${CMAKE_BINARY_DIR}/config"
 		FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
     )
 endfunction(_gen_native_cmake_target)
