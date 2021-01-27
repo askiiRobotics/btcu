@@ -29,19 +29,8 @@ function(non_native_target_link_libraries TARGET LIB VERSION)
 	endforeach()
 endfunction()
 
-find_package(Python3 COMPONENTS Interpreter)
-set(PYTHON_ADDITIONAL_EXECUTABLE ${Python3_EXECUTABLE} CACHE PATH "The path of the native build directory" FORCE)
-
 # It is imperative that NATIVE_BUILD_DIR be in the cache.
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	set(COMMAND_PREFIX_NATIVE "cmd /C '" CACHE PATH "Windows specific prefix for the build command" FORCE)
-	set(COMMAND_POSTFIX_NATIVE "'" CACHE PATH "Windows specific postfix for the build command" FORCE)
-	set(NATIVE_BUILD_DIR "${CMAKE_BINARY_DIR}" CACHE PATH "The path of the native build directory" FORCE)
-	set(PREFIX_NATIVE "${CMAKE_BINARY_DIR}" CACHE PATH "The path of the native build directory" FORCE)
-else()
-	set(NATIVE_BUILD_DIR "${CMAKE_BINARY_DIR}/native" CACHE PATH "The path of the native build directory" FORCE)
-	set(PREFIX_NATIVE "native" CACHE PATH "The path of the native build directory" FORCE)
-endif()
+set(NATIVE_BUILD_DIR "${CMAKE_BINARY_DIR}/native" CACHE PATH "The path of the native build directory" FORCE)
 
 # Only ninja support depfiles and this is a hard error with other generators
 # so we need a nice wrapper to handle this mess.
@@ -146,7 +135,7 @@ if(NOT __IS_NATIVE_BUILD AND NOT TARGET native-cmake-build)
 	variable_watch(CMAKE_CURRENT_LIST_DIR _gen_native_cmake_hook)
 
 	add_custom_command_with_depfile(
-		OUTPUT "${NATIVE_BUILD_DIR}/out/CMakeCache.txt"
+		OUTPUT "${NATIVE_BUILD_DIR}/CMakeCache.txt"
 		COMMENT "Preparing native build..."
 		COMMAND "${CMAKE_BINARY_DIR}/config/run_native_cmake.sh"
 		DEPENDS "${CMAKE_BINARY_DIR}/config/run_native_cmake.sh"

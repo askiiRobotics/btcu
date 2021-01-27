@@ -295,18 +295,30 @@ endif()
 option(SECP256K1_ECMULT_STATIC_PRECOMPUTATION "Precompute libsecp256k1's elliptic curve multiplication tables" ON)
 if(SECP256K1_ECMULT_STATIC_PRECOMPUTATION)
 	set(USE_ECMULT_STATIC_PRECOMPUTATION 1)
+
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		add_executable(gen_context src/gen_context.c)
+		target_include_directories(gen_context PRIVATE ${CMAKE_SOURCE_DIR})
+
+		add_custom_target(ecmult_static_context gen_context WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+		add_dependencies(secp256k1 ecmult_static_context)
+
+		install(TARGETS secp256k1 ARCHIVE DESTINATION lib)
+		install(DIRECTORY include/ DESTINATION include)
+	else()
+		include(NativeExecutable)
+		add_native_executable(gen_context src/gen_context.c)
+
+		add_custom_command(
+			OUTPUT ecmult_static_context.h
+			COMMAND gen_context
+		)
+
+		target_sources(secp256k1 PRIVATE ecmult_static_context.h)
+	endif()
 else()
 	set(USE_ECMULT_STATIC_PRECOMPUTATION 0)
 endif()
-
-add_executable(gen_context src/gen_context.c)
-target_include_directories(gen_context PRIVATE ${CMAKE_SOURCE_DIR})
-
-add_custom_target(ecmult_static_context gen_context WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-add_dependencies(secp256k1 ecmult_static_context)
-
-install(TARGETS secp256k1 ARCHIVE DESTINATION lib)
-install(DIRECTORY include/ DESTINATION include)
 	
 # If this project is not the top level project, then don't install by default
 get_directory_property(SECP256K1_PARENT_DIRECTORY PARENT_DIRECTORY)

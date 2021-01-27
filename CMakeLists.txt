@@ -4,7 +4,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 # the version of this package
 set(PROJECT_VERSION 0.1.1)
 
-project(btcu
+project(btcu 
 	VERSION ${PROJECT_VERSION}
 	DESCRIPTION "BTCU is a free open source peer-to-peer electronic cash system that is completely decentralized, without the need for a central server or trusted parties.  Users hold the crypto keys to their own money and transact directly with each other, with the help of a P2P network to check for double-spending."
 	HOMEPAGE_URL "https://btcu.io/"
@@ -746,7 +746,11 @@ else()
     message(WARNING "ZeroMQ not found!")
 endif()
 
-find_package(RocksDB REQUIRED)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    find_package(RocksDB CONFIG REQUIRED)
+else()
+    find_package(RocksDB REQUIRED)
+endif()
 if(RocksDB_FOUND)
     message(STATUS "Found RocksDB")
     message(STATUS RocksDB_LIBRARIES:)
