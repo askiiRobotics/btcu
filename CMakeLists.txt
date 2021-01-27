@@ -390,6 +390,9 @@ if (MSVC)
     # warning LNK4099: pdb was not found with lib
     # stack size 16MB
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075 /STACK:16777216 /NODEFAULTLIB:MSVCRT -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00")
+else()
+    set(BUILD_SHARED_LIBS ON)
+    set(BUILD_STATIC_LIBS ON)
 endif ()
 
 # Setting up Boost parameters and paths to dependencies
