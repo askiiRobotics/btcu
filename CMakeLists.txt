@@ -532,6 +532,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	set( BerkeleyDB_LIBRARY "/usr/local/opt/berkeley-db/lib" )
 
 	find_brew_prefix(OPENSSL_ROOT_DIR openssl)
+	find_brew_prefix(ZMQ_ROOT_DIR zmq)
 
 	set( LibEvent_INCLUDE_DIR "/usr/local/opt/libevent/include" )
 	set( LibEvent_LIBRARY "/usr/local/opt/libevent/lib" )
@@ -539,8 +540,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	set( GMP_INCLUDE_DIR "/usr/local/opt/gmp/include" )
 	set( GMP_LIBRARY "/usr/local/opt/gmp/lib" )
 
-	set( ZeroMQ_INCLUDE_DIR "/usr/local/opt/zmq/include" )
-	set( ZeroMQ_LIBRARY "/usr/local/opt/zmq/lib" )
+	set( ZeroMQ_INCLUDE_DIR "${ZMQ_ROOT_DIR}/include" )
+	set( ZeroMQ_LIBRARY "${ZMQ_ROOT_DIR}/lib" )
 
 	set( Qrcode_INCLUDE_DIR "/usr/local/opt/qrencode/include" )
 	set( Qrcode_LIBRARY "/usr/local/opt/qrencode/lib" )
