@@ -5,14 +5,14 @@ project(univalue
 	VERSION 1.0.3
 	)
 
-# Default visibility is hidden on all targets.
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 option(UNIVALUE_BUILD_TESTS "Build univalue's unit tests" ON)
 
 if (MSVC)
     set(BUILD_SHARED_LIBS OFF)
     set(BUILD_STATIC_LIBS ON)
+else()
+    set(BUILD_SHARED_LIBS ON)
+    set(BUILD_STATIC_LIBS OFF)
 endif()
 
 

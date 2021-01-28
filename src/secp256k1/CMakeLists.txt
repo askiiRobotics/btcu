@@ -235,7 +235,9 @@ set(SECP256K1_PUBLIC_HEADERS
 )
 
 if(GMP_FOUND)
+	message(STATUS "GMP included into secp256k1")
 	target_link_libraries(secp256k1 ${GMP_LIBRARIES})
+        target_include_directories(secp256k1 PUBLIC ${GMP_INCLUDE_DIR})
 endif()
 
 # Executable internal to secp256k1 need to have the HAVE_CONFIG_H define set.
