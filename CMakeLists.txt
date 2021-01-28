@@ -793,21 +793,19 @@ endif()
 
 find_package(LibEvent REQUIRED)
 
+# Find the python interpreter. This is required for several targets.
+find_package(Python 3.5 COMPONENTS Interpreter REQUIRED)
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     include(${CMAKE_SOURCE_DIR}/contrib/cmake/jsonrpc.cmake)
 endif()
 
+add_subdirectory(src/secp256k1)
+add_subdirectory(src/univalue)
 add_subdirectory(src/libff)
-
-# Find the python interpreter. This is required for several targets.
-find_package(Python 3.5 COMPONENTS Interpreter REQUIRED)
-
-
 add_subdirectory(src/libscrypt)
 add_subdirectory(src/cryptopp)
 add_subdirectory(src/jsoncpp/jsoncpp)
-add_subdirectory(src/secp256k1)
-add_subdirectory(src/univalue)
 
 
 # dependencies
