@@ -1,5 +1,7 @@
 if(${CURVE} STREQUAL "BN128")
-  project(zm)
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    project(zm)
+  endif()
 
   include_directories(ate-pairing/include)
   include_directories(xbyak)
