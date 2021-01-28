@@ -490,7 +490,7 @@ add_definitions(-DBOOST_NO_SCOPED_ENUMS=1)
 add_definitions(-DBOOST_NO_CXX11_SCOPED_ENUMS=1)
 
 find_package(Boost 1.71.0 EXACT COMPONENTS program_options filesystem system thread context fiber chrono log_setup log unit_test_framework REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS}/boost)
+include_directories(${Boost_INCLUDE_DIRS})
 
 add_definitions(-DETH_FATDB=1)
 

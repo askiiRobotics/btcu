@@ -3,6 +3,7 @@
 # Licensed under the Apache License, Version 2.0. See the LICENSE file.
 
 find_package(GTest CONFIG REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(
     ethash-test
