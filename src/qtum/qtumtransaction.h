@@ -26,9 +26,13 @@
 #            endif
 #        endif /* defined(_MSC_VER) */
 
+#ifdef _MSC_VER
 BEGIN_ATTRIBUTE_PACKED
 
 struct VersionVM ATTRIBUTE_PACKED {
+#else
+struct __attribute__((may_alias)) VersionVM {
+#endif
     //this should be portable, see https://stackoverflow.com/questions/31726191/is-there-a-portable-alternative-to-c-bitfields
 # if __BYTE_ORDER == __LITTLE_ENDIAN
     uint8_t format : 2;
@@ -65,7 +69,11 @@ struct VersionVM ATTRIBUTE_PACKED {
         x.vmVersion=0;
         return x;
     }
+#ifdef _MSC_VER
 } END_ATTRIBUTE_PACKED;
+#else
+}
+#endif
 
 class QtumTransaction : public dev::eth::Transaction{
 
