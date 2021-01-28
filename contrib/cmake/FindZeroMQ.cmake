@@ -98,21 +98,32 @@ if(ZeroMQ_INCLUDE_DIR)
 
 	include(ExternalLibraryHelper)
 
-	# The dependency to iphlpapi starts from 4.2.0
-	if(ZeroMQ_VERSION VERSION_LESS 4.2.0)
-		set(_ZeroMQ_WINDOWS_LIBRARIES "$<$<PLATFORM_ID:Windows>:ws2_32;rpcrt4>")
-	else()
-		set(_ZeroMQ_WINDOWS_LIBRARIES "$<$<PLATFORM_ID:Windows>:ws2_32;rpcrt4;iphlpapi>")
-	endif()
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		# The dependency to iphlpapi starts from 4.2.0
+		if(ZeroMQ_VERSION VERSION_LESS 4.2.0)
+			set(_ZeroMQ_WINDOWS_LIBRARIES "$<$<PLATFORM_ID:Windows>:ws2_32;rpcrt4>")
+		else()
+			set(_ZeroMQ_WINDOWS_LIBRARIES "$<$<PLATFORM_ID:Windows>:ws2_32;rpcrt4;iphlpapi>")
+		endif()
 
-	find_component(ZeroMQ zmq
-		NAMES zmq libzmq
-		INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIRS}
-		HINTS ${_ZMQ_BREW_HINT}
-        PATH_SUFFIXES "lib" "lib64" "libs" "libs64"
-        PATHS ${_ZMQ_PATHS}
-		INTERFACE_LINK_LIBRARIES "${_ZeroMQ_WINDOWS_LIBRARIES}"
-	)
+		find_component(ZeroMQ zmq
+			NAMES zmq libzmq
+			INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIRS}
+			HINTS ${_ZMQ_BREW_HINT}
+			PATH_SUFFIXES "lib" "lib64" "libs" "libs64"
+			PATHS ${_ZMQ_PATHS}
+			INTERFACE_LINK_LIBRARIES "${_ZeroMQ_WINDOWS_LIBRARIES}"
+		)
+	else()
+
+		find_component(ZeroMQ zmq
+			NAMES zmq libzmq
+			INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIRS}
+			HINTS ${_ZMQ_BREW_HINT}
+			PATH_SUFFIXES "lib" "lib64" "libs" "libs64"
+			PATHS ${_ZMQ_PATHS}
+		)
+	endif()
 endif()
 
 include(FindPackageHandleStandardArgs)
