@@ -64,22 +64,22 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "Default triplet for the build" FORCE)
     set(VCPKG_ROOT "$ENV{VCPKG_ROOT}"  CACHE STRING "VCPKG root" FORCE)
 
-    set(CMAKE_CXX_FLAGS_RELEASE "/MT /O2 /Ob2 /DNDEBUG" CACHE STRING "Enforced CXX static flag for release" FORCE)
+    set(CMAKE_CXX_FLAGS_RELEASE "/MT /O2 /Ob2" CACHE STRING "Enforced CXX static flag for release" FORCE)
     set(CMAKE_CXX_FLAGS_DEBUG "/MTd  /Zi /Ob0 /Od /RTC1" CACHE STRING "Enforced CXX static flag for debug" FORCE)
-    set(CMAKE_CXX_FLAGS_MINSIZEREL "/MT /O1 /Ob1 /DNDEBUG" CACHE STRING "Enforced CXX static flag for minsizerel" FORCE)
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1 /DNDEBUG" CACHE STRING "Enforced CXX static flag for relwithdebinfo" FORCE)
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "/MT /O1 /Ob1" CACHE STRING "Enforced CXX static flag for minsizerel" FORCE)
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1" CACHE STRING "Enforced CXX static flag for relwithdebinfo" FORCE)
 
     # /MD /O2 /Ob2
-    set(CMAKE_C_FLAGS_RELEASE "/MT  /O2 /Ob2 /DNDEBUG" CACHE STRING "Enforced C static flag for release" FORCE)
+    set(CMAKE_C_FLAGS_RELEASE "/MT  /O2 /Ob2" CACHE STRING "Enforced C static flag for release" FORCE)
 
     # /MDd /Zi /Ob0 /Od /RTC1
     set(CMAKE_C_FLAGS_DEBUG "/MTd  /Zi /Ob0 /Od /RTC1" CACHE STRING "Enforced C static flag for debug" FORCE)
 
     # /MD /O1 /Ob1
-    set(CMAKE_C_FLAGS_MINSIZEREL "/MT /O1 /Ob1 /DNDEBUG" CACHE STRING "Enforced C static flag for minsizerel" FORCE)
+    set(CMAKE_C_FLAGS_MINSIZEREL "/MT /O1 /Ob1" CACHE STRING "Enforced C static flag for minsizerel" FORCE)
 
     # /MD /Zi /O2 /Ob1
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1 /DNDEBUG" CACHE STRING "Enforced C static flag for relwithdebinfo" FORCE)
+    set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1" CACHE STRING "Enforced C static flag for relwithdebinfo" FORCE)
 endif()
 
 # Add path for custom modules
@@ -807,6 +807,11 @@ add_subdirectory(src/libscrypt)
 add_subdirectory(src/cryptopp)
 add_subdirectory(src/jsoncpp/jsoncpp)
 
+# dependencies
+set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
+list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
+
+add_subdirectory(src/cpp-ethereum/ethash)
 
 # remove all NDEBUG flags due to it is restricted option
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -814,14 +819,14 @@ if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
     string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+    string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
     string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+    string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+    string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
+    string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
 endif()
-
-# dependencies
-set(ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory")
-list(APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR})
-
-add_subdirectory(src/cpp-ethereum/ethash)
 
 link_directories(${CMAKE_BINARY_DIR})
 
