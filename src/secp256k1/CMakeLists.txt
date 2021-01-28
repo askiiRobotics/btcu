@@ -3,15 +3,20 @@
 cmake_minimum_required(VERSION 3.14)
 project(secp256k1 LANGUAGES C VERSION 0.1.0)
 
-# Default visibility is hidden on all targets.
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
 
 include(TestBigEndian)
 include(CheckCSourceCompiles)
+
+if (MSVC)
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_STATIC_LIBS ON)
+else()
+    set(BUILD_SHARED_LIBS ON)
+    set(BUILD_STATIC_LIBS OFF)
+endif()
 
 # Add path for custom modules when building as a standalone project
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/script)
@@ -27,9 +32,6 @@ include(AddCompilerFlags)
 
 # libsecp256k1 use a different set of flags.
 if(MSVC)
-    set(BUILD_SHARED_LIBS OFF)
-    set(BUILD_STATIC_LIBS ON)
-
 	add_compile_options(/wd4244)
 	add_compile_options(/wd4267)
 	add_compile_options(/wd4244)
@@ -237,7 +239,7 @@ set(SECP256K1_PUBLIC_HEADERS
 if(GMP_FOUND)
 	message(STATUS "GMP included into secp256k1")
 	target_link_libraries(secp256k1 ${GMP_LIBRARIES})
-        target_include_directories(secp256k1 PUBLIC ${GMP_INCLUDE_DIR})
+    target_include_directories(secp256k1 PUBLIC ${GMP_INCLUDE_DIR})
 endif()
 
 # Executable internal to secp256k1 need to have the HAVE_CONFIG_H define set.
