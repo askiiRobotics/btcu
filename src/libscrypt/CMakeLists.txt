@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 project(libscrypt LANGUAGES C)
 
-# Default visibility is hidden on all targets.
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-
 set(
     sources
     b64.c b64.h

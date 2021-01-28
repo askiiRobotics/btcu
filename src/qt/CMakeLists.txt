@@ -2,10 +2,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 
 set(PACKAGE_NAME "btcu qt")
 
-# Default visibility is hidden on all targets.
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/scripts)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
