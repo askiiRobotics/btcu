@@ -646,16 +646,6 @@ if(OPENSSL_FOUND)
         message(STATUS "Found unsupported OpenSSL version!")
     endif()
 
-	set(CMAKE_REQUIRED_INCLUDES ${OPENSSL_INCLUDE_DIR})
-	set(CMAKE_REQUIRED_LIBRARIES ${OPENSSL_LIBRARIES})
-
-    set(ENV{CPPFLAGS} "-I${OPENSSL_ROOT_DIR}/include")
-    set(ENV{LDFLAGS} "-L${OPENSSL_ROOT_DIR}/lib")
-
-    set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
-    set(ENV{OPENSSL_LIB_DIR} "${OPENSSL_ROOT_DIR}/lib")
-    set(ENV{OPENSSL_INCLUDE_DIR} "${OPENSSL_ROOT_DIR}/include")
-
     include_directories(${OPENSSL_INCLUDE_DIR})
     link_directories(${OPENSSL_LIBRARIES})
 endif()
