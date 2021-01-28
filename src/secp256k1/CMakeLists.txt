@@ -186,7 +186,7 @@ cmake_dependent_option(
 if(SECP256K1_BUILD_OPENSSL_TESTS)
 	include(BrewHelper)
 	find_brew_prefix(OPENSSL_ROOT_DIR openssl)
-	# find_package(OpenSSL COMPONENTS Crypto)
+	find_package(OpenSSL COMPONENTS Crypto)
 	if(NOT OpenSSL_FOUND)
 		message(FATAL_ERROR
 			"OpenSSL is not found, but is required for some tests. You can disable them by passing -DSECP256K1_BUILD_OPENSSL_TESTS=OFF."
