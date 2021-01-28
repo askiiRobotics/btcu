@@ -4,6 +4,7 @@ set(FF_EXTRASRCS)
 set(FF_EXTRALIBS)
 set(CMAKE_FIND_LIBRARY_SUFFIXES_SAVE "${CMAKE_FIND_LIBRARY_SUFFIXES}")
 if(${CURVE} STREQUAL "BN128")
+  include_directories(${CMAKE_SOURCE_DIR}src/libff/depends/ate-pairing/include)
   set(
     FF_EXTRASRCS
 
