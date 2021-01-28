@@ -645,9 +645,6 @@ if(OPENSSL_FOUND)
     if(OPENSSL_VERSION VERSION_GREATER_EQUAL 1.1)
         message(STATUS "Found unsupported OpenSSL version!")
     endif()
-
-    include_directories(${OPENSSL_INCLUDE_DIR})
-    link_directories(${OPENSSL_LIBRARIES})
 endif()
 
 find_package(GMP)
