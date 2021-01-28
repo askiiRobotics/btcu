@@ -179,16 +179,13 @@ elseif(SECP256K1_TEST_OVERRIDE_WIDE_MULTIPLY STREQUAL "int64")
   	set(USE_FORCE_WIDEMUL_INT64 1)
 endif()
 
-option(SECP256K1_BUILD_TEST "Build secp256k1's unit tests" ON)
+option(SECP256K1_BUILD_TEST "Build secp256k1's unit tests" OFF)
 include(CMakeDependentOption)
 cmake_dependent_option(
-	SECP256K1_BUILD_OPENSSL_TESTS "Build the OpenSSL tests" ON
-	SECP256K1_BUILD_TEST ON
+	SECP256K1_BUILD_OPENSSL_TESTS "Build the OpenSSL tests" OFF
+	SECP256K1_BUILD_TEST OFF
 )
 if(SECP256K1_BUILD_OPENSSL_TESTS)
-	include(BrewHelper)
-	find_brew_prefix(OPENSSL_ROOT_DIR openssl)
-	find_package(OpenSSL COMPONENTS Crypto)
 	if(NOT OpenSSL_FOUND)
 		message(FATAL_ERROR
 			"OpenSSL is not found, but is required for some tests. You can disable them by passing -DSECP256K1_BUILD_OPENSSL_TESTS=OFF."
@@ -258,10 +255,9 @@ include(InstallationHelper)
 add_custom_target(bench-secp256k1)
 
 function(add_secp256k1_bench NAME)
-	# RPATH is not supported in windows
-	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-		return()
-	endif()
+	# currently unavailable
+	return()
+
 	set(EXECUTABLE_NAME "${NAME}-bench")
 	add_executable(${EXECUTABLE_NAME} ${ARGN})
 	link_secp256k1_internal(${EXECUTABLE_NAME})
