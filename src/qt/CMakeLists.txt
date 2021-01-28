@@ -595,88 +595,90 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 
-set(QT_TEST_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/test/test_main.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/test/uritests.cpp
+if(ENABLE_TESTS)
+	set(QT_TEST_SOURCES
+			${CMAKE_CURRENT_SOURCE_DIR}/test/test_main.cpp
+			${CMAKE_CURRENT_SOURCE_DIR}/test/uritests.cpp
 
-        # wallet
-        ${CMAKE_CURRENT_SOURCE_DIR}/test/paymentservertests.cpp
-    )
+			# wallet
+			${CMAKE_CURRENT_SOURCE_DIR}/test/paymentservertests.cpp
+		)
 
-add_executable(test_btcu-qt ${QT_TEST_SOURCES})
-add_dependencies(test_btcu-qt translations_target leveldb leveldb_sse42 memenv)
-target_include_directories(test_btcu-qt PUBLIC
-        ${ENDIAN_INCLUDES}
-        ${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
-        ${CMAKE_CURRENT_SOURCE_DIR}/test
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/src/leveldb/include
-        ${CMAKE_SOURCE_DIR}/src/univalue/include
-        ${CMAKE_SOURCE_DIR}/src/secp256k1/include
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/btcu
-        ${CMAKE_CURRENT_SOURCE_DIR}/btcu/settings
-        ${OPENSSL_INCLUDE_DIR}
-        ${BerkeleyDB_INCLUDE_DIRS}
-        ${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
-    )
+	add_executable(test_btcu-qt ${QT_TEST_SOURCES})
+	add_dependencies(test_btcu-qt translations_target leveldb leveldb_sse42 memenv)
+	target_include_directories(test_btcu-qt PUBLIC
+			${ENDIAN_INCLUDES}
+			${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
+			${CMAKE_CURRENT_SOURCE_DIR}/test
+			${CMAKE_SOURCE_DIR}/src
+			${CMAKE_SOURCE_DIR}/src/leveldb/include
+			${CMAKE_SOURCE_DIR}/src/univalue/include
+			${CMAKE_SOURCE_DIR}/src/secp256k1/include
+			${CMAKE_CURRENT_SOURCE_DIR}
+			${CMAKE_CURRENT_SOURCE_DIR}/btcu
+			${CMAKE_CURRENT_SOURCE_DIR}/btcu/settings
+			${OPENSSL_INCLUDE_DIR}
+			${BerkeleyDB_INCLUDE_DIRS}
+			${CMAKE_SOURCE_DIR}/src/cpp-ethereum/
+		)
 
-target_link_libraries(test_btcu-qt PUBLIC
-        qt_stuff
-        univalue
-        SERVER_A WALLET_A CLI_A UTIL_A COMMON_A ZEROCOIN_A BITCOIN_CRYPTO_A
-        leveldb leveldb_sse42 memenv secp256k1
-        ${BerkeleyDB_Cxx_LIBRARY}
-        ${OPENSSL_LIBRARIES}
-		${Boost_LIBRARIES} 
-		${PROTOBUF_LIBRARIES} 
-		${LibEvent_LIBRARIES}
-        ${Qrcode_LIBRARIES}
-        Qt5::Gui Qt5::Core Qt5::Widgets Qt5::Network Qt5::Svg Qt5::Test ${QT_LIBRARIES}
-    )
-if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	target_link_libraries(test_btcu-qt PUBLIC pthread)
-endif()
+	target_link_libraries(test_btcu-qt PUBLIC
+			qt_stuff
+			univalue
+			SERVER_A WALLET_A CLI_A UTIL_A COMMON_A ZEROCOIN_A BITCOIN_CRYPTO_A
+			leveldb leveldb_sse42 memenv secp256k1
+			${BerkeleyDB_Cxx_LIBRARY}
+			${OPENSSL_LIBRARIES}
+			${Boost_LIBRARIES} 
+			${PROTOBUF_LIBRARIES} 
+			${LibEvent_LIBRARIES}
+			${Qrcode_LIBRARIES}
+			Qt5::Gui Qt5::Core Qt5::Widgets Qt5::Network Qt5::Svg Qt5::Test ${QT_LIBRARIES}
+		)
+	if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		target_link_libraries(test_btcu-qt PUBLIC pthread)
+	endif()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    target_link_libraries(test_btcu-qt PUBLIC
-		"-framework Foundation"
-		"-framework ApplicationServices"
-		"-framework AppKit"
-    )
-endif()
-
-if(GMP_FOUND)
-    target_link_libraries(test_btcu-qt PUBLIC ${GMP_LIBRARIES})
-    target_include_directories(test_btcu-qt PUBLIC ${GMP_INCLUDE_DIR})
-endif()
-if (Qt5DBus_FOUND)
-    target_link_libraries(test_btcu-qt PUBLIC Qt5::DBus ${QT_LIBRARIES})
-endif()
-if (Qt5Charts_FOUND)
-    target_link_libraries(test_btcu-qt PUBLIC Qt5::Charts ${QT_LIBRARIES})
-endif()
-if(ZeroMQ_FOUND)
-    target_link_libraries(test_btcu-qt PUBLIC ZMQ_A)
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-        target_link_libraries(test_btcu-qt PUBLIC
-            ${ZeroMQ_STATIC_LIBRARY}
-            )
-    else()
-        target_link_libraries(test_btcu-qt PUBLIC
-            ${ZeroMQ_LIBRARY}
-            )
-    endif()
-    target_include_directories(test_btcu-qt PUBLIC ${ZeroMQ_INCLUDE_DIRS})
-endif()
-if(MINIUPNP_FOUND)
-	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-		target_compile_definitions(test_btcu-qt
-			PUBLIC -DSTATICLIB
-			PUBLIC -DMINIUPNP_STATICLIB
+	if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+		target_link_libraries(test_btcu-qt PUBLIC
+			"-framework Foundation"
+			"-framework ApplicationServices"
+			"-framework AppKit"
 		)
 	endif()
-    target_link_libraries(test_btcu-qt PUBLIC ${MINIUPNP_LIBRARY})
-    target_include_directories(test_btcu-qt PUBLIC ${MINIUPNP_INCLUDE_DIR})
+
+	if(GMP_FOUND)
+		target_link_libraries(test_btcu-qt PUBLIC ${GMP_LIBRARIES})
+		target_include_directories(test_btcu-qt PUBLIC ${GMP_INCLUDE_DIR})
+	endif()
+	if (Qt5DBus_FOUND)
+		target_link_libraries(test_btcu-qt PUBLIC Qt5::DBus ${QT_LIBRARIES})
+	endif()
+	if (Qt5Charts_FOUND)
+		target_link_libraries(test_btcu-qt PUBLIC Qt5::Charts ${QT_LIBRARIES})
+	endif()
+	if(ZeroMQ_FOUND)
+		target_link_libraries(test_btcu-qt PUBLIC ZMQ_A)
+		if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+			target_link_libraries(test_btcu-qt PUBLIC
+				${ZeroMQ_STATIC_LIBRARY}
+				)
+		else()
+			target_link_libraries(test_btcu-qt PUBLIC
+				${ZeroMQ_LIBRARY}
+				)
+		endif()
+		target_include_directories(test_btcu-qt PUBLIC ${ZeroMQ_INCLUDE_DIRS})
+	endif()
+	if(MINIUPNP_FOUND)
+		if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+			target_compile_definitions(test_btcu-qt
+				PUBLIC -DSTATICLIB
+				PUBLIC -DMINIUPNP_STATICLIB
+			)
+		endif()
+		target_link_libraries(test_btcu-qt PUBLIC ${MINIUPNP_LIBRARY})
+		target_include_directories(test_btcu-qt PUBLIC ${MINIUPNP_INCLUDE_DIR})
+	endif()
 endif()
 
