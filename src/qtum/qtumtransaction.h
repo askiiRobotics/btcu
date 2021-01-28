@@ -16,14 +16,6 @@
 #            define END_ATTRIBUTE_PACKED   __pragma(pack(pop)) \
                                           __pragma(warning(default : 4103))
 #            define ATTRIBUTE_SECTION_GCC(x)
-#        elif defined (__GNUC__)
-#            define BEGIN_ATTRIBUTE_PACKED
-#            define END_ATTRIBUTE_PACKED
-#            if defined(__clang__)
-#                define ATTRIBUTE_PACKED __attribute__ ((packed))
-#            else
-#                define ATTRIBUTE_PACKED __attribute__ ((gcc_struct,packed))
-#            endif
 #        endif /* defined(_MSC_VER) */
 
 #ifdef _MSC_VER
@@ -72,7 +64,7 @@ struct __attribute__((may_alias)) VersionVM {
 #ifdef _MSC_VER
 } END_ATTRIBUTE_PACKED;
 #else
-}
+} __attribute__((__packed__));
 #endif
 
 class QtumTransaction : public dev::eth::Transaction{
