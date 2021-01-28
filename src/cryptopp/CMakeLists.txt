@@ -8,10 +8,6 @@ cmake_minimum_required(VERSION 3.14)
 
 project(cryptopp)
 
-# Default visibility is hidden on all targets.
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-
 # Make RelWithDebInfo the default (it does e.g. add '-O2 -g -DNDEBUG' for GNU)
 #   If not in multi-configuration environments, no explicit build type or CXX 
 #   flags are set by the user and if we are the root CMakeLists.txt file.
