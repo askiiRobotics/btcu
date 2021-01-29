@@ -52,7 +52,13 @@ echo  "[12%] Installing dependency: git... Done!"
 echo  ""
 echo  "[13%] Installing dependency: libboost-all-dev... "
 
-install_package libboost-all-dev
+wget https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz
+tar -xf boost_1_71_0.tar.gz
+
+cd boost_1_71_0
+./bootstrap.sh --prefix=/usr --with-python=python3 &&
+./b2 stage -j 4 threading=multi link=shared --with-regex --with-test --with-filesystem --with-date_time --with-random --with-system --with-thread --with-program_options --with-chrono --with-fiber --with-log --with-context --with-math && sudo ./b2 install
+cd -
 
 echo  ""
 echo  "[13%] Installing dependency: libboost-all-dev... Done!"
