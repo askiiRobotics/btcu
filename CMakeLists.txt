@@ -1187,17 +1187,17 @@ target_link_libraries(SERVER_A
         )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     target_link_libraries(SERVER_A 
-        ${ZeroMQ_STATIC_LIBRARY}
+        ${ZeroMQ_STATIC_LIBRARY} jsoncpp_lib_static cryptopp-static Oracle::BerkeleyDB
         )
+    if(CRYPT32_LIBRARY)
+        target_link_libraries(SERVER_A 
+            ${CRYPT32_LIBRARY}
+        )
+    endif()
 else()
     target_link_libraries(SERVER_A 
-        ${ZeroMQ_LIBRARY}
+        ${ZeroMQ_LIBRARY} jsoncpp_lib cryptopp-shared ${BerkeleyDB_Cxx_LIBRARY})
         )
-endif()
-if (MSVC)
-    target_link_libraries(SERVER_A jsoncpp_lib_static cryptopp-static Oracle::BerkeleyDB)
-else()
-    target_link_libraries(SERVER_A jsoncpp_lib cryptopp-shared ${BerkeleyDB_Cxx_LIBRARY})
 endif()
 
 
@@ -1485,6 +1485,11 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         DESCRIPTION "CLI BTCU transaction editor utility"
     )
     list(APPEND btcu-cli_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/btcu-cli-res.rc)
+    if(CRYPT32_LIBRARY)
+        target_link_libraries(btcu-cli
+            ${CRYPT32_LIBRARY}
+        )
+    endif()
 endif()
 target_link_libraries(btcu-cli
         CLI_A
