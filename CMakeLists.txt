@@ -1196,7 +1196,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     endif()
 else()
     target_link_libraries(SERVER_A 
-        ${ZeroMQ_LIBRARY} jsoncpp_lib cryptopp-shared ${BerkeleyDB_Cxx_LIBRARY})
+        ${ZeroMQ_LIBRARY} jsoncpp_lib cryptopp-shared ${BerkeleyDB_Cxx_LIBRARY}
         )
 endif()
 
