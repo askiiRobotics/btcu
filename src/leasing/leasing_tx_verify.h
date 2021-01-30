@@ -13,12 +13,14 @@
 
 #define LEASED_TO_VALIDATOR_MIN_AMOUNT 10000
 
+#include "consensus/validation.h"
+
 class CTransaction;
 class CLeasingManager;
-class CValidationState;
+class uint256;
 
-bool CheckLeasingRewardTransaction(const CTransaction& tx, CValidationState& state, const CLeasingManager& leasingManager);
-bool CheckLeasedToValidatorTransaction(const CTransaction& tx, CValidationState& state, const CLeasingManager& leasingManager);
+bool CheckLeasingRewardTransaction(const uint256& blockHash, const CTransaction& tx, CValidationState& state, const CLeasingManager& leasingManager);
+bool CheckLeasedToValidatorTransaction(const uint256& blockHash, const CTransaction& tx, CValidationState& state, const CLeasingManager& leasingManager);
 
 #endif // ENABLE_LEASING_MANAGER
 

@@ -19,6 +19,40 @@
 #include <sys/endian.h>
 #endif
 
+#if defined(_MSC_VER) && HAVE_STDLIB_H
+#ifndef WORDS_BIGENDIAN
+# include <stdlib.h>
+
+# define htobe16(x) _byteswap_ushort(x)
+# define htole16(x) (x)
+# define be16toh(x) _byteswap_ushort(x)
+# define le16toh(x) (x)
+                	
+# define htobe32(x) _byteswap_ulong(x)
+# define htole32(x) (x)
+# define be32toh(x) _byteswap_ulong(x)
+# define le32toh(x) (x)
+                	
+# define htobe64(x) _byteswap_uint64(x)
+# define htole64(x) (x)
+# define be64toh(x) _byteswap_uint64(x)
+# define le64toh(x) (x)
+
+#define HAVE_DECL_HTOBE16 1
+#define HAVE_DECL_HTOLE16 1
+#define HAVE_DECL_BE16TOH 1
+#define HAVE_DECL_LE16TOH 1
+#define HAVE_DECL_HTOBE32 1
+#define HAVE_DECL_HTOLE32 1
+#define HAVE_DECL_BE32TOH 1
+#define HAVE_DECL_LE32TOH 1
+#define HAVE_DECL_HTOBE64 1
+#define HAVE_DECL_HTOLE64 1
+#define HAVE_DECL_BE64TOH 1
+#define HAVE_DECL_LE64TOH 1
+#endif // !WORDS_BIGENDIAN
+#endif // defined(_MSC_VER) && HAVE_STDLIB_H
+
 #ifndef HAVE_CONFIG_H
 // While not technically a supported configuration, defaulting to defining these
 // DECLs when we were compiled without autotools makes it easier for other build
