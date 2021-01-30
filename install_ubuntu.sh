@@ -41,9 +41,7 @@ build=1
 wget https://cmake.org/files/v$version/cmake-$version.$build.tar.gz
 tar -xzvf cmake-$version.$build.tar.gz
 cd cmake-$version.$build/
-./bootstrap --prefix=/usr
-make -j$(nproc)
-sudo make install
+./bootstrap --prefix=/usr && make -j$(nproc) && sudo make install
 cd -
 
 echo  ""
@@ -228,8 +226,7 @@ echo  ""
 echo  "[32%] Configuring GTest... "
 
 cd /usr/src/googletest
-sudo cmake .
-sudo cmake --build . --target install
+sudo cmake . && sudo cmake --build . --target install
 cd -
 
 echo  ""
@@ -385,7 +382,6 @@ else
     echo  "[50%] Downloading latest version of the BTCU... "
     git clone https://github.com/askiiRobotics/btcu
     mv btcu/* .
-    git checkout "windows-build"
     echo  ""
     echo  "[50%] Downloading latest version of the BTCU... Done!"
     echo  ""
@@ -406,9 +402,7 @@ else
 
     tar zxvf depends/packages/static/berkeley-db-18.1.32/berkeley-db-18.1.32.tar.gz -C ./
     cd  db-18.1.32/build_unix
-    ../dist/configure --enable-cxx --disable-shared --disable-replication --with-pic --prefix=/opt
-    make
-    sudo make install
+    ../dist/configure --enable-cxx --disable-shared --disable-replication --with-pic --prefix=/opt && make && sudo make install
     cd -
 fi
 
