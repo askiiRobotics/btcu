@@ -116,6 +116,7 @@ echo  "Done!"
 echo "[32%] Uninstalling dependency: libminiupnpc-dev... "
 
 uninstall_package libminiupnpc-dev
+uninstall_package miniupnpd
 
 echo  "Done!"
 

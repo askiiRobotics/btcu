@@ -36,7 +36,15 @@ uninstall_package () {
 echo  ""
 echo  "[11%] Installing dependency: cmake... "
 
-install_package cmake
+version=3.14
+build=1
+wget https://cmake.org/files/v$version/cmake-$version.$build.tar.gz
+tar -xzvf cmake-$version.$build.tar.gz
+cd cmake-$version.$build/
+./bootstrap
+make -j$(nproc)
+sudo make install
+cd -
 
 echo  ""
 echo  "[11%] Installing dependency: cmake... Done!"
@@ -57,7 +65,7 @@ tar -xf boost_1_71_0.tar.gz
 
 cd boost_1_71_0
 ./bootstrap.sh --prefix=/usr --with-python=python3 &&
-./b2 stage -j 4 threading=multi link=shared --with-regex --with-test --with-filesystem --with-date_time --with-random --with-system --with-thread --with-program_options --with-chrono --with-fiber --with-log --with-context --with-math && sudo ./b2 install
+./b2 stage -j$(nproc) threading=multi link=shared --with-regex --with-test --with-filesystem --with-date_time --with-random --with-system --with-thread --with-program_options --with-chrono --with-fiber --with-log --with-context --with-math && sudo ./b2 install
 cd -
 
 echo  ""
@@ -134,6 +142,14 @@ install_package libminiupnpc-dev
 
 echo  ""
 echo  "[22%] Installing dependency: libminiupnpc-dev... Done!"
+
+echo  ""
+echo  "[23%] Installing dependency: miniupnpc... "
+
+install_package miniupnpd
+
+echo  ""
+echo  "[23%] Installing dependency: libminiupnpc-dev... Done!"
 
 echo  ""
 echo  "[23%] Installing dependency: libzmq3-dev... "

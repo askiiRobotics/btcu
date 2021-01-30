@@ -172,3 +172,4 @@ ecmult_static_context.h
 db-*/
 *.zip
 .vscode/
+CMakeSettings.json
