@@ -47,7 +47,7 @@ uninstall_package () {
     REQUIRED_PKG="$1"
     PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
     if [ "install ok installed" = "$PKG_OK" ]; then
-    sudo apt remove --purge --auto-remove $REQUIRED_PKG
+    sudo apt remove --purge --auto-remove --allow -y --force-yes $REQUIRED_PKG
     fi
     
     # clean remaining locks
