@@ -3,7 +3,11 @@ set(CTEST_OUTPUT_ON_FAILURE TRUE)
 
 include(GoogleTest)
 
-find_package(GTest CONFIG REQUIRED)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    find_package(GTest REQUIRED)
+else()
+    find_package(GTest CONFIG REQUIRED)
+endif()
 
 set(unittest_sources
     unittests/libdevcore/CommonJS.cpp
@@ -37,8 +41,20 @@ add_executable(cpp-ethereum-unittests ${unittest_sources})
 target_include_directories(cpp-ethereum-unittests PRIVATE ${UTILS_INCLUDE_DIR})
 target_link_libraries(cpp-ethereum-unittests PRIVATE
     web3jsonrpc ethashseal devcrypto devcore
-    GTest::gtest GTest::gtest_main
 )
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    target_link_libraries(cpp-ethereum-unittests
+        PRIVATE 
+            GTest::GTest 
+            GTest::Main
+            )
+else()
+    target_link_libraries(cpp-ethereum-unittests
+        PRIVATE 
+            GTest::gtest 
+            GTest::gtest_main
+            )
+endif()
 gtest_add_tests(TARGET cpp-ethereum-unittests TEST_PREFIX unittests/ TEST_LIST unittests)
 set_tests_properties(${unittests} PROPERTIES TIMEOUT ${timeout})
 
