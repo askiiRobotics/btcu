@@ -48,7 +48,7 @@ version=3.14
 build=1
 wget https://cmake.org/files/v$version/cmake-$version.$build.tar.gz
 tar -xzvf cmake-$version.$build.tar.gz
-cd cmake-$version.$build/
+cd cmake-$version.$build
 ./bootstrap --prefix=/usr && make -j$(nproc) && sudo make install
 cd -
 
@@ -226,8 +226,7 @@ echo  ""
 echo  "[32%] Configuring GTest... "
 
 cd /usr/src/googletest
-sudo cmake . && sudo cmake --build . --target install
-cd -
+sudo cmake . && sudo cmake --build . --target install && cd -
 
 echo  ""
 echo  "[32%] Configuring GTest... Done!"
