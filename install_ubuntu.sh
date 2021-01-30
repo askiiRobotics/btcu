@@ -11,7 +11,7 @@ install_package () {
     REQUIRED_PKG="$1"
     PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
     if [ "" = "$PKG_OK" ]; then
-    sudo apt-get --assume-yes --force-yes --allow -y install $REQUIRED_PKG 
+    sudo apt-get --assume-yes --force-yes -y install $REQUIRED_PKG 
     else 
     echo "Already installed."
     fi
@@ -21,7 +21,7 @@ uninstall_package () {
     REQUIRED_PKG="$1"
     PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
     if [ "install ok installed" = "$PKG_OK" ]; then
-    sudo apt remove --purge --auto-remove --assume-yes --allow --force-yes $REQUIRED_PKG
+    sudo apt remove --purge --auto-remove --assume-yes --force-yes $REQUIRED_PKG
     fi
     
     # clean remaining locks
