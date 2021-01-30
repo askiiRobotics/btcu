@@ -362,7 +362,6 @@ echo -ne  "yes"
             echo  ""
             echo  "[51%] Working branch: release_$my_var"
             git checkout "release_$my_var"
-            git switch "release_$my_var"
         else
             echo  ""
             echo  "[51%] Working branch: master"
@@ -386,7 +385,6 @@ else
     git clone https://github.com/askiiRobotics/btcu
     mv btcu/* .
     git checkout "windows-build"
-    git switch "windows-build"
     echo  ""
     echo  "[50%] Downloading latest version of the BTCU... Done!"
     echo  ""
