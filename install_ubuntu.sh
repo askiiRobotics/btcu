@@ -34,6 +34,14 @@ uninstall_package () {
 }
 
 echo  ""
+echo  "[10%] Installing dependency: build-essential... "
+
+install_package build-essential
+
+echo  ""
+echo  "[11%] Installing dependency: build-essential... Done!"
+
+echo  ""
 echo  "[11%] Installing dependency: cmake... "
 
 version=3.14
@@ -77,14 +85,6 @@ cd -
 
 echo  ""
 echo  "[13%] Installing dependency: Boost 1.71.0... Done!"
-
-echo  ""
-echo  "[14%] Installing dependency: build-essential... "
-
-install_package build-essential
-
-echo  ""
-echo  "[14%] Installing dependency: build-essential... Done!"
 
 echo  ""
 echo  "[15%] Installing dependency: libtool... "
