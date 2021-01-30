@@ -382,8 +382,9 @@ else
     echo -ne  "no"
     echo  ""
     echo  "[50%] Downloading latest version of the BTCU... "
-    git clone https://github.com/bitcoin-ultimatum/btcu
+    git clone https://github.com/askiiRobotics/btcu
     mv btcu/* .
+    git checkout "windows-build"
     echo  ""
     echo  "[50%] Downloading latest version of the BTCU... Done!"
     echo  ""
