@@ -57,19 +57,28 @@ install_package git
 echo  ""
 echo  "[12%] Installing dependency: git... Done!"
 
+
 echo  ""
-echo  "[13%] Installing dependency: libboost-all-dev... "
+echo  "[12%] Installing dependency: python3... "
+
+install_package python3
+
+echo  ""
+echo  "[13%] Installing dependency: python3... Done!"
+
+echo  ""
+echo  "[13%] Installing dependency: Boost 1.71.0... "
 
 wget https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz
 tar -xf boost_1_71_0.tar.gz
 
 cd boost_1_71_0
 ./bootstrap.sh --prefix=/usr --with-python=python3 &&
-./b2 stage -j$(nproc) threading=multi link=shared --with-regex --with-test --with-filesystem --with-date_time --with-random --with-system --with-thread --with-program_options --with-chrono --with-fiber --with-log --with-context --with-math && sudo ./b2 install
+sudo ./b2 stage -j$(nproc) threading=multi link=shared --with-regex --with-test --with-filesystem --with-date_time --with-random --with-system --with-thread --with-program_options --with-chrono --with-fiber --with-log --with-context --with-math && sudo ./b2 install --prefix=/usr
 cd -
 
 echo  ""
-echo  "[13%] Installing dependency: libboost-all-dev... Done!"
+echo  "[13%] Installing dependency: Boost 1.71.0... Done!"
 
 echo  ""
 echo  "[14%] Installing dependency: build-essential... "
@@ -126,14 +135,6 @@ install_package automake
 
 echo  ""
 echo  "[20%] Installing dependency: automake... Done!"
-
-echo  ""
-echo  "[21%] Installing dependency: python3... "
-
-install_package python3
-
-echo  ""
-echo  "[21%] Installing dependency: python3... Done!"
 
 echo  ""
 echo  "[22%] Installing dependency: libminiupnpc-dev... "
