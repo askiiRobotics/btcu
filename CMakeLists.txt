@@ -415,8 +415,45 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     find_package(Threads)
 
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/LICENSE")
+        set( BerkeleyDB_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows" )
 
+        if(${CMAKE_BUILD_TYPE} MATCHES "DEBUG" OR ${CMAKE_BUILD_TYPE} MATCHES "Debug")
+            set( BerkeleyDB_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows/x64/Static Debug/" )
+        else()
+            set( BerkeleyDB_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/db-18.1.32/build_windows/x64/Static Release/" )
+        endif()
+    else()
+        message(FATAL_ERROR "The required Berkeley DB package is not installed. Please check installation instruction boost section!")
+    endif()
 
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/INSTALL")
+    
+        option(CMAKE_USE_WIN32_THREADS_INIT "using WIN32 threads" ON)
+        add_definitions(-DBOOST_USE_WINAPI_VERSION=0x0A00)
+        add_definitions(-DBOOST_SYSTEM_NO_DEPRECATED)
+        
+        # add_definitions(-DBOOST_SYSTEM_USE_UTF8 )
+      
+        set( BOOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0" ) 
+
+        set( BOOST_INCLUDEDIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/boost" )
+        set( Boost_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0" )
+
+        set( BOOST_LIBRARYDIR "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/stage/lib" )
+
+        set( Boost_LIBRARY_DIR_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/stage/lib" )
+        set( Boost_LIBRARY_DIR_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/depends/packages/static/boost_1_71_0/stage/lib" )
+        
+	    set(Boost_THREADAPI win32)
+
+        set( Boost_NO_SYSTEM_PATHS ON )
+        set( Boost_USE_STATIC_LIBS ON )
+        set( Boost_USE_STATIC_RUNTIME ON )
+
+    else()
+        message(FATAL_ERROR "The required Boost package is not installed. Please check installation instruction boost section!")
+    endif()
 else()
 	list( APPEND CMAKE_PREFIX_PATH /usr/lib )
 	list( APPEND CMAKE_PREFIX_PATH /usr/lib/x86_64-linux-gnu )
@@ -458,6 +495,8 @@ endif()
 add_definitions(-DBOOST_NO_SCOPED_ENUMS=1)
 add_definitions(-DBOOST_NO_CXX11_SCOPED_ENUMS=1)
 
+find_package(Boost 1.71.0 EXACT COMPONENTS program_options filesystem system thread context fiber chrono log_setup log unit_test_framework REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
 
 add_definitions(-DETH_FATDB=1)
 
@@ -741,7 +780,31 @@ else()
     message(WARNING "Snappy not found! BTCU requires this functionality")
 endif()
 
-
+# Find Dependencies
+find_package(BerkeleyDB REQUIRED)
+if(BerkeleyDB_FOUND)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        set( BerkeleyDB_Cxx_LIBRARY "${BerkeleyDB_LIBRARY}" )
+    endif()
+    message(STATUS "Found BerkeleyDB (${BerkeleyDB_VERSION}): ${BerkeleyDB_Cxx_LIBRARY}")
+    
+    message(STATUS BerkeleyDB_INCLUDE_DIRS:)
+    message (STATUS ${BerkeleyDB_INCLUDE_DIRS})
+    
+    get_filename_component(BerkeleyDB_Cxx_LIBRARY_DIRS "${BerkeleyDB_Cxx_LIBRARY}" DIRECTORY)
+    message(STATUS BerkeleyDB_LIBRARY_DIRS:)
+    message (STATUS ${BerkeleyDB_Cxx_LIBRARY_DIRS})
+    
+    if(${BerkeleyDB_VERSION} MATCHES "..")
+        message(WARNING "Unknown version Berkeley DB. If this is not ${BDB_VER}, please reinstall it!")
+    else()
+        if(NOT ${BerkeleyDB_VERSION} MATCHES "${BDB_VER}")
+            message(WARNING "BerkeleyDB version other than ${BDB_VER} found: ${BerkeleyDB_VERSION}!")
+        endif()
+    endif()
+else()
+    message(WARNING "BerkeleyDB not found! BTCU Core requires this library for wallet functionality (-DENABLE_WALLET=OFF to disable wallet functionality)")
+endif()
 
 find_package(LibEvent REQUIRED)
 
