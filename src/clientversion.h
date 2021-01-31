@@ -14,7 +14,7 @@
 // Check that required client information is defined
 #if !defined(CLIENT_VERSION_MAJOR) || !defined(CLIENT_VERSION_MINOR) ||        \
     !defined(CLIENT_VERSION_REVISION) || !defined(COPYRIGHT_YEAR) ||           \
-    !defined(CLIENT_VERSION_IS_RELEASE)
+    !defined(CLIENT_VERSION_IS_RELEASE) || !defined(CLIENT_VERSION_BUILD)
 #error Client version information missing: version is not defined by btcu-config.h nor defined any other way
 #endif
 
@@ -42,7 +42,9 @@
 
 static const int CLIENT_VERSION =     1000000 * CLIENT_VERSION_MAJOR +
                                       10000 * CLIENT_VERSION_MINOR +
-                                      100 * CLIENT_VERSION_REVISION;
+                                      100 * CLIENT_VERSION_REVISION +
+                                      1 * CLIENT_VERSION_BUILD;
+
 
 extern const std::string CLIENT_NAME;
 extern const std::string CLIENT_BUILD;
