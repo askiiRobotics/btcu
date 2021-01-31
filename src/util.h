@@ -33,7 +33,7 @@
 
 //BTCU only features
 
-extern std::atomic<bool> fMasterNode;
+extern bool fMasterNode;
 extern bool fLiteMode;
 extern bool fEnableSwiftTX;
 extern int nSwiftTXDepth;

@@ -335,7 +335,6 @@ static const CRPCCommand vRPCCommands[] =
         {"generating", "gethashespersec", &gethashespersec, true, false, false},
         {"generating", "setgenerate", &setgenerate, true, true, false},
         {"generating", "generate", &generate, true, true, false},
-        {"generating", "reprocess", &reprocess, true, true, false},
 
 #endif
 
@@ -397,8 +396,6 @@ static const CRPCCommand vRPCCommands[] =
         {"btcu", "mnvotevalidator", &mnvotevalidator, true, true, false},
         {"btcu", "mnvotevalidatorlist", &mnvotevalidatorlist, true, true, false},
         {"btcu", "mnvalidatorlist", &mnvalidatorlist, true, true, false},
-        {"btcu", "mnping", &mnping, true, true, false},
-        {"btcu", "initmasternode", &initmasternode, true, true, false},
         
 #ifdef ENABLE_WALLET
         /* Wallet */

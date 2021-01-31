@@ -1078,11 +1078,6 @@ class BtcuTestFramework():
         assert_greater_than(len(self.nodes), node_id)
         return self.nodes[node_id].spork("active")[sporkName]
 
-    def advance_mocktime(self, secs):
-        self.mocktime += secs
-        set_node_times(self.nodes, self.mocktime)
-        time.sleep(1)
-
 
 
 ### ------------------------------------------------------

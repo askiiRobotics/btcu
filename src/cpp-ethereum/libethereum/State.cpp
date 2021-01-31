@@ -65,9 +65,7 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
 
     if (db::isDiskDatabase() && _we == WithExisting::Kill)
     {
-#ifndef WIN32
         clog(VerbosityDebug, "statedb") << "Killing state database (WithExisting::Kill).";
-#endif
         fs::remove_all(path / fs::path("state"));
     }
 
@@ -81,33 +79,25 @@ OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, Wit
     try
     {
 		std::unique_ptr<db::DatabaseFace> db = db::DBFactory::create(path / fs::path("state"));
-#ifndef WIN32
         clog(VerbosityTrace, "statedb") << "Opened state DB.";
-#endif
         return OverlayDB(std::move(db));
     }
     catch (boost::exception const& ex)
     {
-#ifndef WIN32
         cwarn << boost::diagnostic_information(ex) << '\n';
-#endif
         if (!db::isDiskDatabase())
             throw;
         else if (fs::space(path / fs::path("state")).available < 1024)
         {
-#ifndef WIN32
-            cwarn << "Not enough available space found on hard drive. Please free some up and then "
-                     "re-run. Bailing.";
-#endif
+            cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
             BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
         }
         else
         {
-#ifndef WIN32
-            cwarn << "Database " << (path / fs::path("state"))
-                  << "already open. You appear to have another instance of ethereum running. "
-                     "Bailing.";
-#endif
+            cwarn <<
+                "Database " <<
+                (path / fs::path("state")) <<
+                "already open. You appear to have another instance of ethereum running. Bailing.";
             BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
         }
     }

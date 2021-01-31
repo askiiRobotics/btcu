@@ -89,17 +89,13 @@ PrecompiledContract createPrecompiledContract(js::mObject const& _precompiled)
     }
     catch (PricerNotFound const&)
     {
-#ifndef WIN32
         cwarn << "Couldn't create a precompiled contract account. Missing a pricer called:" << n;
-#endif
         throw;
     }
     catch (ExecutorNotFound const&)
     {
-#ifndef WIN32
         // Oh dear - missing a plugin?
         cwarn << "Couldn't create a precompiled contract account. Missing an executor called:" << n;
-#endif
         throw;
     }
 }

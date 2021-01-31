@@ -18,10 +18,6 @@
 
 #include <memory>
 
-#define LeasingLogPrint(fmt, ...) LogPrint("leasing", "Leasing - (%d)%s: " fmt "\n", __LINE__, __func__, __VA_ARGS__)
-#define LeasingError(fmt, ...) error("Leasing - (%d)%s: " fmt, __LINE__, __func__, __VA_ARGS__)
-
-
 
 enum class LeaserType: int {
     ValidatorNode = 1,
@@ -38,8 +34,6 @@ public:
     CTxOut CalcLeasingReward(const COutPoint& point, const CKeyID& keyID) const;
     void GetAllAmountsLeasedTo(CPubKey &pubKey, CAmount &amount) const;
 
-    const uint256& GetBlockHash() const;
-    
 protected:
     void UpdatedBlockTip(const CBlockIndex*)  override;
     void SyncTransaction(const CTransaction& tx, const CBlock* pBlock) override;

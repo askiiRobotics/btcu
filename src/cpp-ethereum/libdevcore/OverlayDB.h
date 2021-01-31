@@ -35,9 +35,7 @@ class OverlayDB: public StateCacheDB
 public:
     explicit OverlayDB(std::unique_ptr<db::DatabaseFace> _db = nullptr)
       : m_db(_db.release(), [](db::DatabaseFace* db) {
-#ifndef WIN32
             clog(VerbosityDebug, "overlaydb") << "Closing state DB";
-#endif
             delete db;
         })
     {}

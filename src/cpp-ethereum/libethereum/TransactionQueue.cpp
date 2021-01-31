@@ -203,9 +203,7 @@ void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> cons
 {
     if (m_currentByHash.count(_p.first))
     {
-#ifndef WIN32
         cwarn << "Transaction hash" << _p.first << "already in current?!";
-#endif
         return;
     }
 
@@ -400,10 +398,8 @@ void TransactionQueue::verifierBody()
         }
         catch (...)
         {
-#ifndef WIN32
             // should not happen as exceptions are handled in import.
             cwarn << "Bad transaction:" << boost::current_exception_diagnostic_information();
-#endif
         }
     }
 }

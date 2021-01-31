@@ -161,10 +161,8 @@ PopulationStatistics Block::populateFromChain(BlockChain const& _bc, h256 const&
 
     if (!_bc.isKnown(_h))
     {
-#ifndef WIN32
         // Might be worth throwing here.
         cwarn << "Invalid block given for state population: " << _h;
-#endif
         BOOST_THROW_EXCEPTION(BlockNotFound() << errinfo_target(_h));
     }
 
@@ -255,12 +253,9 @@ bool Block::sync(BlockChain const& _bc, h256 const& _block, BlockHeader const& _
 
         if (m_state.db().lookup(bi.stateRoot()).empty())	// TODO: API in State for this?
         {
-#ifndef WIN32
-            cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot()
-                  << "not found in database.";
+            cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot() << "not found in database.";
             cwarn << "Database corrupt: contains block without stateRoot:" << bi;
             cwarn << "Try rescuing the database by running: eth --rescue";
-#endif
             BOOST_THROW_EXCEPTION(InvalidStateRoot() << errinfo_target(bi.stateRoot()));
         }
         m_previousBlock = bi;
@@ -404,9 +399,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
                 {
                     // Something else went wrong - drop it.
                     _tq.drop(t.sha3());
-#ifndef WIN32
                     cwarn << t.sha3() << "Transaction caused low-level exception :(";
-#endif
                 }
             }
         if (chrono::steady_clock::now() > deadline)
@@ -885,11 +878,9 @@ LogBloom Block::logBloom() const
 
 void Block::cleanup()
 {
-#ifndef WIN32
     // Commit the new trie to disk.
     LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << " = "
                   << rootHash() << " = " << toHex(asBytes(db().lookup(rootHash())));
-#endif
 
     try
     {
@@ -898,9 +889,7 @@ void Block::cleanup()
     }
     catch (BadRoot const&)
     {
-#ifndef WIN32
         cwarn << "Trie corrupt! :-(";
-#endif
         throw;
     }
 

@@ -486,9 +486,7 @@ void TestBlock::populateFrom(TestBlock const& _original)
     }
     catch (BlockStateUndefined const& _ex)
     {
-#ifndef WIN32
         clog(VerbosityDebug, "net") << _ex.what() << " copying block with null state";
-#endif
     }
     m_testTransactions = _original.testTransactions();
     m_transactionQueue.clear();

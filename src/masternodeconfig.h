@@ -13,8 +13,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include "sync.h"
-
 class CMasternodeConfig;
 extern CMasternodeConfig masternodeConfig;
 
@@ -103,15 +101,13 @@ public:
     CMasternodeConfig::CMasternodeEntry* add(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex);
     void remove(std::string alias);
 
-    std::vector<CMasternodeEntry> getEntries()
+    std::vector<CMasternodeEntry>& getEntries()
     {
-        LOCK(cs_entries);
         return entries;
     }
 
     int getCount()
     {
-        LOCK(cs_entries);
         int c = -1;
         for (CMasternodeEntry e : entries) {
             if (e.getAlias() != "") c++;
@@ -121,7 +117,6 @@ public:
 
 private:
     std::vector<CMasternodeEntry> entries;
-    mutable CCriticalSection cs_entries;
 };
 
 

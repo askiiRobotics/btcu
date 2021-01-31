@@ -223,14 +223,6 @@ echo  ""
 echo  "[31%] Installing dependency: libgtest-dev... Done!"
 echo  ""
 
-echo  "[32%] Configuring GTest... "
-
-cd /usr/src/googletest
-sudo cmake . && sudo cmake --build . --target install && cd -
-
-echo  ""
-echo  "[32%] Configuring GTest... Done!"
-
 echo  ""
 echo  "[32%] Checking Berkeley DB... "
 

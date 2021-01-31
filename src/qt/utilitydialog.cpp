@@ -14,7 +14,7 @@
 #include "intro.h"
 #include "guiutil.h"
 
-#include "qt/btcu/qtutils.h"
+#include "qt/btcu/qtutils.cpp"
 
 #include "clientversion.h"
 #include "init.h"

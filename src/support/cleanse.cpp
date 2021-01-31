@@ -7,10 +7,6 @@
 
 #include <cstring>
 
-#if defined(_MSC_VER)
-#include <Windows.h> // For SecureZeroMemory.
-#endif
-
 /* Compilers have a bad habit of removing "superfluous" memset calls that
  * are trying to zero memory. For example, when memset()ing a buffer and
  * then free()ing it, the compiler might decide that the memset is
@@ -36,7 +32,7 @@ void memory_cleanse(void *ptr, size_t len)
        might try to eliminate "superfluous" memsets. If there's an easy way to
        detect memset_s, it would be better to use that. */
 #if defined(_MSC_VER)
-    SecureZeroMemory(ptr, len);
+    __asm;
 #else
     __asm__ __volatile__("" : : "r"(ptr) : "memory");
 #endif

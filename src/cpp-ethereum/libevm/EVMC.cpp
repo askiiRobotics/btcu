@@ -39,7 +39,6 @@ EVMC::EVMC(evmc_instance* _instance) noexcept : evmc::vm(_instance)
     for (auto& pair : evmcOptions())
     {
         auto result = set_option(pair.first.c_str(), pair.second.c_str());
-#ifndef WIN32
         switch (result)
         {
         case EVMC_SET_OPTION_SUCCESS:
@@ -53,7 +52,6 @@ EVMC::EVMC(evmc_instance* _instance) noexcept : evmc::vm(_instance)
         default:
             cwarn << "Unknown error when setting EVMC option '" << pair.first << "'";
         }
-#endif
     }
 }
 
@@ -118,9 +116,7 @@ owning_bytes_ref EVMC::exec(u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onOp
         BOOST_THROW_EXCEPTION(DisallowedStateChange());
 
     case EVMC_REJECTED:
-#ifndef WIN32
         cwarn << "Execution rejected by EVMC, executing with default VM implementation";
-#endif
         return VMFactory::create(VMKind::Legacy)->exec(io_gas, _ext, _onOp);
 
     case EVMC_INTERNAL_ERROR:
