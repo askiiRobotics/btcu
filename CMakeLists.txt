@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # the version of this package
-set(PROJECT_VERSION 0.1.1)
+set(PROJECT_VERSION 1.0.0.0)
 
 project(btcu
 	VERSION ${PROJECT_VERSION}
